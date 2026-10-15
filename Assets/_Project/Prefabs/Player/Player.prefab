@@ -1,0 +1,522 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1635158369370018271
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4195032988398183102}
+  m_Layer: 8
+  m_Name: HeadMotion
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4195032988398183102
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1635158369370018271}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 2651636406814512758}
+  m_Father: {fileID: 6395107333311650500}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2235440951838652446
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6395107333311650500}
+  m_Layer: 8
+  m_Name: PitchPivot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6395107333311650500
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2235440951838652446}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 4195032988398183102}
+  m_Father: {fileID: 3223390259524154762}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &5320000712484929786
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2651636406814512758}
+  - component: {fileID: 4580595634752546541}
+  - component: {fileID: 3830073520416463079}
+  m_Layer: 8
+  m_Name: PlayerCamera
+  m_TagString: MainCamera
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2651636406814512758
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5320000712484929786}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4195032988398183102}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!20 &4580595634752546541
+Camera:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5320000712484929786}
+  m_Enabled: 1
+  serializedVersion: 2
+  m_ClearFlags: 1
+  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_projectionMatrixMode: 1
+  m_GateFitMode: 2
+  m_FOVAxisMode: 0
+  m_Iso: 200
+  m_ShutterSpeed: 0.005
+  m_Aperture: 16
+  m_FocusDistance: 10
+  m_FocalLength: 50
+  m_BladeCount: 5
+  m_Curvature: {x: 2, y: 11}
+  m_BarrelClipping: 0.25
+  m_Anamorphism: 0
+  m_SensorSize: {x: 36, y: 24}
+  m_LensShift: {x: 0, y: 0}
+  m_NormalizedViewPortRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 1
+    height: 1
+  near clip plane: 0.03
+  far clip plane: 1000
+  field of view: 75
+  orthographic: 0
+  orthographic size: 5
+  m_Depth: 0
+  m_CullingMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_RenderingPath: -1
+  m_TargetTexture: {fileID: 0}
+  m_TargetDisplay: 0
+  m_TargetEye: 3
+  m_HDR: 1
+  m_AllowMSAA: 1
+  m_AllowDynamicResolution: 0
+  m_ForceIntoRT: 0
+  m_OcclusionCulling: 1
+  m_StereoConvergence: 10
+  m_StereoSeparation: 0.022
+--- !u!81 &3830073520416463079
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5320000712484929786}
+  m_Enabled: 1
+--- !u!1 &7144615435036953088
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1662268280570150037}
+  m_Layer: 8
+  m_Name: LeanPivot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1662268280570150037
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7144615435036953088}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 3223390259524154762}
+  m_Father: {fileID: 5622735500922859590}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &7283647412565984915
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3223390259524154762}
+  m_Layer: 8
+  m_Name: HeadPivot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3223390259524154762
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7283647412565984915}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.65999997, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 6395107333311650500}
+  m_Father: {fileID: 1662268280570150037}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &7469320008547915344
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5622735500922859590}
+  m_Layer: 8
+  m_Name: BodyPivot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5622735500922859590
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7469320008547915344}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 1, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1662268280570150037}
+  m_Father: {fileID: 2197770752840457505}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &8904463417187941275
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2197770752840457505}
+  - component: {fileID: 2246910933383643019}
+  - component: {fileID: 4917331309514630710}
+  - component: {fileID: 3480876662328039108}
+  - component: {fileID: 8026456149299240859}
+  - component: {fileID: 4919814235386784257}
+  m_Layer: 8
+  m_Name: Player
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2197770752840457505
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8904463417187941275}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 5622735500922859590}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2246910933383643019
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8904463417187941275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 48e890de33a23b14783a18a483773ba4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FPS.Player::FPS.Locomotion.PlayerRig
+  input: {fileID: 11400000, guid: d61a950e5763cde4192c7417c73d0029, type: 2}
+  bodyPivot: {fileID: 5622735500922859590}
+  leanPivot: {fileID: 1662268280570150037}
+  headPivot: {fileID: 3223390259524154762}
+  pitchPivot: {fileID: 6395107333311650500}
+  headMotion: {fileID: 4195032988398183102}
+  playerCamera: {fileID: 4580595634752546541}
+--- !u!143 &4917331309514630710
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8904463417187941275}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 1.8
+  m_Radius: 0.3
+  m_SlopeLimit: 50
+  m_StepOffset: 0.35
+  m_SkinWidth: 0.03
+  m_MinMoveDistance: 0
+  m_Center: {x: 0, y: 0.9, z: 0}
+--- !u!114 &3480876662328039108
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8904463417187941275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2528ed813dca3349897da3b421b40e5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FPS.Player::FPS.Locomotion.StanceAndLeanController
+  stand:
+    height: 1.8
+    radius: 0.3
+    eyeHeight: 1.66
+    pivotHeight: 1
+    stepOffset: 0.35
+  crouch:
+    height: 1.15
+    radius: 0.3
+    eyeHeight: 1.02
+    pivotHeight: 0.6
+    stepOffset: 0.3
+  prone:
+    height: 0.4
+    radius: 0.2
+    eyeHeight: 0.28
+    pivotHeight: 0.2
+    stepOffset: 0.1
+  standCrouchTime: 0.28
+  crouchProneTime: 0.65
+  standProneTime: 0.9
+  proneForwardExtent: 0.9
+  proneBackExtent: 0.8
+  proneBodyRadius: 0.18
+  maxProneSlope: 30
+  proneAlignSpeed: 90
+  maxLeanAngle: 18
+  leanSmoothTime: 0.16
+  headClearanceRadius: 0.14
+  mountReach: 0.75
+  weaponDropBelowEye: 0.12
+  restEyeAboveLedge: 0.12
+  maxMountRaise: 0.15
+  maxMountLower: 0.32
+  cornerProbeHalfSpacing: 0.22
+  cornerClearance: 0.06
+  mountedSwayMultiplier: 0.2
+  mountedRecoilMultiplier: 0.55
+  ledgeArc: {x: 40, y: 18}
+  cornerArc: {x: 25, y: 25}
+  mountAdjustSmoothTime: 0.12
+--- !u!114 &8026456149299240859
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8904463417187941275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5f3c8d219edb6c4c943cdf14ee39c94, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FPS.Player::FPS.Locomotion.RealisticLocomotionController
+  mouseSensitivity: 0.07
+  stickSensitivity: 160
+  toggleAim: 0
+  pitchLimit: 85
+  pronePitchLimits: {x: -30, y: 25}
+  pitchLimitRecovery: 120
+  slowWalkSpeed: 1.3
+  combatPaceSpeed: 3.4
+  sprintSpeed: 5.8
+  tacticalSprintSpeed: 7.2
+  minPaceScale: 0.3
+  paceScaleStep: 0.1
+  crouchSpeedMultiplier: 0.55
+  proneSpeedMultiplier: 0.22
+  aimSpeedMultiplier: 0.6
+  backwardSpeedMultiplier: 0.65
+  strafeSpeedMultiplier: 0.8
+  proneTransitionSpeedMultiplier: 0.3
+  groundAcceleration: 8
+  groundDeceleration: 10
+  sprintAcceleration: 5
+  airAcceleration: 1.2
+  stickToGroundSpeed: 1.5
+  weaponMassKg: 0
+  weaponErgonomics: 100
+  massSpeedPenaltyPerKg: 0.012
+  minLoadSpeedMultiplier: 0.82
+  groundProbeDistance: 0.12
+  referenceFriction: 0.6
+  minTraction: 0.15
+  sprintDrain: 0.07
+  tacticalSprintDrain: 0.2
+  staminaRegen: 0.12
+  staminaRegenDelay: 1
+  exhaustionRecovery: 0.35
+  tacticalSprintMinStamina: 0.15
+  walkStride: 1.4
+  combatStride: 1.6
+  sprintStride: 2.2
+  tacticalSprintStride: 2.6
+  crouchStrideMultiplier: 0.75
+  proneStride: 0.8
+  slideMinSpeed: 4.5
+  slideBoost: 1.08
+  slideFriction: 0.42
+  slideExitSpeed: 1.8
+  slideSteerRate: 30
+  slideMaxDuration: 2.5
+  diveDuration: 0.55
+  diveFriction: 0.85
+  diveSpeedRetention: 0.9
+  diveTransitionTime: 0.45
+--- !u!114 &4919814235386784257
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8904463417187941275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 73b63ae730c9506419457278e8503b24, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FPS.Player::FPS.Locomotion.HeadbobAndBreathingSystem
+  restingHeartRate: 65
+  maxHeartRate: 185
+  walkHeartRate: 82
+  combatPaceHeartRate: 98
+  sprintHeartRate: 142
+  tacticalSprintHeartRate: 172
+  slideHeartRate: 125
+  heartRateRiseTime: 3.5
+  heartRateRecoveryTime: 14
+  suppressionHeartRate: 30
+  maxStressHeartRate: 45
+  stressDecayTime: 6
+  restingBreathRate: 12
+  maxBreathRate: 42
+  restingSway: 0.18
+  maxSway: 1.4
+  wanderSway: 0.12
+  heartbeatSway: 0.025
+  crouchSwayMultiplier: 0.75
+  proneSwayMultiplier: 0.45
+  cameraSwayFraction: 0.15
+  maxHoldSeconds: 7
+  minHoldSeconds: 2.5
+  holdSwayMultiplier: 0.12
+  holdBlendTime: 0.3
+  breathRecoveryTime: 4
+  gaspDuration: 1.6
+  gaspSwayMultiplier: 1.8
+  gaspHeartRateKick: 10
+  holdStaminaDrain: 0.05
+  slowWalkBob:
+    vertical: 0.01
+    lateral: 0.006
+    roll: 0.35
+  combatPaceBob:
+    vertical: 0.02
+    lateral: 0.012
+    roll: 0.6
+  sprintBob:
+    vertical: 0.032
+    lateral: 0.02
+    roll: 1
+  tacticalSprintBob:
+    vertical: 0.042
+    lateral: 0.026
+    roll: 1.4
+  crouchBobMultiplier: 0.7
+  proneBobMultiplier: 0.5
+  aimBobMultiplier: 0.35
+  bobPitchPerMeter: 25
+  bobBlendRate: 6
+  landingDipPerMps: 0.012
+  maxLandingDip: 0.12
+  landingSpringFrequency: 12
+  slideLowering: 0.12
+  slideRoll: 5
+  divePitch: 6
+  postureBlendTime: 0.15

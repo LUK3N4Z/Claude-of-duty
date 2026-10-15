@@ -1,6 +1,4 @@
 using System.Collections;
-using System.IO;
-using System.Reflection;
 using FPS.Core;
 using NUnit.Framework;
 using UnityEngine;
@@ -91,8 +89,6 @@ namespace FPS.Tests
 
     public class InputReaderTests : InputTestFixture
     {
-        private const string ActionsPath = "Assets/_Project/Settings/Input/InputSystem_Actions.inputactions";
-
         private Keyboard keyboard;
         private Mouse mouse;
         private InputActionAsset actions;
@@ -103,11 +99,7 @@ namespace FPS.Tests
             base.Setup();
             keyboard = InputSystem.AddDevice<Keyboard>();
             mouse = InputSystem.AddDevice<Mouse>();
-            actions = InputActionAsset.FromJson(File.ReadAllText(ActionsPath));
-            reader = ScriptableObject.CreateInstance<InputReader>();
-            typeof(InputReader)
-                .GetField(InputReader.ActionAssetFieldName, BindingFlags.Instance | BindingFlags.NonPublic)
-                .SetValue(reader, actions);
+            reader = TestInput.CreateReader(out actions);
             reader.EnablePlayerInput();
         }
 

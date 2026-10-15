@@ -11,8 +11,11 @@ ballistics, Picture-in-Picture optics, procedural inertia, photoreal HDRP.
 2. `Window > Rendering > HDRP Wizard` → **Fix All** (creates/assigns the HDRP asset).
 3. `Tools/FPS Builder/1. Initialize Project Layers & Tags`
 4. `Tools/FPS Builder/2. Create Core Assets` (creates `Data/Core/InputReader.asset` wired to the input actions).
+5. `Tools/FPS Builder/3. Create Player Prefab` → `Prefabs/Player/Player.prefab` (completes an existing prefab in place).
+6. `Tools/FPS Builder/4. Build Locomotion Test Range` → `Scenes/LocomotionTestRange.unity` (ramps, ice, ledges,
+   corner, crouch and crawl tunnels).
 
-Steps 3–4 are already applied and committed; both are idempotent, rerun after a settings reset.
+Steps 3–6 are already applied and committed; all are idempotent, rerun after a settings reset.
 Active Input Handling is `Input System Package (New)` (`activeInputHandler: 1`).
 
 **Tests** (`Assets/_Project/Tests`, PlayMode, NUnit + `InputTestFixture`): Test Runner window, or headless:
@@ -31,7 +34,8 @@ New non-trivial logic ships with a test there.
   `[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]`.
 - **SI units everywhere** (m, kg, s, m/s, J). Imperial values only as authoring fields (e.g. barrel length in
   inches) converted once when data is read.
-- **Data-driven:** tunables in ScriptableObjects named `*SO` (`WeaponDataSO`, `CaliberDataSO`, ...).
+- **Data-driven:** per-asset data (weapons, calibers, attachments, surfaces) in ScriptableObjects named `*SO`
+  (`WeaponDataSO`, `CaliberDataSO`, ...); per-prefab tunables are `[SerializeField]` fields with SI tooltips.
   Never hardcode mesh, clip, or asset paths in runtime code; models bind through socket components
   (`WeaponModelRig`). Editor tools may use paths, defined as `const` at the top of the tool.
 - **Input** only through `FPS.Core.InputReader`: continuous state is polled (properties), discrete intents are
@@ -101,17 +105,42 @@ Collision matrix: `FirstPersonViewmodel` ignores everything; `Player`↔`Hitbox`
 
 Tap/hold threshold 0.35 s. Fast reload is an *upgrade*: the first tap always starts a tactical reload.
 
+## Player rig (M2)
+
+`PlayerRig` (root) holds the `InputReader` and the transform chain; `PlayerRig.Build(root, input)` creates it.
+**One writer per transform**; new systems (M3 springs, recoil, viewmodel) add their own transform, never share one.
+
+```
+Player            [CharacterController, PlayerRig, Locomotion (yaw), StanceAndLean, HeadbobAndBreathing]
+└ BodyPivot       StanceAndLean: torso height, prone ground pitch
+  └ LeanPivot     StanceAndLean: lean roll (±18°, sphere-cast limited)
+    └ HeadPivot   StanceAndLean: eye offset (stance + mount height)
+      └ PitchPivot    Locomotion: look pitch
+        └ HeadMotion  HeadbobAndBreathing: bob, landing, slide/dive posture, camera share of sway
+          └ PlayerCamera
+```
+
+Component dependencies point one way: `HeadbobAndBreathingSystem → RealisticLocomotionController → StanceAndLeanController`.
+Contracts for later milestones:
+- `RealisticLocomotionController.IsAiming` is the arbitrated aim intent (ADS reads it); `Pace`, `IsTacticalSprinting`
+  (high-ready posture), `CancelSprint()` (fire/reload), `SetWeaponHandling(massKg, ergonomics)` (on equip).
+- `StanceAndLeanController.SwayMultiplier` / `RecoilMultiplier` (mounted bracing), `LeanAngle`, `Mount`.
+- `HeadbobAndBreathingSystem.WeaponSwayEuler` (deg, figure-8 + wander + heartbeat) for the weapon/optic.
+- Ground traction comes from the collider's `PhysicsMaterial.dynamicFriction` (0.6 = full grip).
+
 ## Core services
 
 - `EventBus<T>` — static typed bus, `T : struct`, handlers `void On(in T e)`. Subscribe in `OnEnable`,
   unsubscribe in `OnDisable`. Raising never allocates.
 - `ObjectPoolManager.Instance` — scene-scoped, auto-created on first use. `Spawn(prefab, pos, rot, parent, lifetime)`,
   `Release(obj)`, `Prewarm(prefab, count, maxSize)`. Pooled prefabs implement `IPoolable` to reset state.
+- `GameLayers.EnvironmentMask` — Default + WorldGeometry; every environment query uses it.
+- `SuppressionEvent` (EventBus) — local-player suppression, `Intensity` 0–1; raised by ballistics (M5).
 
 ## Milestones
 
 - [x] **M1** Project init, `CLAUDE.md`, assemblies, `InputReader`, `EventBus`, `ObjectPoolManager`, `ProjectSetupWizard`
-- [ ] **M2** Locomotion biomechanics, stances, leaning, weapon mounting, breathing
+- [x] **M2** Locomotion biomechanics, stances, leaning, weapon mounting, breathing
 - [ ] **M3** Spring solver, weapon inertia, barrel collision, procedural ADS, PiP optics, recoil
 - [ ] **M4** Weapon/caliber data, model rig & sockets, chamber tracking, staged reloads
 - [ ] **M5** Ballistics sim, penetration/ricochet, shell casings, health & armor

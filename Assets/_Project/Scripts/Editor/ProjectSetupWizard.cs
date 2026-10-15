@@ -12,7 +12,7 @@ namespace FPS.EditorTools
         private const string MenuRoot = "Tools/FPS Builder/";
         private const string InputActionsPath = "Assets/_Project/Settings/Input/InputSystem_Actions.inputactions";
         private const string CoreDataFolder = "Assets/_Project/Data/Core";
-        private const string InputReaderPath = CoreDataFolder + "/InputReader.asset";
+        internal const string InputReaderPath = CoreDataFolder + "/InputReader.asset";
         private const int FirstUserLayer = 8;
         private const int LayerCount = 32;
 
@@ -89,7 +89,7 @@ namespace FPS.EditorTools
             return slot;
         }
 
-        private static void EnsureFolder(string path)
+        internal static void EnsureFolder(string path)
         {
             if (AssetDatabase.IsValidFolder(path)) return;
 

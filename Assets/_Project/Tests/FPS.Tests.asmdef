@@ -1,7 +1,7 @@
 {
     "name": "FPS.Tests",
     "rootNamespace": "FPS.Tests",
-    "references": ["FPS.Core", "Unity.InputSystem", "Unity.InputSystem.TestFramework", "UnityEngine.TestRunner", "UnityEditor.TestRunner"],
+    "references": ["FPS.Core", "FPS.Player", "Unity.InputSystem", "Unity.InputSystem.TestFramework", "UnityEngine.TestRunner", "UnityEditor.TestRunner"],
     "overrideReferences": true,
     "precompiledReferences": ["nunit.framework.dll"],
     "autoReferenced": false,

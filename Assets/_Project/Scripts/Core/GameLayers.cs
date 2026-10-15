@@ -24,6 +24,9 @@ namespace FPS.Core
         public static readonly int Hitbox = Require(HitboxName);
         public static readonly int Interactable = Require(InteractableName);
 
+        /// <summary>Solid level geometry (Default + WorldGeometry): ground probes, stance clearance, lean and mount casts.</summary>
+        public static readonly int EnvironmentMask = (1 << 0) | (1 << WorldGeometry);
+
         private static int Require(string layerName)
         {
             int layer = LayerMask.NameToLayer(layerName);
