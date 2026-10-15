@@ -1,5 +1,6 @@
 using FPS.Core;
 using FPS.Locomotion;
+using FPS.Weapons;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -7,7 +8,7 @@ using UnityEngine.SceneManagement;
 
 namespace FPS.EditorTools
 {
-    /// <summary>Generates the first-person player prefab and a locomotion test range covering every M2 mechanic.</summary>
+    /// <summary>Generates the first-person player prefab (with viewmodel and test rifle) and the test range scene.</summary>
     public static class PlayerBuilder
     {
         private const string MenuRoot = "Tools/FPS Builder/";
@@ -18,10 +19,13 @@ namespace FPS.EditorTools
                                                            StaticEditorFlags.OccluderStatic | StaticEditorFlags.OccludeeStatic |
                                                            StaticEditorFlags.ReflectionProbeStatic;
 
-        [MenuItem(MenuRoot + "3. Create Player Prefab", priority = 3)]
+        [MenuItem(MenuRoot + "4. Create Player Prefab", priority = 4)]
         public static void CreatePlayerPrefabMenu() => CreateOrUpdatePlayerPrefab();
 
-        /// <summary>Creates the player prefab, or completes an existing one in place (keeps its GUID and edits).</summary>
+        /// <summary>
+        /// Creates the player prefab, or completes an existing one in place (keeps its GUID and edits). Equips the test
+        /// rifle when it exists (Tools/FPS Builder/3).
+        /// </summary>
         public static GameObject CreateOrUpdatePlayerPrefab()
         {
             var input = AssetDatabase.LoadAssetAtPath<InputReader>(ProjectSetupWizard.InputReaderPath);
@@ -36,7 +40,7 @@ namespace FPS.EditorTools
                 GameObject contents = PrefabUtility.LoadPrefabContents(PlayerPrefabPath);
                 try
                 {
-                    PlayerRig.Build(contents, input);
+                    BuildPlayer(contents, input);
                     PrefabUtility.SaveAsPrefabAsset(contents, PlayerPrefabPath);
                 }
                 finally
@@ -50,7 +54,7 @@ namespace FPS.EditorTools
                 var root = new GameObject("Player");
                 try
                 {
-                    PlayerRig.Build(root, input);
+                    BuildPlayer(root, input);
                     PrefabUtility.SaveAsPrefabAsset(root, PlayerPrefabPath);
                 }
                 finally
@@ -63,7 +67,7 @@ namespace FPS.EditorTools
             return AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath);
         }
 
-        [MenuItem(MenuRoot + "4. Build Locomotion Test Range", priority = 4)]
+        [MenuItem(MenuRoot + "5. Build Test Range", priority = 5)]
         public static void BuildLocomotionTestRange()
         {
             GameObject playerPrefab = CreateOrUpdatePlayerPrefab();
@@ -95,12 +99,27 @@ namespace FPS.EditorTools
             Tunnel(level, "Crouch Tunnel 1.3m", new Vector3(10f, 0f, -8f), 1.3f);
             Tunnel(level, "Crawl Tunnel 0.6m", new Vector3(15f, 0f, -8f), 0.6f);
 
+            // Optics: boards down range for the PiP scope; the narrow corridor exercises barrel tucking.
+            Block(level, "Range Floor", new Vector3(20f, -0.5f, 140f), new Vector3(12f, 1f, 200f), Quaternion.identity);
+            foreach (float distance in new[] { 25f, 50f, 100f, 200f })
+                Block(level, $"Target {distance:0}m", new Vector3(20f, 1f, distance), new Vector3(1f, 2f, 0.1f), Quaternion.identity);
+            Block(level, "Corridor Left", new Vector3(-21f, 1.5f, -8f), new Vector3(0.3f, 3f, 8f), Quaternion.identity);
+            Block(level, "Corridor Right", new Vector3(-19.8f, 1.5f, -8f), new Vector3(0.3f, 3f, 8f), Quaternion.identity);
+
             var player = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab, scene);
             player.transform.SetPositionAndRotation(new Vector3(0f, 0f, -4f), Quaternion.identity);
 
             ProjectSetupWizard.EnsureFolder(FolderOf(TestScenePath));
             EditorSceneManager.SaveScene(scene, TestScenePath);
             Debug.Log($"[FPS Builder] {TestScenePath} built.");
+        }
+
+        private static void BuildPlayer(GameObject root, InputReader input)
+        {
+            PlayerRig rig = PlayerRig.Build(root, input);
+            var weapon = AssetDatabase.LoadAssetAtPath<WeaponModelRig>(TestWeaponBuilder.WeaponPrefabPath);
+            var data = AssetDatabase.LoadAssetAtPath<WeaponDataSO>(TestWeaponBuilder.WeaponDataPath);
+            ViewmodelRig.Build(rig, weapon, data);
         }
 
         private static BoxCollider Block(Transform parent, string blockName, Vector3 position, Vector3 size, Quaternion rotation)

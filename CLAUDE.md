@@ -8,19 +8,24 @@ ballistics, Picture-in-Picture optics, procedural inertia, photoreal HDRP.
 ## Fresh-clone setup
 
 1. Unity Hub → Add → project from disk → this folder (editor 6000.6.4f1).
-2. `Window > Rendering > HDRP Wizard` → **Fix All** (creates/assigns the HDRP asset).
-3. `Tools/FPS Builder/1. Initialize Project Layers & Tags`
-4. `Tools/FPS Builder/2. Create Core Assets` (creates `Data/Core/InputReader.asset` wired to the input actions).
-5. `Tools/FPS Builder/3. Create Player Prefab` → `Prefabs/Player/Player.prefab` (completes an existing prefab in place).
-6. `Tools/FPS Builder/4. Build Locomotion Test Range` → `Scenes/LocomotionTestRange.unity` (ramps, ice, ledges,
-   corner, crouch and crawl tunnels).
+2. `Tools/FPS Builder/1. Initialize Project Layers & Tags` — Linear color space, HDRP asset
+   (`Settings/Rendering/HDRenderPipelineAsset.asset`), layers, collision matrix.
+3. `Tools/FPS Builder/2. Create Core Assets` (creates `Data/Core/InputReader.asset` wired to the input actions).
+4. `Tools/FPS Builder/3. Create Test Weapon` → `Prefabs/Weapons/TestRifle.prefab` (primitive rifle, 4x PiP scope,
+   45° canted irons, every socket) + `Data/Weapons/TestRifle_Data/_Recoil`; re-equips the player prefab.
+5. `Tools/FPS Builder/4. Create Player Prefab` → `Prefabs/Player/Player.prefab` (completes an existing prefab in place).
+6. `Tools/FPS Builder/5. Build Test Range` → `Scenes/LocomotionTestRange.unity` (ramps, ice, ledges, corner, crouch and
+   crawl tunnels, narrow corridor, targets at 25/50/100/200 m).
+7. Optional: `Window > Rendering > HDRP Wizard` for any remaining platform checks.
 
-Steps 3–6 are already applied and committed; all are idempotent, rerun after a settings reset.
+Steps 2–6 are already applied and committed; all are idempotent, rerun after a settings reset.
 Active Input Handling is `Input System Package (New)` (`activeInputHandler: 1`).
 
 **Tests** (`Assets/_Project/Tests`, PlayMode, NUnit + `InputTestFixture`): Test Runner window, or headless:
 `Unity.exe -batchmode -nographics -projectPath . -runTests -testPlatform PlayMode -testResults results.xml`.
 New non-trivial logic ships with a test there.
+Visual check: set `FPS_CAPTURE_DIR` and run `-testFilter FPS.Tests.RenderCapture` **without** `-nographics`; it renders
+hip/ADS/canted PNGs of the test range (ignored otherwise).
 
 ## Coding standards
 
@@ -54,16 +59,18 @@ New non-trivial logic ships with a test there.
 | `FPS.Core`           | `FPS.Core`       | Unity.InputSystem                            | Input, EventBus, pooling, layers, spring math, shared interfaces/event structs |
 | `FPS.Audio`          | `FPS.Audio`      | Core                                         | Acoustic propagation, weapon audio layers |
 | `FPS.Ballistics`     | `FPS.Ballistics` | Core, Audio                                  | Calibers, projectile sim, penetration/ricochet, casings, hitboxes, health/armor |
-| `FPS.Weapons`        | `FPS.Weapons`    | Core, Audio, Ballistics                      | Weapon data, model rig/sockets, controller, recoil, optics, attachments |
-| `FPS.Player`         | `FPS.Locomotion` | Core, Audio, Ballistics, Weapons             | Locomotion, stance/lean/mount, breathing, camera & viewmodel motion |
-| `FPS.AI`             | `FPS.AI`         | Core, Audio, Ballistics, Weapons             | Perception, tactical brain, squad coordination |
+| `FPS.Player`         | `FPS.Locomotion` | Core, Audio, Ballistics                      | Locomotion, stance/lean/mount, breathing, player camera chain |
+| `FPS.Weapons`        | `FPS.Weapons`    | Core, Audio, Ballistics, Player, HDRP runtime | Weapon data, model rig/sockets, viewmodel (inertia, ADS/PiP optics, recoil), controller, attachments |
+| `FPS.AI`             | `FPS.AI`         | Core, Audio, Ballistics, Player, Weapons     | Perception, tactical brain, squad coordination |
 | `FPS.UI`             | `FPS.UI`         | Core, Ballistics, Weapons, Player            | Diegetic HUD, menus |
 | `FPS.Gameplay` (M9)  | `FPS.Gameplay`   | all runtime                                  | Match director, modes, equipment, save profiles |
 | `FPS.Editor`         | `FPS.EditorTools`| all + Unity.InputSystem (Editor-only)        | Builders, wizards, validators |
 
-**Rule:** references only point down the table. Upward communication goes through `EventBus<T>` structs or
-interfaces declared in `FPS.Core`. Add HDRP references (`Unity.RenderPipelines.HighDefinition.Runtime`,
-`Unity.RenderPipelines.Core.Runtime`) to an assembly only when it first needs them.
+**Rule:** references only point down the table. Upward communication goes through `EventBus<T>` structs, interfaces
+declared in `FPS.Core`, or push-style setters (weapons call `RealisticLocomotionController.SetWeaponHandling`).
+Weapons sits above Player because the viewmodel reads live player state (aim intent, sway, mount, velocity).
+Add HDRP references (`Unity.RenderPipelines.HighDefinition.Runtime`, `Unity.RenderPipelines.Core.Runtime`) to an
+assembly only when it first needs them.
 
 ## Layers (created by `1. Initialize Project Layers & Tags`)
 
@@ -73,7 +80,7 @@ Names live in `FPS.Core.GameLayers`; always resolve indices through it, never ha
 |------------------------|-----------------|---------|
 | `Ignore Raycast`       | 2 (built-in)    | Unity built-in; never hit by queries |
 | `Player`               | 8               | Character capsules |
-| `FirstPersonViewmodel` | 9               | First-person arms/weapon; rendered by the viewmodel camera, collides with nothing |
+| `FirstPersonViewmodel` | 9               | First-person arms/weapon (rendered in-world by the main camera, culled by the PiP camera), collides with nothing; also hosts scope-only volumes |
 | `WorldGeometry`        | 10              | Static/dynamic level geometry; ballistics, barrel tuck and lean casts target it |
 | `Hitbox`               | 11              | Per-bone damage colliders (kinematic) |
 | `Interactable`         | 12              | Ray-targeted interaction objects |
@@ -117,8 +124,17 @@ Player            [CharacterController, PlayerRig, Locomotion (yaw), StanceAndLe
     └ HeadPivot   StanceAndLean: eye offset (stance + mount height)
       └ PitchPivot    Locomotion: look pitch
         └ HeadMotion  HeadbobAndBreathing: bob, landing, slide/dive posture, camera share of sway
-          └ PlayerCamera
+          ├ CameraOffset      PhysicalRecoilEngine: damped camera concussion
+          │ └ PlayerCamera    ADS controller writes fieldOfView
+          └ ViewmodelRoot     (ViewmodelRig, M3; layer FirstPersonViewmodel)
+            └ InertiaPivot    RealisticWeaponInertia: handling spring, free-aim lead, trail, postures, sway, barrel tuck
+              └ RecoilPivot   PhysicalRecoilEngine: per-shot kick about the stock contact point
+                └ AdsPivot    ProceduralADSAndOpticsController: hip ↔ solved sight alignment
+                  └ weapon model (WeaponModelRig)
 ```
+
+Pivots compute their pose from points expressed in their own local space (stock socket, muzzle), so rotations act
+about the stock and the barrel probe uses the untucked pose; there is no feedback between layers.
 
 Component dependencies point one way: `HeadbobAndBreathingSystem → RealisticLocomotionController → StanceAndLeanController`.
 Contracts for later milestones:
@@ -127,6 +143,21 @@ Contracts for later milestones:
 - `StanceAndLeanController.SwayMultiplier` / `RecoilMultiplier` (mounted bracing), `LeanAngle`, `Mount`.
 - `HeadbobAndBreathingSystem.WeaponSwayEuler` (deg, figure-8 + wander + heartbeat) for the weapon/optic.
 - Ground traction comes from the collider's `PhysicsMaterial.dynamicFriction` (0.6 = full grip).
+- `RealisticLocomotionController.AddLookOffset` (recoil climb) and `LookSensitivityMultiplier` (zoom/optic).
+
+## Viewmodel & optics (M3)
+
+- **Weapon models:** `WeaponModelRig` on the model root holds the sockets (`EnsureSockets()` binds children by name
+  and creates missing ones). Weapon +Z forward, +Y up. `WeaponSight` on a sight socket (or an optic child) is the
+  aligner: +Z line of sight, +Y reticle up, origin at the aperture/eyepiece; magnification > 1 with a lens renderer
+  enables PiP. The lens material is `HDRP/Unlit`; the controller feeds `_UnlitColorMap` through a property block.
+- **ADS** is solved, not animated: `ProceduralADSAndOpticsController.SolveSightAlignment` puts the aligner `eyeRelief`
+  ahead of the eye. `SwitchSight` rolls onto the canted slot. Tucked barrels block ADS.
+- **PiP:** one scope camera per player renders to an `R16G16B16A16_SFloat` target, FOV = lens angular size ÷
+  magnification. Volume filtering by layer: main camera excludes `FirstPersonViewmodel` (scope-only volume: vignette
+  eye-relief shadow, tonemapping None, no motion blur); scope camera excludes `Player` (main-only peripheral DOF).
+- **Recoil:** `PhysicalRecoilEngine.Kick()` once per round (M4 firing calls it). Springs come from `RecoilProfileSO`.
+- **Springs:** `FPS.Core.ProceduralSpringSolver` — analytical damped oscillator, sub-stepped target interpolation.
 
 ## Core services
 
@@ -141,7 +172,7 @@ Contracts for later milestones:
 
 - [x] **M1** Project init, `CLAUDE.md`, assemblies, `InputReader`, `EventBus`, `ObjectPoolManager`, `ProjectSetupWizard`
 - [x] **M2** Locomotion biomechanics, stances, leaning, weapon mounting, breathing
-- [ ] **M3** Spring solver, weapon inertia, barrel collision, procedural ADS, PiP optics, recoil
+- [x] **M3** Spring solver, weapon inertia, barrel collision, procedural ADS, PiP optics, recoil
 - [ ] **M4** Weapon/caliber data, model rig & sockets, chamber tracking, staged reloads
 - [ ] **M5** Ballistics sim, penetration/ricochet, shell casings, health & armor
 - [ ] **M6** Acoustic propagation, muzzle VFX, diegetic HUD

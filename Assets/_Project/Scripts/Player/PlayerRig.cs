@@ -8,7 +8,8 @@ namespace FPS.Locomotion
     /// Socket hub of the first-person player: the input source and the transform chain the player systems drive.
     /// Each transform has exactly one writer:
     /// BodyPivot (stance: torso height, prone pitch) → LeanPivot (stance: lean roll) → HeadPivot (stance: eye offset)
-    /// → PitchPivot (locomotion: look pitch) → HeadMotion (headbob and breathing) → PlayerCamera.
+    /// → PitchPivot (locomotion: look pitch) → HeadMotion (headbob and breathing) → CameraOffset (weapon recoil
+    /// concussion) → PlayerCamera. The weapon viewmodel hangs off HeadMotion beside CameraOffset.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class PlayerRig : MonoBehaviour
@@ -19,6 +20,7 @@ namespace FPS.Locomotion
         [SerializeField] private Transform headPivot;
         [SerializeField] private Transform pitchPivot;
         [SerializeField] private Transform headMotion;
+        [SerializeField] private Transform cameraOffset;
         [SerializeField] private Camera playerCamera;
 
         public InputReader Input => input;
@@ -27,6 +29,7 @@ namespace FPS.Locomotion
         public Transform HeadPivot => headPivot;
         public Transform PitchPivot => pitchPivot;
         public Transform HeadMotion => headMotion;
+        public Transform CameraOffset => cameraOffset;
         public Camera PlayerCamera => playerCamera;
 
         /// <summary>
@@ -44,17 +47,20 @@ namespace FPS.Locomotion
 
             if (!root.TryGetComponent(out PlayerRig rig)) rig = root.AddComponent<PlayerRig>();
             rig.input = input;
-            rig.bodyPivot = Child(root.transform, "BodyPivot");
-            rig.leanPivot = Child(rig.bodyPivot, "LeanPivot");
-            rig.headPivot = Child(rig.leanPivot, "HeadPivot");
-            rig.pitchPivot = Child(rig.headPivot, "PitchPivot");
-            rig.headMotion = Child(rig.pitchPivot, "HeadMotion");
+            rig.bodyPivot = EnsureChild(root.transform, "BodyPivot");
+            rig.leanPivot = EnsureChild(rig.bodyPivot, "LeanPivot");
+            rig.headPivot = EnsureChild(rig.leanPivot, "HeadPivot");
+            rig.pitchPivot = EnsureChild(rig.headPivot, "PitchPivot");
+            rig.headMotion = EnsureChild(rig.pitchPivot, "HeadMotion");
+            rig.cameraOffset = EnsureChild(rig.headMotion, "CameraOffset");
 
-            Transform cameraTransform = Child(rig.headMotion, "PlayerCamera");
+            Transform legacyCamera = rig.headMotion.Find("PlayerCamera"); // rigs built before CameraOffset existed
+            if (legacyCamera != null) legacyCamera.SetParent(rig.cameraOffset, false);
+            Transform cameraTransform = EnsureChild(rig.cameraOffset, "PlayerCamera");
             if (!cameraTransform.TryGetComponent(out rig.playerCamera))
             {
                 rig.playerCamera = cameraTransform.gameObject.AddComponent<Camera>();
-                rig.playerCamera.nearClipPlane = 0.03f;
+                rig.playerCamera.nearClipPlane = 0.02f;
                 rig.playerCamera.fieldOfView = 75f;
                 cameraTransform.gameObject.AddComponent<AudioListener>();
             }
@@ -73,7 +79,8 @@ namespace FPS.Locomotion
             return rig;
         }
 
-        private static Transform Child(Transform parent, string childName)
+        /// <summary>Finds a direct child by name or creates it at identity; the child inherits the parent's layer.</summary>
+        public static Transform EnsureChild(Transform parent, string childName)
         {
             Transform child = parent.Find(childName);
             if (child == null)

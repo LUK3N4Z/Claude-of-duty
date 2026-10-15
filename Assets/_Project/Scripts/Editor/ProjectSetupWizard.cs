@@ -3,15 +3,22 @@ using FPS.Core;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.HighDefinition;
 
 namespace FPS.EditorTools
 {
-    /// <summary>One-click project configuration: layers, physics collision matrix and core data assets. Idempotent.</summary>
+    /// <summary>
+    /// One-click project configuration: linear color space and HDRP asset, layers, physics collision matrix and core
+    /// data assets. Idempotent.
+    /// </summary>
     public static class ProjectSetupWizard
     {
         private const string MenuRoot = "Tools/FPS Builder/";
         private const string InputActionsPath = "Assets/_Project/Settings/Input/InputSystem_Actions.inputactions";
         private const string CoreDataFolder = "Assets/_Project/Data/Core";
+        private const string RenderingFolder = "Assets/_Project/Settings/Rendering";
+        private const string HdrpAssetPath = RenderingFolder + "/HDRenderPipelineAsset.asset";
         internal const string InputReaderPath = CoreDataFolder + "/InputReader.asset";
         private const int FirstUserLayer = 8;
         private const int LayerCount = 32;
@@ -19,6 +26,8 @@ namespace FPS.EditorTools
         [MenuItem(MenuRoot + "1. Initialize Project Layers & Tags", priority = 1)]
         public static void InitializeLayers()
         {
+            ConfigureRenderPipeline();
+
             var tagManager = new SerializedObject(AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset")[0]);
             SerializedProperty layers = tagManager.FindProperty("layers");
 
@@ -66,6 +75,23 @@ namespace FPS.EditorTools
 
             Selection.activeObject = reader;
             Debug.Log($"[FPS Builder] {InputReaderPath} ready, bound to {InputActionsPath}.", reader);
+        }
+
+        private static void ConfigureRenderPipeline()
+        {
+            if (PlayerSettings.colorSpace != ColorSpace.Linear) PlayerSettings.colorSpace = ColorSpace.Linear; // HDRP requirement
+            if (GraphicsSettings.defaultRenderPipeline is HDRenderPipelineAsset) return;
+
+            var asset = AssetDatabase.LoadAssetAtPath<HDRenderPipelineAsset>(HdrpAssetPath);
+            if (asset == null)
+            {
+                EnsureFolder(RenderingFolder);
+                asset = ScriptableObject.CreateInstance<HDRenderPipelineAsset>();
+                AssetDatabase.CreateAsset(asset, HdrpAssetPath);
+            }
+
+            GraphicsSettings.defaultRenderPipeline = asset;
+            Debug.Log($"[FPS Builder] Linear color space; HDRP asset {HdrpAssetPath} assigned.");
         }
 
         private static int EnsureLayer(SerializedProperty layers, string layerName, int preferredIndex)

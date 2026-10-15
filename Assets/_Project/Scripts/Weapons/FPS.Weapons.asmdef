@@ -1,5 +1,5 @@
 {
     "name": "FPS.Weapons",
     "rootNamespace": "FPS.Weapons",
-    "references": ["FPS.Core", "FPS.Audio", "FPS.Ballistics"]
+    "references": ["FPS.Core", "FPS.Audio", "FPS.Ballistics", "FPS.Player", "Unity.RenderPipelines.HighDefinition.Runtime", "Unity.RenderPipelines.Core.Runtime"]
 }

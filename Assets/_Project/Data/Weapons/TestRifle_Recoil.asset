@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 33c78e238f98cb043898b2929f927a2d, type: 3}
+  m_Name: TestRifle_Recoil
+  m_EditorClassIdentifier: FPS.Weapons::FPS.Weapons.RecoilProfileSO
+  referenceMassKg: 3.4
+  verticalKick: 140
+  verticalSpread: 0.15
+  horizontalBias: 12
+  horizontalSpread: 45
+  rollKick: 25
+  backKick: 0.9
+  upKick: 0.12
+  boltCarrierDelay: 0.035
+  boltCarrierImpulse: 0.25
+  boltCarrierPitch: 18
+  viewClimb: 0.35
+  viewHorizontalFactor: 0.4
+  cameraKick: 30
+  cameraPush: 0.05
+  kickRampPerShot: 0.05
+  maxKickRamp: 1.4
+  rampResetTime: 0.3
+  hipMultiplier: 1
+  adsMultiplier: 0.75
+  weaponPositionSpring:
+    frequency: 10
+    dampingRatio: 0.55
+  weaponRotationSpring:
+    frequency: 7
+    dampingRatio: 0.45
+  cameraPositionSpring:
+    frequency: 12
+    dampingRatio: 1
+  cameraRotationSpring:
+    frequency: 9
+    dampingRatio: 0.95

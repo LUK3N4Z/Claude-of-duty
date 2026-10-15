@@ -131,6 +131,7 @@ namespace FPS.Locomotion
         private float lastStaminaDrainTime = float.NegativeInfinity;
         private float paceScale = 1f;
         private float stepPhase;
+        private Vector2 pendingLookOffset;
 
         public Vector3 Velocity => planarVelocity + Vector3.up * verticalSpeed;
         public float PlanarSpeed => new Vector2(planarVelocity.x, planarVelocity.z).magnitude;
@@ -152,6 +153,8 @@ namespace FPS.Locomotion
         public float PaceScale => paceScale;
         public float Yaw => yaw;
         public float Pitch => pitch;
+        /// <summary>Look sensitivity scale set by the aiming system (zoom and optic magnification).</summary>
+        public float LookSensitivityMultiplier { get; set; } = 1f;
         public StanceAndLeanController StanceController => stance;
 
         /// <summary>Equipped weapon load. Mass slows top speed; mass and ergonomics (0-100) scale acceleration.</summary>
@@ -167,6 +170,11 @@ namespace FPS.Locomotion
             sprintRequested = false;
             tacticalRequested = false;
         }
+
+        /// <summary>
+        /// Rotates the view by a permanent offset next frame (recoil climb). Negative pitch looks up. Look limits still apply.
+        /// </summary>
+        public void AddLookOffset(float pitchDegrees, float yawDegrees) => pendingLookOffset += new Vector2(pitchDegrees, yawDegrees);
 
         /// <summary>Spends stamina (fraction 0-1) and restarts the regeneration delay.</summary>
         public void DrainStamina(float amount)
@@ -289,9 +297,10 @@ namespace FPS.Locomotion
         private void UpdateLook(float dt)
         {
             Vector2 raw = input.Look;
-            Vector2 delta = input.LookIsPointerDelta ? raw * mouseSensitivity : raw * (stickSensitivity * dt);
-            float newYaw = yaw + delta.x;
-            float newPitch = pitch - delta.y;
+            Vector2 delta = (input.LookIsPointerDelta ? raw * mouseSensitivity : raw * (stickSensitivity * dt)) * LookSensitivityMultiplier;
+            float newYaw = yaw + delta.x + pendingLookOffset.y;
+            float newPitch = pitch - delta.y + pendingLookOffset.x;
+            pendingLookOffset = Vector2.zero;
 
             bool prone = stance.Current == Stance.Prone;
             float low = prone ? pronePitchLimits.x : -pitchLimit;
