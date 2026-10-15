@@ -66,6 +66,22 @@ namespace FPS.Tests
             Press(mouse.rightButton);
             yield return new WaitForSeconds(1.5f);
             Save(rt, Path.Combine(dir, "marksman_ads.png"));
+
+            Release(mouse.rightButton);
+            weapons.SelectSlot(0);
+            yield return new WaitForSeconds(1.2f);
+            cc.enabled = false;
+            rig.transform.SetPositionAndRotation(new Vector3(-8f, 0f, 7f), Quaternion.identity);
+            cc.enabled = true;
+            yield return new WaitForSeconds(0.6f);
+            for (int i = 0; i < 6; i++)
+            {
+                weapons.PullTrigger();
+                weapons.ReleaseTrigger();
+                yield return new WaitForSeconds(0.15f);
+            }
+
+            Save(rt, Path.Combine(dir, "impacts.png"));
             rig.PlayerCamera.targetTexture = null;
         }
 

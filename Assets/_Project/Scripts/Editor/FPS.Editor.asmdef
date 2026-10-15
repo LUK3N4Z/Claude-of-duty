@@ -1,7 +1,7 @@
 {
     "name": "FPS.Editor",
     "rootNamespace": "FPS.EditorTools",
-    "references": ["FPS.Core", "FPS.Audio", "FPS.Ballistics", "FPS.Player", "FPS.Weapons", "FPS.AI", "FPS.UI", "Unity.InputSystem", "Unity.RenderPipelines.HighDefinition.Runtime", "Unity.RenderPipelines.Core.Runtime"],
+    "references": ["FPS.Core", "FPS.Audio", "FPS.Ballistics", "FPS.Player", "FPS.Weapons", "FPS.AI", "FPS.UI", "Unity.InputSystem", "UnityEngine.UI", "Unity.RenderPipelines.HighDefinition.Runtime", "Unity.RenderPipelines.Core.Runtime"],
     "includePlatforms": ["Editor"],
     "autoReferenced": false
 }

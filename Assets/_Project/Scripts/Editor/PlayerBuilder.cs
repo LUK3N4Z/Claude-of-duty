@@ -109,6 +109,25 @@ namespace FPS.EditorTools
 
             BallisticsContentBuilder.BuildRange(level);
 
+            // Acoustics: an enclosed room (indoor tail) and a roofless street canyon (urban slapback).
+            Transform room = new GameObject("Shoot House (indoor acoustics)").transform;
+            room.SetParent(level, false);
+            room.localPosition = new Vector3(-26f, 0f, 6f);
+            Block(room, "Wall N", new Vector3(0f, 1.5f, 3f), new Vector3(6.3f, 3f, 0.3f), Quaternion.identity);
+            Block(room, "Wall S Left", new Vector3(-2f, 1.5f, -3f), new Vector3(2.3f, 3f, 0.3f), Quaternion.identity);
+            Block(room, "Wall S Right", new Vector3(2f, 1.5f, -3f), new Vector3(2.3f, 3f, 0.3f), Quaternion.identity);
+            Block(room, "Wall E", new Vector3(3f, 1.5f, 0f), new Vector3(0.3f, 3f, 6f), Quaternion.identity);
+            Block(room, "Wall W", new Vector3(-3f, 1.5f, 0f), new Vector3(0.3f, 3f, 6f), Quaternion.identity);
+            Block(room, "Roof", new Vector3(0f, 3.15f, 0f), new Vector3(6.3f, 0.3f, 6.3f), Quaternion.identity);
+            Block(level, "Canyon Wall West (urban acoustics)", new Vector3(-34f, 6f, 20f), new Vector3(0.5f, 12f, 30f), Quaternion.identity);
+            Block(level, "Canyon Wall East (urban acoustics)", new Vector3(-26f, 6f, 20f), new Vector3(0.5f, 12f, 30f), Quaternion.identity);
+
+            BoxCollider crate = Block(level, "Ammo Crate", new Vector3(2f, 0.3f, -3f), new Vector3(0.8f, 0.6f, 0.5f), Quaternion.identity);
+            var resupply = new GameObject("Resupply (interact)") { layer = GameLayers.Interactable };
+            resupply.transform.SetParent(crate.transform, false);
+            resupply.AddComponent<BoxCollider>().size = new Vector3(1.1f, 1.2f, 1.2f);
+            resupply.AddComponent<AmmoCrate>();
+
             var player = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab, scene);
             player.transform.SetPositionAndRotation(new Vector3(0f, 0f, -4f), Quaternion.identity);
 
@@ -122,6 +141,8 @@ namespace FPS.EditorTools
             PlayerRig rig = PlayerRig.Build(root, input);
             ViewmodelRig viewmodel = ViewmodelRig.Build(rig);
             BuildArms(viewmodel);
+            if (!root.TryGetComponent(out FPS.UI.DiegeticTacticalHUD _)) root.AddComponent<FPS.UI.DiegeticTacticalHUD>();
+            EffectsContentBuilder.ConfigurePlayer(root);
 
             var controller = root.GetComponent<RealisticWeaponController>();
             var serialized = new SerializedObject(controller);

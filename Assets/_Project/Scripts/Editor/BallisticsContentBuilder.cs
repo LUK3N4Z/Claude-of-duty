@@ -1,11 +1,9 @@
 using System;
-using System.IO;
 using FPS.Ballistics;
 using FPS.Core;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
-using Random = System.Random;
 
 namespace FPS.EditorTools
 {
@@ -20,7 +18,6 @@ namespace FPS.EditorTools
         private const string ArmorFolder = "Assets/_Project/Data/Ballistics/Armor";
         private const string AudioFolder = "Assets/_Project/Art/Audio/Casings";
         private const string CasingFolder = "Assets/_Project/Prefabs/Ballistics";
-        private const int SampleRate = 44100;
 
         private struct SurfaceSpec
         {
@@ -224,65 +221,14 @@ namespace FPS.EditorTools
             }
         }
 
-        /// <summary>
-        /// Synthesizes a case-on-surface impact: a short noise click plus decaying inharmonic partials, written as 16-bit
-        /// mono WAV and imported as an AudioClip.
-        /// </summary>
+        /// <summary>A case-on-surface clink: decaying inharmonic partials plus a short noise click.</summary>
         private static AudioClip Clink(SurfaceSpec spec, int variant, float pitch)
         {
-            string path = $"{AudioFolder}/Casing_{spec.Name}_{variant}.wav";
-            var existing = AssetDatabase.LoadAssetAtPath<AudioClip>(path);
-            if (existing != null) return existing;
-
-            var random = new Random(spec.Name.GetHashCode() ^ (variant * 7919));
-            float duration = Mathf.Max(0.12f, spec.Decay * 5f);
-            int length = Mathf.CeilToInt(duration * SampleRate);
-            var samples = new float[length];
-            var phases = new float[spec.Partials.Length];
-            for (int k = 0; k < phases.Length; k++) phases[k] = (float)random.NextDouble() * Mathf.PI * 2f;
-
-            float peak = 1e-6f;
-            for (int i = 0; i < length; i++)
-            {
-                float t = (float)i / SampleRate;
-                float sample = 0f;
-                for (int k = 0; k < spec.Partials.Length; k++)
-                {
-                    float decay = spec.Decay * (1f - 0.18f * k); // higher partials die first
-                    sample += Mathf.Sin(2f * Mathf.PI * spec.Partials[k] * pitch * t + phases[k]) * Mathf.Exp(-t / decay) / (1f + k * 0.6f);
-                }
-
-                sample += ((float)random.NextDouble() * 2f - 1f) * spec.Noise * Mathf.Exp(-t / 0.004f);
-                samples[i] = sample;
-                peak = Mathf.Max(peak, Mathf.Abs(sample));
-            }
-
-            string fullPath = Path.Combine(Directory.GetCurrentDirectory(), path);
-            WriteWav(fullPath, samples, 0.9f / peak);
-            AssetDatabase.ImportAsset(path);
-            return AssetDatabase.LoadAssetAtPath<AudioClip>(path);
-        }
-
-        private static void WriteWav(string path, float[] samples, float gain)
-        {
-            using (var stream = new FileStream(path, FileMode.Create, FileAccess.Write))
-            using (var writer = new BinaryWriter(stream))
-            {
-                int dataBytes = samples.Length * 2;
-                writer.Write(new[] { 'R', 'I', 'F', 'F' });
-                writer.Write(36 + dataBytes);
-                writer.Write(new[] { 'W', 'A', 'V', 'E', 'f', 'm', 't', ' ' });
-                writer.Write(16);
-                writer.Write((short)1); // PCM
-                writer.Write((short)1); // mono
-                writer.Write(SampleRate);
-                writer.Write(SampleRate * 2);
-                writer.Write((short)2);
-                writer.Write((short)16);
-                writer.Write(new[] { 'd', 'a', 't', 'a' });
-                writer.Write(dataBytes);
-                foreach (float sample in samples) writer.Write((short)Mathf.Clamp(Mathf.RoundToInt(sample * gain * short.MaxValue), short.MinValue, short.MaxValue));
-            }
+            int seed = spec.Name.Length * 7919 + variant;
+            return AudioSynth.LoadOrCreate($"{AudioFolder}/Casing_{spec.Name}_{variant}.wav", () =>
+                new AudioSynth(Mathf.Max(0.12f, spec.Decay * 5f), seed)
+                    .Partials(spec.Partials, 1f, 0f, spec.Decay, pitch)
+                    .Noise(spec.Noise, 0f, 0.0005f, 0.004f));
         }
     }
 }

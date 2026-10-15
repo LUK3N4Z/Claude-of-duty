@@ -52,6 +52,7 @@ namespace FPS.EditorTools
         public static void CreateTestWeapons()
         {
             BallisticsContentBuilder.CreateContent();
+            EffectsContentBuilder.CreateContent();
             ProjectSetupWizard.EnsureFolder(ArtFolder);
             ProjectSetupWizard.EnsureFolder(PrefabFolder);
             ProjectSetupWizard.EnsureFolder(DataFolder);
@@ -91,6 +92,7 @@ namespace FPS.EditorTools
                 Set(so, "droppedMagazinePrefab", carbineMagazine);
                 Set(so, "hipStockOffset", new Vector3(0.14f, -0.2f, -0.16f));
                 Set(so, WeaponDataSO.RecoilFieldName, carbineRecoil);
+                Set(so, "audioProfile", EffectsContentBuilder.WeaponAudio(CarbineName));
             });
 
             var marksman = new RifleSpec
@@ -139,6 +141,7 @@ namespace FPS.EditorTools
                 Set(so, "droppedMagazinePrefab", marksmanMagazine);
                 Set(so, "hipStockOffset", new Vector3(0.14f, -0.2f, -0.18f));
                 Set(so, WeaponDataSO.RecoilFieldName, marksmanRecoil);
+                Set(so, "audioProfile", EffectsContentBuilder.WeaponAudio(MarksmanName));
             });
 
             AssetDatabase.SaveAssets();

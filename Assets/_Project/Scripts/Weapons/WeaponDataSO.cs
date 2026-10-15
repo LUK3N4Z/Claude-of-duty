@@ -1,4 +1,5 @@
 using System;
+using FPS.Audio;
 using FPS.Ballistics;
 using UnityEngine;
 
@@ -85,6 +86,9 @@ namespace FPS.Weapons
         [Header("Recoil")]
         [SerializeField] private RecoilProfileSO recoil;
 
+        [Header("Audio")]
+        [SerializeField] private WeaponAudioProfileSO audioProfile;
+
         public string DisplayName => displayName;
         public float MassKg => massKg;
         public float Ergonomics => ergonomics;
@@ -120,6 +124,7 @@ namespace FPS.Weapons
         public Vector3 HipStockOffset => hipStockOffset;
         public Vector3 HipEuler => hipEuler;
         public RecoilProfileSO Recoil => recoil;
+        public WeaponAudioProfileSO AudioProfile => audioProfile;
 
         public FireMode GetFireMode(int index)
         {

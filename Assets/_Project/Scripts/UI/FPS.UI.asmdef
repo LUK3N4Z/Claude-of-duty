@@ -1,5 +1,5 @@
 {
     "name": "FPS.UI",
     "rootNamespace": "FPS.UI",
-    "references": ["FPS.Core", "FPS.Ballistics", "FPS.Weapons", "FPS.Player"]
+    "references": ["FPS.Core", "FPS.Ballistics", "FPS.Audio", "FPS.Player", "FPS.Weapons", "UnityEngine.UI", "Unity.RenderPipelines.HighDefinition.Runtime", "Unity.RenderPipelines.Core.Runtime"]
 }

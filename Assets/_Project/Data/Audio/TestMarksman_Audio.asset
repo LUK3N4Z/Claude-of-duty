@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53dfdec1530d6344bb2a986d02fb2693, type: 3}
+  m_Name: TestMarksman_Audio
+  m_EditorClassIdentifier: FPS.Audio::FPS.Audio.WeaponAudioProfileSO
+  pressureTransients:
+  - {fileID: 8300000, guid: a00fc0c125491ae45b8d2376c14d3b91, type: 3}
+  - {fileID: 8300000, guid: 9007fdf4f61d04b4e97502826ce67795, type: 3}
+  - {fileID: 8300000, guid: 9b22df58189b3d14785d16269f1082f7, type: 3}
+  mechanicalCycles:
+  - {fileID: 8300000, guid: 55d1def641947a747b7a4b3ef87eed85, type: 3}
+  bodyResonances:
+  - {fileID: 8300000, guid: f64bfa890f90bde46a7c2cd08ebc1141, type: 3}
+  distantReports:
+  - {fileID: 8300000, guid: ffe3453a7776ef943803edffe403ff5c, type: 3}
+  distantThreshold: 120
+  maxAudibleDistance: 1500
+  loudness: 1
+  indoorTail: {fileID: 8300000, guid: 0fba358326072c547a25d896bb27e434, type: 3}
+  urbanTail: {fileID: 8300000, guid: 242cf5803a4b729459fd5c30e60a6d73, type: 3}
+  openTail: {fileID: 8300000, guid: d10596a68329b1146b35f497330f5dbd, type: 3}

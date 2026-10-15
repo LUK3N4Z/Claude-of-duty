@@ -1235,6 +1235,12 @@ GameObject:
   - component: {fileID: 6999799972752849506}
   - component: {fileID: 2783451472437515404}
   - component: {fileID: 8634874904746619463}
+  - component: {fileID: 3853725903744269842}
+  - component: {fileID: 6253170178984903354}
+  - component: {fileID: 5339976412751432318}
+  - component: {fileID: 3199276652493515214}
+  - component: {fileID: 3124257537681045698}
+  - component: {fileID: 7837236074932469024}
   m_Layer: 8
   m_Name: Player
   m_TagString: Untagged
@@ -1665,3 +1671,138 @@ MonoBehaviour:
   maxBlurWeight: 0.6
   blurFarStart: 1.5
   blurFarEnd: 12
+--- !u!114 &3853725903744269842
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8904463417187941275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 98bdf4b6404c18345b13ea017bb9052f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FPS.Ballistics::FPS.Ballistics.TacticalHealthAndArmorSystem
+  maxHealth: 100
+  headMultiplier: 3.5
+  thoraxMultiplier: 1.4
+  stomachMultiplier: 1.1
+  armMultiplier: 0.55
+  legMultiplier: 0.7
+  limbInjuryCapacity: 40
+  armor: []
+  penetrationSpread: 6
+--- !u!114 &6253170178984903354
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8904463417187941275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b95b0182747850f46902e4f338027539, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FPS.Player::FPS.Locomotion.Interactor
+  reach: 2.2
+--- !u!114 &5339976412751432318
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8904463417187941275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 494f75f9311097e4f9840e6b9b777e96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FPS.Audio::FPS.Audio.AcousticPropagationSystem
+  dryFire: {fileID: 8300000, guid: ae00d28f999cf3f488ba51040242b5d7, type: 3}
+  magazineOut: {fileID: 8300000, guid: fec347da96f93c74abfe12c01fcab4b8, type: 3}
+  magazineIn: {fileID: 8300000, guid: a10d87c8bc84e8d4699c40d5820219eb, type: 3}
+  boltCycle: {fileID: 8300000, guid: cba181876300f8f4ea049b0a6b6e30f4, type: 3}
+  fireModeSwitch: {fileID: 8300000, guid: d1d701f7363ff9d45aec37d460e9f9e5, type: 3}
+  magazineCheck: {fileID: 8300000, guid: 80c5663c4bb3dbf4eb15649170ad37bc, type: 3}
+  supersonicCracks:
+  - {fileID: 8300000, guid: bc44f0f7cde582d4a811860702d1acac, type: 3}
+  - {fileID: 8300000, guid: 3a4027bfd5acc2c4facc5a363e6ebaf5, type: 3}
+  firstPersonSpatialBlend: 0.3
+  tailVolume: 0.8
+  remoteMinDistance: 6
+  remoteFoleyMaxDistance: 25
+  probeInterval: 0.25
+  ceilingProbe: 20
+  wallProbe: 60
+  horizontalRays: 8
+  environmentBlendSpeed: 3
+  openCutoff: 22000
+  muffledCutoff: 700
+  suppressionDecay: 1.5
+  suppressionMuffle: 0.7
+  lowHealthThreshold: 0.35
+--- !u!114 &3199276652493515214
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8904463417187941275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 49e9990eba30f37479a2fa847d585a16, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FPS.Audio::FPS.Audio.ImpactEffectsController
+  decalSize: 0.06
+  decalDepth: 0.08
+  decalLifetime: 60
+  maxDecals: 96
+  dustMaterial: {fileID: 2100000, guid: 81dae5c4914e39b4d840a63aaa978cb1, type: 2}
+  dustParticles: 10
+  impactMaxDistance: 60
+  impactMinDistance: 2
+--- !u!114 &3124257537681045698
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8904463417187941275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c10f115dcbfcc34c8de25158471994f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FPS.Weapons::FPS.Weapons.MuzzleAndSmokeVFXController
+  flashColor: {r: 1, g: 0.78, b: 0.5, a: 1}
+  flashLumen: 40000
+  flashRange: 14
+  gasMaterial: {fileID: 2100000, guid: 80aef1c39a44e1146a794ab1bc956008, type: 2}
+  smokeMaterial: {fileID: 2100000, guid: 89fa62263459ec346a761145a286726b, type: 2}
+  shimmerMaterial: {fileID: 2100000, guid: cbc97a9b359764b468076efb60932784, type: 2}
+  gasParticlesPerShot: 6
+  heatPerShot: 0.035
+  coolingTime: 12
+  shimmerThreshold: 0.15
+  maxShimmerRate: 30
+  smokeThreshold: 0.2
+  smokeDelay: 0.35
+  maxSmokeRate: 14
+--- !u!114 &7837236074932469024
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8904463417187941275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a7e8159e42dfd98419a32973ef4fe5d7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FPS.UI::FPS.UI.DiegeticTacticalHUD
+  compassWidth: 520
+  pixelsPerDegree: 4
+  statusHold: 1.8
+  statusFade: 0.5
+  showCrosshair: 0
+  maxVignette: 0.5
+  lowHealthThreshold: 0.35
+  maxDesaturation: -70

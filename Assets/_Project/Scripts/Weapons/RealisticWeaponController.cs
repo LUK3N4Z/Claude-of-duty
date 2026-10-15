@@ -1,4 +1,5 @@
 using System;
+using FPS.Audio;
 using FPS.Ballistics;
 using FPS.Core;
 using FPS.Locomotion;
@@ -98,6 +99,30 @@ namespace FPS.Weapons
         public MagazineEstimate LastEstimate { get; private set; }
 
         public WeaponState GetState(int slot) => slot >= 0 && slot < states.Length ? states[slot] : null;
+
+        /// <summary>Tops every carried weapon's spare magazines back up to its loadout count. Returns rounds added.</summary>
+        public int RefillAmmunition()
+        {
+            int added = 0;
+            foreach (WeaponState state in states)
+            {
+                if (state == null) continue;
+                int capacity = state.Data.MagazineCapacity;
+                for (int i = 0; i < state.SpareMagazines.Count; i++)
+                {
+                    added += capacity - state.SpareMagazines[i];
+                    state.SpareMagazines[i] = capacity;
+                }
+
+                for (int i = state.SpareMagazines.Count; i < state.Data.SpareMagazines; i++)
+                {
+                    state.SpareMagazines.Add(capacity);
+                    added += capacity;
+                }
+            }
+
+            return added;
+        }
 
         /// <summary>Puts a weapon into a slot with a fresh, loaded state. The active slot (or an empty hand) equips it now.</summary>
         public void SetLoadout(int slot, WeaponModelRig model, WeaponDataSO data)
@@ -432,6 +457,13 @@ namespace FPS.Weapons
                 MuzzleVelocity = caliber != null ? caliber.MuzzleVelocity(state.Data.BarrelLengthInches) : 0f,
                 Caliber = caliber,
                 Shooter = transform,
+            });
+            EventBus<GunshotEvent>.Raise(new GunshotEvent
+            {
+                Position = muzzle.position,
+                Direction = muzzle.forward,
+                Shooter = transform,
+                Profile = state.Data.AudioProfile,
             });
         }
 

@@ -1,4 +1,6 @@
 using System;
+using FPS.Audio;
+using FPS.Ballistics;
 using FPS.Core;
 using UnityEngine;
 
@@ -71,10 +73,14 @@ namespace FPS.Locomotion
             controller.skinWidth = 0.03f;
             controller.minMoveDistance = 0f;
 
+            if (!root.TryGetComponent(out TacticalHealthAndArmorSystem _)) root.AddComponent<TacticalHealthAndArmorSystem>();
             if (!root.TryGetComponent(out StanceAndLeanController _)) root.AddComponent<StanceAndLeanController>();
             if (!root.TryGetComponent(out RealisticLocomotionController _)) root.AddComponent<RealisticLocomotionController>();
             if (!root.TryGetComponent(out HeadbobAndBreathingSystem _)) root.AddComponent<HeadbobAndBreathingSystem>();
             if (!root.TryGetComponent(out SuppressionFeedback _)) root.AddComponent<SuppressionFeedback>();
+            if (!root.TryGetComponent(out Interactor _)) root.AddComponent<Interactor>();
+            if (!root.TryGetComponent(out AcousticPropagationSystem _)) root.AddComponent<AcousticPropagationSystem>();
+            if (!root.TryGetComponent(out ImpactEffectsController _)) root.AddComponent<ImpactEffectsController>();
 
             root.SetActive(wasActive);
             return rig;

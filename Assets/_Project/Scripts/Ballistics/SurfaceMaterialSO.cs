@@ -31,6 +31,13 @@ namespace FPS.Ballistics
         [Header("Audio")]
         [Tooltip("Spent cases hitting this surface; one is picked at random.")]
         [SerializeField] private AudioClip[] casingImpactClips = new AudioClip[0];
+        [Tooltip("Bullet impacts on this surface; one is picked at random.")]
+        [SerializeField] private AudioClip[] impactClips = new AudioClip[0];
+
+        [Header("Impact Visuals")]
+        [Tooltip("HDRP/Decal material for bullet marks; none leaves no mark.")]
+        [SerializeField] private Material impactDecal;
+        [SerializeField] private Color impactDustColor = new Color(0.55f, 0.53f, 0.5f, 0.8f);
 
         public string DisplayName => displayName;
         public float DensityKgM3 => densityKgM3;
@@ -42,7 +49,13 @@ namespace FPS.Ballistics
         public float RicochetSpeedRetention => ricochetSpeedRetention;
         public float RicochetSpread => ricochetSpread;
 
+        public Material ImpactDecal => impactDecal;
+        public Color ImpactDustColor => impactDustColor;
+
         public AudioClip RandomCasingClip() =>
             casingImpactClips.Length == 0 ? null : casingImpactClips[Random.Range(0, casingImpactClips.Length)];
+
+        public AudioClip RandomImpactClip() =>
+            impactClips.Length == 0 ? null : impactClips[Random.Range(0, impactClips.Length)];
     }
 }

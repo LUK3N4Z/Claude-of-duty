@@ -23,3 +23,8 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 16b2db58ac9a8d548abb57b494bb3cd1, type: 3}
   - {fileID: 8300000, guid: 68b55ab8caf44244c9d3aa3af4c9717f, type: 3}
   - {fileID: 8300000, guid: 7430d5e31c0c6434ab6f99f55519da40, type: 3}
+  impactClips:
+  - {fileID: 8300000, guid: c5b8e8f11661fa44c8cf206ba10b9422, type: 3}
+  - {fileID: 8300000, guid: ae3a4b7cf40c6264680ce34d00f1f1c0, type: 3}
+  impactDecal: {fileID: 2100000, guid: 8768f3c5668ed4744974fb771af78083, type: 2}
+  impactDustColor: {r: 0.85, g: 0.9, b: 0.95, a: 0.6}

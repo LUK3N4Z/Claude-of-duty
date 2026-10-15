@@ -1,5 +1,5 @@
 {
     "name": "FPS.Ballistics",
     "rootNamespace": "FPS.Ballistics",
-    "references": ["FPS.Core", "FPS.Audio"]
+    "references": ["FPS.Core"]
 }

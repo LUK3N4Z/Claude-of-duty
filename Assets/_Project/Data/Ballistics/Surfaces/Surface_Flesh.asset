@@ -20,3 +20,8 @@ MonoBehaviour:
   ricochetSpeedRetention: 0
   ricochetSpread: 0
   casingImpactClips: []
+  impactClips:
+  - {fileID: 8300000, guid: 7a71abd389f5f6e4589087c7e9e6a745, type: 3}
+  - {fileID: 8300000, guid: 38d6b58a898fa944da7aecfa2d4e475a, type: 3}
+  impactDecal: {fileID: 0}
+  impactDustColor: {r: 0.35, g: 0.04, b: 0.03, a: 0.7}

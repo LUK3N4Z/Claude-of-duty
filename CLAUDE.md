@@ -66,12 +66,12 @@ hip/ADS/canted PNGs of the test range (ignored otherwise).
 | Assembly (`.asmdef`) | Namespace        | References                                   | Scope |
 |----------------------|------------------|----------------------------------------------|-------|
 | `FPS.Core`           | `FPS.Core`       | Unity.InputSystem                            | Input, EventBus, pooling, layers, spring math, shared interfaces/event structs |
-| `FPS.Audio`          | `FPS.Audio`      | Core                                         | Acoustic propagation, weapon audio layers |
-| `FPS.Ballistics`     | `FPS.Ballistics` | Core, Audio                                  | `CaliberDataSO`, `ShotFiredEvent`, projectile sim, penetration/ricochet, casings, hitboxes, health/armor |
+| `FPS.Ballistics`     | `FPS.Ballistics` | Core                                         | `CaliberDataSO`, `ShotFiredEvent`, projectile sim, penetration/ricochet, casings, hitboxes, health/armor |
+| `FPS.Audio`          | `FPS.Audio`      | Core, Ballistics, HDRP runtime               | World presentation: acoustics, weapon audio profiles, impact decals/dust/audio, particle factory |
 | `FPS.Player`         | `FPS.Locomotion` | Core, Audio, Ballistics, HDRP runtime        | Locomotion, stance/lean/mount, breathing, suppression feedback, player camera chain |
 | `FPS.Weapons`        | `FPS.Weapons`    | Core, Audio, Ballistics, Player, HDRP runtime | Weapon data, model rig/sockets, viewmodel (inertia, ADS/PiP optics, recoil), controller, attachments |
 | `FPS.AI`             | `FPS.AI`         | Core, Audio, Ballistics, Player, Weapons     | Perception, tactical brain, squad coordination |
-| `FPS.UI`             | `FPS.UI`         | Core, Ballistics, Weapons, Player            | Diegetic HUD, menus |
+| `FPS.UI`             | `FPS.UI`         | Core, Ballistics, Audio, Player, Weapons, UnityEngine.UI, HDRP | Diegetic HUD, menus |
 | `FPS.Gameplay` (M9)  | `FPS.Gameplay`   | all runtime                                  | Match director, modes, equipment, save profiles |
 | `FPS.Editor`         | `FPS.EditorTools`| all + Unity.InputSystem (Editor-only)        | Builders, wizards, validators |
 
@@ -122,6 +122,7 @@ Bullets use `GameLayers.BallisticMask` (Default + WorldGeometry + Hitbox). No cu
 | ChangeFireMode | B | D-pad ↓ | `ChangeFireModePressed` |
 | SwitchSight | X | D-pad ↑ | `SwitchSightPressed` |
 | MountWeapon | V | R3 | `MountWeaponPressed` |
+| Interact | F | A | `InteractPressed` (`Interactor` → focused `IInteractable`) |
 
 Tap/hold threshold 0.35 s. Fast reload is an *upgrade*: the first tap always starts a tactical reload.
 
@@ -223,6 +224,27 @@ Contracts for later milestones:
   `ChamberEjectionSocket` on each shot (on the bolt stroke for bolt actions).
 - Every bullet-surface interaction raises `ProjectileImpactEvent` (decals and impact audio arrive in M6).
 
+## Audio, VFX & HUD (M6)
+
+- **Acoustics** (`AcousticPropagationSystem`, on the player root, needs the camera's AudioListener): weapons raise
+  `GunshotEvent` with their `WeaponAudioProfileSO`. Own shots = first-person transient + mechanism + body layers;
+  others arrive after `distance / 343 m/s` as the close or (beyond `distantThreshold`) distant report. Reverb tails
+  (indoor / urban / open, one restarting voice each) are weighted by a 9-ray environment probe around the listener.
+  Supersonic near misses play a crack at the closest point; suppression and low health sweep an `AudioLowPassFilter`
+  on the listener. Weapon handling foley comes from `WeaponActionEvent`.
+- **Impacts** (`ImpactEffectsController`, on the player): per `ProjectileImpactEvent`, a pooled HDRP `DecalProjector`
+  using `SurfaceMaterialSO.impactDecal` (parented to the hit collider), a dust puff tinted `impactDustColor`, and the
+  surface's impact clip delayed by distance.
+- **Muzzle** (`MuzzleAndSmokeVFXController`, on the player): one-frame HDRP point-light flash (lumen units), gas burst
+  per shot, barrel heat (0–1, exponential cooling) driving distortion heat haze and lingering breech smoke.
+- **Particles:** HDRP/Unlit has no vertex colour, so `EffectParticles` systems fade via a 4×4 alpha flipbook texture
+  (`Art/VFX/PuffFlipbook`); tint per instance with a `_UnlitColor` property block.
+- **HUD** (`DiegeticTacticalHUD`, uGUI built in code, legacy built-in font): compass tape + bearing, interaction
+  prompt, fire-mode / magazine status that fades in only on mode switch or magazine check, optional crosshair (off),
+  stress vignette + desaturation (main-camera-only volume on the Player layer).
+- **Placeholder sound design:** all clips are synthesized by `AudioSynth` (editor) into `Art/Audio`; replace clips in
+  the profiles/surfaces with recorded audio without code changes.
+
 ## Milestones
 
 - [x] **M1** Project init, `CLAUDE.md`, assemblies, `InputReader`, `EventBus`, `ObjectPoolManager`, `ProjectSetupWizard`
@@ -230,7 +252,7 @@ Contracts for later milestones:
 - [x] **M3** Spring solver, weapon inertia, barrel collision, procedural ADS, PiP optics, recoil
 - [x] **M4** Weapon/caliber data, model rig & sockets, chamber tracking, staged reloads
 - [x] **M5** Ballistics sim, penetration/ricochet, shell casings, health & armor
-- [ ] **M6** Acoustic propagation, muzzle VFX, diegetic HUD
+- [x] **M6** Acoustic propagation, muzzle VFX, diegetic HUD
 - [ ] **M7** Gunsmith & attachment physics
 - [ ] **M8** Tactical AI & squad CQB
 - [ ] **M9** Game modes, match director, tactical equipment
