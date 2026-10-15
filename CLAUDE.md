@@ -11,12 +11,21 @@ ballistics, Picture-in-Picture optics, procedural inertia, photoreal HDRP.
 2. `Tools/FPS Builder/1. Initialize Project Layers & Tags` — Linear color space, HDRP asset
    (`Settings/Rendering/HDRenderPipelineAsset.asset`), layers, collision matrix.
 3. `Tools/FPS Builder/2. Create Core Assets` (creates `Data/Core/InputReader.asset` wired to the input actions).
-4. `Tools/FPS Builder/3. Create Test Weapon` → `Prefabs/Weapons/TestRifle.prefab` (primitive rifle, 4x PiP scope,
-   45° canted irons, every socket) + `Data/Weapons/TestRifle_Data/_Recoil`; re-equips the player prefab.
-5. `Tools/FPS Builder/4. Create Player Prefab` → `Prefabs/Player/Player.prefab` (completes an existing prefab in place).
+4. `Tools/FPS Builder/3. Create Test Weapons` → calibers in `Data/Ballistics` (5.56, 7.62, 9x19, .300 WM),
+   `Prefabs/Weapons/TestRifle` (5.56 closed-bolt carbine, 4x PiP scope, 45° canted irons) and `TestMarksman`
+   (.300 WM bolt action, 8x scope), their data, recoil profiles and droppable magazines; re-builds the player prefab.
+5. `Tools/FPS Builder/4. Create Player Prefab` → `Prefabs/Player/Player.prefab`: rig, viewmodel, IK arms, loadout
+   (carbine primary, marksman secondary). Completes an existing prefab in place.
 6. `Tools/FPS Builder/5. Build Test Range` → `Scenes/LocomotionTestRange.unity` (ramps, ice, ledges, corner, crouch and
    crawl tunnels, narrow corridor, targets at 25/50/100/200 m).
 7. Optional: `Window > Rendering > HDRP Wizard` for any remaining platform checks.
+
+**Importing a weapon model:** select the FBX/GLTF → `Tools/FPS Builder/6. Build Weapon From Selected Model` (or
+right-click → FPS → Build Weapon Prefab From Model). It wraps the model under a `WeaponModelRig` root (model as child
+`Model` so orientation/scale fixes never move sockets), converts materials to HDRP/Lit, strips colliders, sets the
+viewmodel layer, guesses sockets (named nodes first, then bounds) and magazine renderers, and creates `<Name>_Data`.
+Then open the prefab: the WeaponModelRig inspector lists validation issues and offers fix buttons; place sockets with
+the gizmos (red muzzle, magenta stock, cyan sights, green grips), add a `WeaponSight` to optics.
 
 Steps 2–6 are already applied and committed; all are idempotent, rerun after a settings reset.
 Active Input Handling is `Input System Package (New)` (`activeInputHandler: 1`).
@@ -58,7 +67,7 @@ hip/ADS/canted PNGs of the test range (ignored otherwise).
 |----------------------|------------------|----------------------------------------------|-------|
 | `FPS.Core`           | `FPS.Core`       | Unity.InputSystem                            | Input, EventBus, pooling, layers, spring math, shared interfaces/event structs |
 | `FPS.Audio`          | `FPS.Audio`      | Core                                         | Acoustic propagation, weapon audio layers |
-| `FPS.Ballistics`     | `FPS.Ballistics` | Core, Audio                                  | Calibers, projectile sim, penetration/ricochet, casings, hitboxes, health/armor |
+| `FPS.Ballistics`     | `FPS.Ballistics` | Core, Audio                                  | `CaliberDataSO`, `ShotFiredEvent`, projectile sim, penetration/ricochet, casings, hitboxes, health/armor |
 | `FPS.Player`         | `FPS.Locomotion` | Core, Audio, Ballistics                      | Locomotion, stance/lean/mount, breathing, player camera chain |
 | `FPS.Weapons`        | `FPS.Weapons`    | Core, Audio, Ballistics, Player, HDRP runtime | Weapon data, model rig/sockets, viewmodel (inertia, ADS/PiP optics, recoil), controller, attachments |
 | `FPS.AI`             | `FPS.AI`         | Core, Audio, Ballistics, Player, Weapons     | Perception, tactical brain, squad coordination |
@@ -95,6 +104,8 @@ Collision matrix: `FirstPersonViewmodel` ignores everything; `Player`↔`Hitbox`
 | Move | WASD | Left stick | `Move` |
 | Look | Mouse delta | Right stick | `Look`, `LookIsPointerDelta` |
 | Fire | LMB | RT | `FirePressed/Released`, `FireHeld` |
+| SelectPrimary / SelectSecondary | 1 / 2 | — | `WeaponSlotRequested(0/1)` |
+| SwitchWeapon | — | Y | `WeaponSlotRequested(-1)` |
 | AimDownSights | RMB | LT | `AimPressed/Released`, `AimHeld` |
 | Sprint | LShift | L3 | `SprintPressed`, `SprintHeld` |
 | TacticalSprint | LShift ×2 | L3 ×2 | `TacticalSprintPressed` |
@@ -129,8 +140,10 @@ Player            [CharacterController, PlayerRig, Locomotion (yaw), StanceAndLe
           └ ViewmodelRoot     (ViewmodelRig, M3; layer FirstPersonViewmodel)
             └ InertiaPivot    RealisticWeaponInertia: handling spring, free-aim lead, trail, postures, sway, barrel tuck
               └ RecoilPivot   PhysicalRecoilEngine: per-shot kick about the stock contact point
-                └ AdsPivot    ProceduralADSAndOpticsController: hip ↔ solved sight alignment
-                  └ weapon model (WeaponModelRig)
+                └ ActionPivot RealisticWeaponController: reload, mag check, bolt, holster/draw poses
+                  └ AdsPivot  ProceduralADSAndOpticsController: hip ↔ solved sight alignment
+                    └ weapon model (WeaponModelRig)
+            └ Arms            FirstPersonArmsIK (two-bone IK to the weapon's grip sockets)
 ```
 
 Pivots compute their pose from points expressed in their own local space (stock socket, muzzle), so rotations act
@@ -159,6 +172,23 @@ Contracts for later milestones:
 - **Recoil:** `PhysicalRecoilEngine.Kick()` once per round (M4 firing calls it). Springs come from `RecoilProfileSO`.
 - **Springs:** `FPS.Core.ProceduralSpringSolver` — analytical damped oscillator, sub-stepped target interpolation.
 
+## Weapon mechanics (M4)
+
+- **Data split:** `WeaponDataSO` = firearm (mass, ergonomics, barrel inches, bolt type, fire modes, RPM, MoA, capacity,
+  bolt hold-open, stage timings, hip pose, recoil); `CaliberDataSO` = ammunition (mass, diameter, velocity vs. barrel
+  length, G1/G7 BC, penetration, damage). Builders and tests set private fields by name — rename fields with care.
+- **State:** `WeaponState` per carried weapon survives holstering. Closed bolt / bolt action start at capacity + 1;
+  open bolt never has +1 (`RoundChambered` means "bolt cocked"). Closed bolt with hold-open locks back on the last
+  round; bolt actions auto-cycle after the trigger is released.
+- **Reloads** are staged: `MagazineRemoved → MagazineInserted → BoltCycled` (charge only if nothing is chambered;
+  bolt release is 0.6× when locked back). Sprint, dive, weapon swap or firing the chambered round interrupt; the next
+  reload press resumes after the last completed stage. Tap R = tactical (partial magazine back in the pouch), second
+  tap during removal = speed (pooled physical magazine dropped), hold R = magazine check (`MagazineEstimate`).
+- **Firing:** `RealisticWeaponController` raises `ShotFiredEvent` from `MuzzleSocket` along the bore with MoA
+  dispersion and barrel-adjusted velocity, then `PhysicalRecoilEngine.Kick()`. Fire cancels sprint (sprint-to-fire
+  delay); tucked barrels, dives and prone transitions block it. Every mechanical action raises `WeaponActionEvent`.
+- **Imported magazines:** list the magazine meshes in `WeaponModelRig.magazineRenderers`; they hide while it's out.
+
 ## Core services
 
 - `EventBus<T>` — static typed bus, `T : struct`, handlers `void On(in T e)`. Subscribe in `OnEnable`,
@@ -173,7 +203,7 @@ Contracts for later milestones:
 - [x] **M1** Project init, `CLAUDE.md`, assemblies, `InputReader`, `EventBus`, `ObjectPoolManager`, `ProjectSetupWizard`
 - [x] **M2** Locomotion biomechanics, stances, leaning, weapon mounting, breathing
 - [x] **M3** Spring solver, weapon inertia, barrel collision, procedural ADS, PiP optics, recoil
-- [ ] **M4** Weapon/caliber data, model rig & sockets, chamber tracking, staged reloads
+- [x] **M4** Weapon/caliber data, model rig & sockets, chamber tracking, staged reloads
 - [ ] **M5** Ballistics sim, penetration/ricochet, shell casings, health & armor
 - [ ] **M6** Acoustic propagation, muzzle VFX, diegetic HUD
 - [ ] **M7** Gunsmith & attachment physics

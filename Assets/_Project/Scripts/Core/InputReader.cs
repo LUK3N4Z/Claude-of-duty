@@ -48,10 +48,13 @@ namespace FPS.Core
         public event Action MountWeaponPressed;
         /// <summary>Scroll-wheel step (+1 faster / -1 slower) for slow-walk speed.</summary>
         public event Action<int> WalkSpeedStepped;
+        /// <summary>Weapon slot request: 0 = primary, 1 = secondary, -1 = cycle to the next slot.</summary>
+        public event Action<int> WeaponSlotRequested;
 
         private InputActionMap playerMap;
         private InputAction move, look, fire, aim, sprint, tacticalSprint, holdBreath, walkSlow, walkSpeedAdjust;
         private InputAction crouch, prone, leanLeft, leanRight, reload, checkMagazine, changeFireMode, switchSight, mountWeapon;
+        private InputAction selectPrimary, selectSecondary, switchWeapon;
         private double lastReloadTapTime = double.NegativeInfinity;
 
         public Vector2 Move => move.ReadValue<Vector2>();
@@ -126,6 +129,9 @@ namespace FPS.Core
             changeFireMode = Find("ChangeFireMode");
             switchSight = Find("SwitchSight");
             mountWeapon = Find("MountWeapon");
+            selectPrimary = Find("SelectPrimary");
+            selectSecondary = Find("SelectSecondary");
+            switchWeapon = Find("SwitchWeapon");
             playerMap.actionTriggered += OnActionTriggered;
         }
 
@@ -166,6 +172,9 @@ namespace FPS.Core
                 else if (action == changeFireMode) ChangeFireModePressed?.Invoke();
                 else if (action == switchSight) SwitchSightPressed?.Invoke();
                 else if (action == mountWeapon) MountWeaponPressed?.Invoke();
+                else if (action == selectPrimary) WeaponSlotRequested?.Invoke(0);
+                else if (action == selectSecondary) WeaponSlotRequested?.Invoke(1);
+                else if (action == switchWeapon) WeaponSlotRequested?.Invoke(-1);
                 else if (action == walkSpeedAdjust)
                 {
                     float scroll = context.ReadValue<float>();

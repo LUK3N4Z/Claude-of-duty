@@ -23,8 +23,8 @@ namespace FPS.EditorTools
         public static void CreatePlayerPrefabMenu() => CreateOrUpdatePlayerPrefab();
 
         /// <summary>
-        /// Creates the player prefab, or completes an existing one in place (keeps its GUID and edits). Equips the test
-        /// rifle when it exists (Tools/FPS Builder/3).
+        /// Creates the player prefab, or completes an existing one in place (keeps its GUID and edits): rig, viewmodel,
+        /// IK arms, and the test carbine / marksman loadout when they exist (Tools/FPS Builder/3).
         /// </summary>
         public static GameObject CreateOrUpdatePlayerPrefab()
         {
@@ -117,9 +117,80 @@ namespace FPS.EditorTools
         private static void BuildPlayer(GameObject root, InputReader input)
         {
             PlayerRig rig = PlayerRig.Build(root, input);
-            var weapon = AssetDatabase.LoadAssetAtPath<WeaponModelRig>(TestWeaponBuilder.WeaponPrefabPath);
-            var data = AssetDatabase.LoadAssetAtPath<WeaponDataSO>(TestWeaponBuilder.WeaponDataPath);
-            ViewmodelRig.Build(rig, weapon, data);
+            ViewmodelRig viewmodel = ViewmodelRig.Build(rig);
+            BuildArms(viewmodel);
+
+            var controller = root.GetComponent<RealisticWeaponController>();
+            var serialized = new SerializedObject(controller);
+            SerializedProperty slots = serialized.FindProperty(RealisticWeaponController.LoadoutFieldName);
+            slots.arraySize = 2;
+            AssignSlot(slots.GetArrayElementAtIndex(0), TestWeaponBuilder.CarbineName);
+            AssignSlot(slots.GetArrayElementAtIndex(1), TestWeaponBuilder.MarksmanName);
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void AssignSlot(SerializedProperty slot, string weaponName)
+        {
+            slot.FindPropertyRelative("model").objectReferenceValue =
+                AssetDatabase.LoadAssetAtPath<WeaponModelRig>(TestWeaponBuilder.PrefabPath(weaponName));
+            slot.FindPropertyRelative("data").objectReferenceValue =
+                AssetDatabase.LoadAssetAtPath<WeaponDataSO>(TestWeaponBuilder.DataPath(weaponName));
+        }
+
+        /// <summary>Primitive first-person arms (sleeve capsules, glove boxes) driven by two-bone IK.</summary>
+        private static void BuildArms(ViewmodelRig viewmodel)
+        {
+            Material sleeve = TestWeaponBuilder.LitMaterial("Sleeve", new Color(0.24f, 0.26f, 0.17f), 0f, 0.25f);
+            Material glove = TestWeaponBuilder.LitMaterial("Glove", new Color(0.07f, 0.07f, 0.07f), 0f, 0.35f);
+            Transform arms = PlayerRig.EnsureChild(viewmodel.ViewmodelRoot, "Arms");
+
+            GameObject root = viewmodel.gameObject;
+            if (!root.TryGetComponent(out FirstPersonArmsIK ik)) ik = root.AddComponent<FirstPersonArmsIK>();
+            var serialized = new SerializedObject(ik);
+            Arm(serialized.FindProperty(FirstPersonArmsIK.LeftArmFieldName), arms, "Left", new Vector3(-0.1f, -0.22f, -0.05f), sleeve, glove);
+            Arm(serialized.FindProperty(FirstPersonArmsIK.RightArmFieldName), arms, "Right", new Vector3(0.16f, -0.2f, -0.2f), sleeve, glove);
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            SetLayerRecursively(arms, GameLayers.FirstPersonViewmodel);
+        }
+
+        private static void Arm(SerializedProperty chain, Transform arms, string side, Vector3 shoulder, Material sleeve, Material glove)
+        {
+            const float upperLength = 0.33f, lowerLength = 0.33f;
+            Transform upper = PlayerRig.EnsureChild(arms, side + "UpperArm");
+            upper.SetLocalPositionAndRotation(shoulder, Quaternion.Euler(30f, 0f, 0f));
+            Transform lower = PlayerRig.EnsureChild(upper, side + "Forearm");
+            lower.SetLocalPositionAndRotation(new Vector3(0f, 0f, upperLength), Quaternion.identity);
+            Transform hand = PlayerRig.EnsureChild(lower, side + "Hand");
+            hand.SetLocalPositionAndRotation(new Vector3(0f, 0f, lowerLength), Quaternion.identity);
+
+            Visual(upper, PrimitiveType.Capsule, new Vector3(0f, 0f, upperLength * 0.5f), Quaternion.Euler(90f, 0f, 0f),
+                new Vector3(0.09f, upperLength * 0.5f, 0.09f), sleeve);
+            Visual(lower, PrimitiveType.Capsule, new Vector3(0f, 0f, lowerLength * 0.5f), Quaternion.Euler(90f, 0f, 0f),
+                new Vector3(0.075f, lowerLength * 0.5f, 0.075f), sleeve);
+            Visual(hand, PrimitiveType.Cube, new Vector3(0f, 0f, 0.03f), Quaternion.identity, new Vector3(0.08f, 0.035f, 0.1f), glove);
+
+            chain.FindPropertyRelative("upper").objectReferenceValue = upper;
+            chain.FindPropertyRelative("lower").objectReferenceValue = lower;
+            chain.FindPropertyRelative("hand").objectReferenceValue = hand;
+        }
+
+        private static void Visual(Transform bone, PrimitiveType shape, Vector3 position, Quaternion rotation, Vector3 scale, Material material)
+        {
+            if (bone.Find("Visual") != null) return;
+
+            GameObject visual = GameObject.CreatePrimitive(shape);
+            visual.name = "Visual";
+            Object.DestroyImmediate(visual.GetComponent<Collider>());
+            visual.transform.SetParent(bone, false);
+            visual.transform.SetLocalPositionAndRotation(position, rotation);
+            visual.transform.localScale = scale;
+            visual.GetComponent<MeshRenderer>().sharedMaterial = material;
+        }
+
+        private static void SetLayerRecursively(Transform root, int layer)
+        {
+            root.gameObject.layer = layer;
+            for (int i = 0; i < root.childCount; i++) SetLayerRecursively(root.GetChild(i), layer);
         }
 
         private static BoxCollider Block(Transform parent, string blockName, Vector3 position, Vector3 size, Quaternion rotation)

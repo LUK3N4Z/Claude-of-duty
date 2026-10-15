@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc76d32764559d44593c818105aac01f, type: 3}
+  m_Name: TestMarksman_Data
+  m_EditorClassIdentifier: FPS.Weapons::FPS.Weapons.WeaponDataSO
+  displayName: Test Marksman .300 WM
+  massKg: 6.2
+  ergonomics: 32
+  barrelLengthInches: 24
+  caliber: {fileID: 11400000, guid: eae811ecd75296e408923537be1c3f85, type: 2}
+  boltType: 2
+  fireModes: 00000000i
+  roundsPerMinute: 60
+  burstCount: 3
+  moaAccuracy: 0.6
+  magazineCapacity: 5
+  boltHoldOpen: 0
+  spareMagazines: 3
+  droppedMagazinePrefab: {fileID: 5925164844769222481, guid: 0eb648a6e540f924e868960eab351c42, type: 3}
+  aimDownSightsTime: 0.42
+  sprintToFireTime: 0.18
+  holsterTime: 0.35
+  drawTime: 0.45
+  fireModeSwitchTime: 0.25
+  magazineCheckTime: 0.8
+  manualCycleTime: 1
+  magazineRemoveTime: 0.7
+  speedMagazineRemoveTime: 0.25
+  magazineInsertTime: 0.9
+  boltCycleTime: 0.6
+  hipStockOffset: {x: 0.14, y: -0.2, z: -0.18}
+  hipEuler: {x: 1.5, y: -2, z: -4}
+  recoil: {fileID: 11400000, guid: 2e0877e3e7bde184f9f4a07604044a9f, type: 2}

@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace FPS.Weapons
@@ -21,6 +22,7 @@ namespace FPS.Weapons
 
         /// <summary>Sight slots: 0 = primary, 1 = canted backup.</summary>
         public const int SightSlotCount = 2;
+        public const string MagazineRenderersFieldName = nameof(magazineRenderers);
 
         [Tooltip("Bore exit; +Z is the barrel axis. Bullets spawn here.")]
         [SerializeField] private Transform muzzleSocket;
@@ -34,8 +36,12 @@ namespace FPS.Weapons
         [SerializeField] private Transform primarySightSocket;
         [Tooltip("Canted (45°) backup sight aligner. Optional.")]
         [SerializeField] private Transform cantedSightSocket;
+        [Tooltip("Support-hand IK target: +Z along the fingers, +Y back of the hand.")]
         [SerializeField] private Transform leftHandIKGrip;
+        [Tooltip("Firing-hand IK target on the pistol grip.")]
         [SerializeField] private Transform rightHandIKGrip;
+        [Tooltip("Renderers of the inserted magazine; hidden while the magazine is out of the weapon.")]
+        [SerializeField] private Renderer[] magazineRenderers = Array.Empty<Renderer>();
 
         public Transform MuzzleSocket => muzzleSocket;
         public Transform ChamberEjectionSocket => chamberEjectionSocket;
@@ -58,6 +64,15 @@ namespace FPS.Weapons
             return sight != null ? sight.transform : socket;
         }
 
+        /// <summary>Shows or hides the inserted magazine meshes.</summary>
+        public void SetMagazineVisible(bool visible)
+        {
+            for (int i = 0; i < magazineRenderers.Length; i++)
+            {
+                if (magazineRenderers[i] != null) magazineRenderers[i].enabled = visible;
+            }
+        }
+
         /// <summary>
         /// Binds every unassigned socket to a descendant with its conventional name, creating missing ones at the
         /// model root. Returns the number of sockets created.
@@ -75,6 +90,29 @@ namespace FPS.Weapons
             leftHandIKGrip = Resolve(leftHandIKGrip, LeftHandIKGripName, ref created);
             rightHandIKGrip = Resolve(rightHandIKGrip, RightHandIKGripName, ref created);
             return created;
+        }
+
+        private void OnDrawGizmosSelected()
+        {
+            DrawSocket(muzzleSocket, Color.red, 0.08f);
+            DrawSocket(chamberEjectionSocket, new Color(1f, 0.6f, 0f), 0.04f);
+            DrawSocket(magazineSocket, Color.yellow, 0.04f);
+            DrawSocket(chargingHandleSocket, Color.white, 0.03f);
+            DrawSocket(stockPivotSocket, Color.magenta, 0.04f);
+            DrawSocket(primarySightSocket, Color.cyan, 0.06f);
+            DrawSocket(cantedSightSocket, Color.cyan, 0.06f);
+            DrawSocket(leftHandIKGrip, Color.green, 0.04f);
+            DrawSocket(rightHandIKGrip, Color.green, 0.04f);
+        }
+
+        private static void DrawSocket(Transform socket, Color color, float axisLength)
+        {
+            if (socket == null) return;
+            Gizmos.color = color;
+            Gizmos.DrawWireSphere(socket.position, 0.008f);
+            Gizmos.DrawLine(socket.position, socket.position + socket.forward * axisLength);
+            Gizmos.color = Color.green * 0.8f;
+            Gizmos.DrawLine(socket.position, socket.position + socket.up * axisLength * 0.4f);
         }
 
         private Transform Resolve(Transform current, string socketName, ref int created)

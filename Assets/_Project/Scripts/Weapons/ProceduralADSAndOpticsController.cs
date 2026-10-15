@@ -51,6 +51,7 @@ namespace FPS.Weapons
         private ViewmodelRig viewmodel;
         private RealisticLocomotionController locomotion;
         private RealisticWeaponInertia inertia;
+        private RealisticWeaponController weaponController;
         private InputReader input;
         private Camera mainCamera;
         private float baseFieldOfView;
@@ -117,6 +118,7 @@ namespace FPS.Weapons
             viewmodel = GetComponent<ViewmodelRig>();
             locomotion = GetComponent<RealisticLocomotionController>();
             inertia = GetComponent<RealisticWeaponInertia>();
+            weaponController = GetComponent<RealisticWeaponController>();
             PlayerRig playerRig = GetComponent<PlayerRig>();
             input = playerRig.Input;
             mainCamera = playerRig.PlayerCamera;
@@ -176,7 +178,7 @@ namespace FPS.Weapons
                 return;
             }
 
-            bool wantsAds = locomotion.IsAiming && !inertia.IsTucked;
+            bool wantsAds = locomotion.IsAiming && !inertia.IsTucked && (weaponController == null || !weaponController.BlocksAiming);
             adsProgress = Mathf.MoveTowards(adsProgress, wantsAds ? 1f : 0f, dt / data.AdsTime);
             float blend = AdsBlend = Mathf.SmoothStep(0f, 1f, adsProgress);
 

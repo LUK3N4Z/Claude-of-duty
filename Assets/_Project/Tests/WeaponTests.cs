@@ -63,6 +63,7 @@ namespace FPS.Tests
         public override void Setup()
         {
             base.Setup();
+            TestInput.IgnoreFocus();
             keyboard = InputSystem.AddDevice<Keyboard>();
             mouse = InputSystem.AddDevice<Mouse>();
             reader = TestInput.CreateReader(out actions);
@@ -71,7 +72,7 @@ namespace FPS.Tests
             var player = new GameObject("Player");
             created.Add(player);
             PlayerRig rig = PlayerRig.Build(player, reader);
-            viewmodel = ViewmodelRig.Build(rig, null, null);
+            viewmodel = ViewmodelRig.Build(rig);
             viewmodel.Equip(TestWeaponTemplate(), TestWeaponData());
 
             locomotion = player.GetComponent<RealisticLocomotionController>();

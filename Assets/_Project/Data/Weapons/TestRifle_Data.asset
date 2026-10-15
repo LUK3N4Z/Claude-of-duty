@@ -12,11 +12,31 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bc76d32764559d44593c818105aac01f, type: 3}
   m_Name: TestRifle_Data
   m_EditorClassIdentifier: FPS.Weapons::FPS.Weapons.WeaponDataSO
-  displayName: Rifle
+  displayName: Test Carbine 5.56
   massKg: 3.4
   ergonomics: 55
   barrelLengthInches: 14.5
+  caliber: {fileID: 11400000, guid: ef89d251eb539a442b004fd7e5c928b6, type: 2}
+  boltType: 0
+  fireModes: 0000000002000000i
+  roundsPerMinute: 800
+  burstCount: 3
+  moaAccuracy: 2.5
+  magazineCapacity: 30
+  boltHoldOpen: 1
+  spareMagazines: 4
+  droppedMagazinePrefab: {fileID: 5375698138996509275, guid: c5bcef765c8cf734fb5a6d16fb0decb4, type: 3}
   aimDownSightsTime: 0.3
-  hipStockOffset: {x: 0.13, y: -0.2, z: -0.02}
+  sprintToFireTime: 0.18
+  holsterTime: 0.35
+  drawTime: 0.45
+  fireModeSwitchTime: 0.25
+  magazineCheckTime: 0.8
+  manualCycleTime: 0.9
+  magazineRemoveTime: 0.7
+  speedMagazineRemoveTime: 0.25
+  magazineInsertTime: 0.9
+  boltCycleTime: 0.6
+  hipStockOffset: {x: 0.14, y: -0.2, z: -0.16}
   hipEuler: {x: 1.5, y: -2, z: -4}
   recoil: {fileID: 11400000, guid: 4a3f73fc84a2a2d43aaee1ec5f2a8ff0, type: 2}

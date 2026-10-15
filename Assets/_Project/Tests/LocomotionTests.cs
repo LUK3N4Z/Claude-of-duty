@@ -21,6 +21,7 @@ namespace FPS.Tests
         public override void Setup()
         {
             base.Setup();
+            TestInput.IgnoreFocus();
             keyboard = InputSystem.AddDevice<Keyboard>();
             InputSystem.AddDevice<Mouse>();
             reader = TestInput.CreateReader(out actions);

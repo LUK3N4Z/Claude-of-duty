@@ -8,8 +8,9 @@ namespace FPS.Weapons
     /// <summary>
     /// First-person weapon presentation chain and the weapon currently held. Hangs off <see cref="PlayerRig.HeadMotion"/>
     /// beside the camera, one writer per transform: ViewmodelRoot → InertiaPivot (<see cref="RealisticWeaponInertia"/>)
-    /// → RecoilPivot (<see cref="PhysicalRecoilEngine"/>) → AdsPivot (<see cref="ProceduralADSAndOpticsController"/>)
-    /// → weapon model. The weapon renders in the world (no overlay camera); barrel tucking keeps it out of walls.
+    /// → RecoilPivot (<see cref="PhysicalRecoilEngine"/>) → ActionPivot (<see cref="RealisticWeaponController"/>
+    /// manipulation poses) → AdsPivot (<see cref="ProceduralADSAndOpticsController"/>) → weapon model. The weapon renders
+    /// in the world (no overlay camera); barrel tucking keeps it out of walls.
     /// </summary>
     [DefaultExecutionOrder(-25)]
     [DisallowMultipleComponent]
@@ -19,10 +20,8 @@ namespace FPS.Weapons
         [SerializeField] private Transform viewmodelRoot;
         [SerializeField] private Transform inertiaPivot;
         [SerializeField] private Transform recoilPivot;
+        [SerializeField] private Transform actionPivot;
         [SerializeField] private Transform adsPivot;
-        [Tooltip("Weapon equipped on start, until a loadout system takes over.")]
-        [SerializeField] private WeaponModelRig startingWeapon;
-        [SerializeField] private WeaponDataSO startingWeaponData;
 
         private PlayerRig playerRig;
         private RealisticLocomotionController locomotion;
@@ -36,6 +35,7 @@ namespace FPS.Weapons
         public Transform ViewmodelRoot => viewmodelRoot;
         public Transform InertiaPivot => inertiaPivot;
         public Transform RecoilPivot => recoilPivot;
+        public Transform ActionPivot => actionPivot;
         public Transform AdsPivot => adsPivot;
 
         /// <summary>Spawns <paramref name="prefab"/> as the held weapon, replacing the current one.</summary>
@@ -64,11 +64,8 @@ namespace FPS.Weapons
             WeaponChanged?.Invoke();
         }
 
-        /// <summary>
-        /// Adds the viewmodel chain and weapon systems to a built player. Idempotent; existing parts are kept and the
-        /// starting weapon is replaced.
-        /// </summary>
-        public static ViewmodelRig Build(PlayerRig player, WeaponModelRig startingWeapon, WeaponDataSO startingWeaponData)
+        /// <summary>Adds the viewmodel chain and weapon systems to a built player. Idempotent; existing parts are kept.</summary>
+        public static ViewmodelRig Build(PlayerRig player)
         {
             if (player == null) throw new ArgumentNullException(nameof(player));
 
@@ -80,14 +77,16 @@ namespace FPS.Weapons
             rig.viewmodelRoot = PlayerRig.EnsureChild(player.HeadMotion, "ViewmodelRoot");
             rig.inertiaPivot = PlayerRig.EnsureChild(rig.viewmodelRoot, "InertiaPivot");
             rig.recoilPivot = PlayerRig.EnsureChild(rig.inertiaPivot, "RecoilPivot");
-            rig.adsPivot = PlayerRig.EnsureChild(rig.recoilPivot, "AdsPivot");
+            rig.actionPivot = PlayerRig.EnsureChild(rig.recoilPivot, "ActionPivot");
+            Transform legacyAds = rig.recoilPivot.Find("AdsPivot"); // rigs built before ActionPivot existed
+            if (legacyAds != null) legacyAds.SetParent(rig.actionPivot, false);
+            rig.adsPivot = PlayerRig.EnsureChild(rig.actionPivot, "AdsPivot");
             SetLayerRecursively(rig.viewmodelRoot, GameLayers.FirstPersonViewmodel);
-            rig.startingWeapon = startingWeapon;
-            rig.startingWeaponData = startingWeaponData;
 
             if (!root.TryGetComponent(out RealisticWeaponInertia _)) root.AddComponent<RealisticWeaponInertia>();
             if (!root.TryGetComponent(out ProceduralADSAndOpticsController _)) root.AddComponent<ProceduralADSAndOpticsController>();
             if (!root.TryGetComponent(out PhysicalRecoilEngine _)) root.AddComponent<PhysicalRecoilEngine>();
+            if (!root.TryGetComponent(out RealisticWeaponController _)) root.AddComponent<RealisticWeaponController>();
 
             root.SetActive(wasActive);
             return rig;
@@ -97,11 +96,6 @@ namespace FPS.Weapons
         {
             playerRig = GetComponent<PlayerRig>();
             locomotion = GetComponent<RealisticLocomotionController>();
-        }
-
-        private void Start()
-        {
-            if (Weapon == null && startingWeapon != null && startingWeaponData != null) Equip(startingWeapon, startingWeaponData);
         }
 
         private void RemoveCurrent()

@@ -80,10 +80,14 @@ namespace FPS.Core
         }
 
         /// <summary>Zeroes state and targets.</summary>
-        public void Reset()
+        public void Reset() => Teleport(Vector3.zero, Vector3.zero);
+
+        /// <summary>Places the spring at rest on a new pose: current values and targets set, velocities cleared.</summary>
+        public void Teleport(Vector3 position, Vector3 rotation)
         {
-            pos = posVel = rot = rotVel = Vector3.zero;
-            posTarget = rotTarget = lastPosTarget = lastRotTarget = Vector3.zero;
+            pos = posTarget = lastPosTarget = position;
+            rot = rotTarget = lastRotTarget = rotation;
+            posVel = rotVel = Vector3.zero;
         }
 
         public void Step(float dt)

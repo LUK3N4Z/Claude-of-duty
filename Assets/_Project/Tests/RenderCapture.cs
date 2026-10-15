@@ -21,6 +21,7 @@ namespace FPS.Tests
         {
             string dir = Environment.GetEnvironmentVariable("FPS_CAPTURE_DIR");
             if (string.IsNullOrEmpty(dir)) Assert.Ignore("FPS_CAPTURE_DIR not set");
+            TestInput.IgnoreFocus();
             var keyboard = InputSystem.AddDevice<Keyboard>();
             var mouse = InputSystem.AddDevice<Mouse>();
 
@@ -50,6 +51,21 @@ namespace FPS.Tests
             Release(keyboard.xKey);
             yield return new WaitForSeconds(1f);
             Save(rt, Path.Combine(dir, "canted.png"));
+
+            Release(mouse.rightButton);
+            var weapons = rig.GetComponent<RealisticWeaponController>();
+            weapons.ActiveState.MagazineRounds = 10;
+            weapons.RequestReload(false);
+            yield return new WaitForSeconds(0.45f);
+            Save(rt, Path.Combine(dir, "reload.png"));
+
+            yield return new WaitForSeconds(2.5f);
+            weapons.SelectSlot(1);
+            yield return new WaitForSeconds(1.5f);
+            Save(rt, Path.Combine(dir, "marksman_hip.png"));
+            Press(mouse.rightButton);
+            yield return new WaitForSeconds(1.5f);
+            Save(rt, Path.Combine(dir, "marksman_ads.png"));
             rig.PlayerCamera.targetTexture = null;
         }
 
