@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 341091996494632211}
   - component: {fileID: 3810756016081051510}
   - component: {fileID: 5925164844769222481}
-  m_Layer: 0
+  m_Layer: 13
   m_Name: TestMarksman_DroppedMagazine
   m_TagString: Untagged
   m_Icon: {fileID: 0}

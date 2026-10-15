@@ -68,7 +68,7 @@ hip/ADS/canted PNGs of the test range (ignored otherwise).
 | `FPS.Core`           | `FPS.Core`       | Unity.InputSystem                            | Input, EventBus, pooling, layers, spring math, shared interfaces/event structs |
 | `FPS.Audio`          | `FPS.Audio`      | Core                                         | Acoustic propagation, weapon audio layers |
 | `FPS.Ballistics`     | `FPS.Ballistics` | Core, Audio                                  | `CaliberDataSO`, `ShotFiredEvent`, projectile sim, penetration/ricochet, casings, hitboxes, health/armor |
-| `FPS.Player`         | `FPS.Locomotion` | Core, Audio, Ballistics                      | Locomotion, stance/lean/mount, breathing, player camera chain |
+| `FPS.Player`         | `FPS.Locomotion` | Core, Audio, Ballistics, HDRP runtime        | Locomotion, stance/lean/mount, breathing, suppression feedback, player camera chain |
 | `FPS.Weapons`        | `FPS.Weapons`    | Core, Audio, Ballistics, Player, HDRP runtime | Weapon data, model rig/sockets, viewmodel (inertia, ADS/PiP optics, recoil), controller, attachments |
 | `FPS.AI`             | `FPS.AI`         | Core, Audio, Ballistics, Player, Weapons     | Perception, tactical brain, squad coordination |
 | `FPS.UI`             | `FPS.UI`         | Core, Ballistics, Weapons, Player            | Diegetic HUD, menus |
@@ -93,9 +93,11 @@ Names live in `FPS.Core.GameLayers`; always resolve indices through it, never ha
 | `WorldGeometry`        | 10              | Static/dynamic level geometry; ballistics, barrel tuck and lean casts target it |
 | `Hitbox`               | 11              | Per-bone damage colliders (kinematic) |
 | `Interactable`         | 12              | Ray-targeted interaction objects |
+| `Debris`               | 13              | Shell casings, dropped magazines: hit the world, never players, hitboxes or bullets |
 
 Collision matrix: `FirstPersonViewmodel` ignores everything; `Player`↔`Hitbox`, `Hitbox`↔`Hitbox`,
-`Interactable`↔`Player`, `Interactable`↔`Hitbox` ignored. No custom tags yet; add to the wizard when a system needs one.
+`Interactable`↔`Player`, `Interactable`↔`Hitbox`, `Debris`↔`Player/Hitbox/Interactable` ignored.
+Bullets use `GameLayers.BallisticMask` (Default + WorldGeometry + Hitbox). No custom tags yet; add to the wizard when a system needs one.
 
 ## Input (`Assets/_Project/Settings/Input/InputSystem_Actions.inputactions`, map `Player`)
 
@@ -196,7 +198,30 @@ Contracts for later milestones:
 - `ObjectPoolManager.Instance` — scene-scoped, auto-created on first use. `Spawn(prefab, pos, rot, parent, lifetime)`,
   `Release(obj)`, `Prewarm(prefab, count, maxSize)`. Pooled prefabs implement `IPoolable` to reset state.
 - `GameLayers.EnvironmentMask` — Default + WorldGeometry; every environment query uses it.
-- `SuppressionEvent` (EventBus) — local-player suppression, `Intensity` 0–1; raised by ballistics (M5).
+- `SuppressionEvent` (EventBus) — `Listener` (head/camera transform), `Intensity` 0–1, closest `Point`, `Direction`;
+  consumers ignore events for other listeners.
+
+## Ballistics & damage (M5)
+
+- `BallisticsSimulationManager` (one per scene, auto-created; place one to set wind, default and flesh surfaces) launches a
+  projectile per `ShotFiredEvent`, integrates gravity + G1/G7 drag against the wind (`BallisticsMath`), and resolves
+  all segments with one `RaycastCommand` batch per frame. Up to 4 interactions per round per frame.
+- **Penetration:** energy cost per metre = `SurfaceMaterialSO.Resistance` (0.007 × density × hardness) × bullet
+  cross-section (mm²) × AP factor (1.5 → 0.5 by penetration power). Thickness is measured by casting back from the
+  deepest reachable point (`Collider.Raycast`); exit speed comes from the leftover energy. Zero-thickness mesh planes
+  cannot be measured and stop rounds — use solid colliders for penetrable walls.
+- **Ricochet:** impacts shallower than `ricochetAngle` glance off with probability `1 - angle/ricochetAngle`.
+- **Surfaces:** `SurfaceIdentifier` on a collider; otherwise the simulation's default. Builder surfaces: Concrete, Brick,
+  Wood, Drywall, Metal, Glass, Dirt, Flesh (each with synthesized casing clinks).
+- **Bodies:** `Hitbox` (zone + tissue surface) on Hitbox-layer colliders under a `TacticalHealthAndArmorSystem`.
+  Plates/helmet (`ArmorPieceSO`) cover zones by direction; a logistic roll of energy-scaled penetration vs. protection
+  (degraded by wear) decides stop (blunt trauma) or defeat (residual absorption). Limb damage → `LegInjury01` (slower
+  sprint, no tactical sprint) and `ArmInjury01` (more sway). Raises `DamageEvent`, `Damaged`, `Died`.
+- **Near misses:** heads registered in `NearMissListeners` (the player's `SuppressionFeedback` registers its camera)
+  get a `SuppressionEvent` when a supersonic round passes within 2 m: heart-rate stress, head flinch, focal blur.
+- **Casings:** `CaliberDataSO.casingPrefab` (`PhysicalShellCasing`, pooled, Debris layer) ejected from the
+  `ChamberEjectionSocket` on each shot (on the bolt stroke for bolt actions).
+- Every bullet-surface interaction raises `ProjectileImpactEvent` (decals and impact audio arrive in M6).
 
 ## Milestones
 
@@ -204,7 +229,7 @@ Contracts for later milestones:
 - [x] **M2** Locomotion biomechanics, stances, leaning, weapon mounting, breathing
 - [x] **M3** Spring solver, weapon inertia, barrel collision, procedural ADS, PiP optics, recoil
 - [x] **M4** Weapon/caliber data, model rig & sockets, chamber tracking, staged reloads
-- [ ] **M5** Ballistics sim, penetration/ricochet, shell casings, health & armor
+- [x] **M5** Ballistics sim, penetration/ricochet, shell casings, health & armor
 - [ ] **M6** Acoustic propagation, muzzle VFX, diegetic HUD
 - [ ] **M7** Gunsmith & attachment physics
 - [ ] **M8** Tactical AI & squad CQB

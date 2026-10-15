@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8969dc1aa3c113947b570e6253324ef1, type: 3}
+  m_Name: Surface_Glass
+  m_EditorClassIdentifier: FPS.Ballistics::FPS.Ballistics.SurfaceMaterialSO
+  displayName: Glass
+  densityKgM3: 2500
+  hardness: 12
+  exitDeflection: 6
+  ricochetAngle: 5
+  ricochetSpeedRetention: 0.3
+  ricochetSpread: 12
+  casingImpactClips:
+  - {fileID: 8300000, guid: 16b2db58ac9a8d548abb57b494bb3cd1, type: 3}
+  - {fileID: 8300000, guid: 68b55ab8caf44244c9d3aa3af4c9717f, type: 3}
+  - {fileID: 8300000, guid: 7430d5e31c0c6434ab6f99f55519da40, type: 3}

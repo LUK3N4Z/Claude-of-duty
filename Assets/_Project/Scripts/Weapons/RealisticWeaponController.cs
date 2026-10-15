@@ -56,6 +56,14 @@ namespace FPS.Weapons
         [SerializeField] private Vector3 loweredPosition = new Vector3(0f, -0.25f, -0.1f);
         [SerializeField] private Vector3 loweredEuler = new Vector3(60f, -15f, 10f);
 
+        [Header("Ejected Cases")]
+        [Tooltip("Ejection speed range out of the port (m/s).")]
+        [SerializeField] private Vector2 ejectionSpeed = new Vector2(2.5f, 4f);
+        [SerializeField] private float ejectionLift = 1.2f;
+        [Tooltip("Random tumble (rad/s).")]
+        [SerializeField] private float ejectionSpin = 30f;
+        [SerializeField] private float casingLifetime = 20f;
+
         [Header("Dropped Magazines")]
         [SerializeField] private float droppedMagazineLifetime = 30f;
         [Tooltip("Release velocity of a dropped magazine in magazine-socket space (m/s).")]
@@ -409,6 +417,7 @@ namespace FPS.Weapons
             }
 
             EmitShot(state);
+            if (state.Data.BoltType != BoltType.ManualBoltAction) EjectCasing(state);
             recoil.Kick(); // after the shot: the bullet has left before the muzzle rises
         }
 
@@ -470,6 +479,7 @@ namespace FPS.Weapons
                     CompleteReloadStage(state);
                     return;
                 case WeaponAction.BoltCycle:
+                    EjectCasing(state); // working the bolt throws the spent case
                     Chamber(state);
                     Raise(WeaponActionType.BoltCycled, 0);
                     break;
@@ -517,6 +527,7 @@ namespace FPS.Weapons
                     Raise(WeaponActionType.MagazineInserted, state.MagazineRounds);
                     break;
                 case ReloadStage.BoltCycled:
+                    if (state.Data.BoltType == BoltType.ManualBoltAction) EjectCasing(state); // last spent case comes out now
                     Chamber(state);
                     Raise(WeaponActionType.BoltCycled, 0);
                     break;
@@ -540,6 +551,18 @@ namespace FPS.Weapons
                 state.MagazineRounds--;
                 state.RoundChambered = true;
             }
+        }
+
+        private void EjectCasing(WeaponState state)
+        {
+            PhysicalShellCasing prefab = state.Data.Caliber != null ? state.Data.Caliber.CasingPrefab : null;
+            WeaponModelRig weapon = viewmodel.Weapon;
+            if (prefab == null || weapon == null || weapon.ChamberEjectionSocket == null) return;
+
+            Transform port = weapon.ChamberEjectionSocket;
+            PhysicalShellCasing casing = ObjectPoolManager.Instance.Spawn(prefab, port.position, port.rotation, null, casingLifetime);
+            Vector3 velocity = port.forward * Random.Range(ejectionSpeed.x, ejectionSpeed.y) + port.up * ejectionLift + locomotion.Velocity;
+            casing.Eject(velocity, Random.insideUnitSphere * ejectionSpin);
         }
 
         private void DropMagazine(WeaponState state, WeaponModelRig weapon)
@@ -567,6 +590,8 @@ namespace FPS.Weapons
             WeaponState state = states[slot];
             WeaponModelRig weapon = viewmodel.Equip(loadout[slot].model, state.Data);
             weapon.SetMagazineVisible(state.HasMagazine);
+            if (state.Data.Caliber != null && state.Data.Caliber.CasingPrefab != null)
+                ObjectPoolManager.Instance.Prewarm(state.Data.Caliber.CasingPrefab, 24, 96);
             CancelTriggerIntent();
             nextShotTime = 0f;
             pose.Teleport(loweredPosition, loweredEuler);

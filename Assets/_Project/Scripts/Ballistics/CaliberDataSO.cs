@@ -41,6 +41,10 @@ namespace FPS.Ballistics
         [Tooltip("Flesh damage at muzzle velocity before armor and range falloff.")]
         [SerializeField, Min(0f)] private float damage = 35f;
 
+        [Header("Cartridge")]
+        [Tooltip("Pooled spent case ejected after each shot.")]
+        [SerializeField] private PhysicalShellCasing casingPrefab;
+
         public string DisplayName => displayName;
         public float BulletMassKg => bulletMassGrams * 0.001f;
         public float BulletDiameterMeters => bulletDiameterMm * 0.001f;
@@ -49,6 +53,7 @@ namespace FPS.Ballistics
         public float BallisticCoefficient => ballisticCoefficient;
         public float PenetrationPower => penetrationPower;
         public float Damage => damage;
+        public PhysicalShellCasing CasingPrefab => casingPrefab;
 
         /// <summary>Muzzle velocity (m/s) from a barrel of the given length; never below half the reference.</summary>
         public float MuzzleVelocity(float barrelInches) =>

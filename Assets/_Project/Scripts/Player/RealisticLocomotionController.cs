@@ -1,4 +1,5 @@
 using System;
+using FPS.Ballistics;
 using FPS.Core;
 using UnityEngine;
 
@@ -92,6 +93,12 @@ namespace FPS.Locomotion
         [SerializeField] private float crouchStrideMultiplier = 0.75f;
         [SerializeField] private float proneStride = 0.8f;
 
+        [Header("Injuries")]
+        [Tooltip("Sprint speed lost at full leg injury (needs a TacticalHealthAndArmorSystem).")]
+        [SerializeField, Range(0f, 1f)] private float legInjurySprintPenalty = 0.45f;
+        [Tooltip("Leg injury above which tactical sprint is impossible.")]
+        [SerializeField, Range(0f, 1f)] private float legInjuryTacticalLimit = 0.5f;
+
         [Header("Slide")]
         [SerializeField] private float slideMinSpeed = 4.5f;
         [SerializeField] private float slideBoost = 1.08f;
@@ -114,6 +121,7 @@ namespace FPS.Locomotion
         private StanceAndLeanController stance;
         private PlayerRig rig;
         private InputReader input;
+        private TacticalHealthAndArmorSystem health;
 
         private Vector3 planarVelocity;
         private float verticalSpeed;
@@ -156,6 +164,8 @@ namespace FPS.Locomotion
         /// <summary>Look sensitivity scale set by the aiming system (zoom and optic magnification).</summary>
         public float LookSensitivityMultiplier { get; set; } = 1f;
         public StanceAndLeanController StanceController => stance;
+        /// <summary>Sprint speed multiplier from leg injuries (1 when unhurt or without a health system).</summary>
+        public float InjurySprintMultiplier => health != null ? 1f - legInjurySprintPenalty * health.LegInjury01 : 1f;
 
         /// <summary>Equipped weapon load. Mass slows top speed; mass and ergonomics (0-100) scale acceleration.</summary>
         public void SetWeaponHandling(float massKg, float ergonomics)
@@ -224,6 +234,7 @@ namespace FPS.Locomotion
             stance = GetComponent<StanceAndLeanController>();
             rig = GetComponent<PlayerRig>();
             input = rig.Input;
+            TryGetComponent(out health);
             yaw = transform.eulerAngles.y;
         }
 
@@ -488,7 +499,8 @@ namespace FPS.Locomotion
 
         private void OnTacticalSprintPressed()
         {
-            if (sprintRequested && !exhausted && stamina >= tacticalSprintMinStamina) tacticalRequested = true;
+            bool legsHold = health == null || health.LegInjury01 <= legInjuryTacticalLimit;
+            if (sprintRequested && !exhausted && legsHold && stamina >= tacticalSprintMinStamina) tacticalRequested = true;
         }
 
         private void OnCrouchPressed()
@@ -553,8 +565,8 @@ namespace FPS.Locomotion
 
         private float PaceSpeed()
         {
-            if (Pace == LocomotionPace.TacticalSprint) return tacticalSprintSpeed;
-            if (Pace == LocomotionPace.Sprint) return sprintSpeed;
+            if (Pace == LocomotionPace.TacticalSprint) return tacticalSprintSpeed * InjurySprintMultiplier;
+            if (Pace == LocomotionPace.Sprint) return sprintSpeed * InjurySprintMultiplier;
             return input.WalkSlowHeld ? slowWalkSpeed : combatPaceSpeed * paceScale;
         }
 

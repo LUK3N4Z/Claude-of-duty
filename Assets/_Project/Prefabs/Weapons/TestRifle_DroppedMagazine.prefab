@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 959075702821776437}
   - component: {fileID: 4080562639131959392}
   - component: {fileID: 5375698138996509275}
-  m_Layer: 0
+  m_Layer: 13
   m_Name: TestRifle_DroppedMagazine
   m_TagString: Untagged
   m_Icon: {fileID: 0}

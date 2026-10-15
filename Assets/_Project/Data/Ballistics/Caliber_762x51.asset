@@ -22,3 +22,4 @@ MonoBehaviour:
   ballisticCoefficient: 0.2
   penetrationPower: 55
   damage: 55
+  casingPrefab: {fileID: 4629713801760614966, guid: fbef1377834c5a84ead76193dab08838, type: 3}

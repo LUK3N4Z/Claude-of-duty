@@ -296,6 +296,31 @@ namespace FPS.Tests
         }
 
         [UnityTest]
+        public IEnumerator Firing_EjectsAPooledCase()
+        {
+            var template = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            template.name = "CaseTemplate";
+            template.AddComponent<Rigidbody>();
+            template.AddComponent<AudioSource>();
+            template.AddComponent<PhysicalShellCasing>();
+            template.SetActive(false);
+            created.Add(template);
+
+            WeaponDataSO data = Data(BoltType.ClosedBolt, FireMode.Semi);
+            TestWeapons.SetField(data.Caliber, "casingPrefab", template.GetComponent<PhysicalShellCasing>());
+            yield return Equip(data);
+
+            controller.PullTrigger();
+            controller.ReleaseTrigger();
+            yield return new WaitForSeconds(0.05f);
+
+            int flying = 0;
+            foreach (PhysicalShellCasing casing in Object.FindObjectsByType<PhysicalShellCasing>())
+                if (casing.gameObject.activeInHierarchy && casing.GetComponent<Rigidbody>().linearVelocity.sqrMagnitude > 0.5f) flying++;
+            Assert.AreEqual(1, flying);
+        }
+
+        [UnityTest]
         public IEnumerator MouseFire_LeavesTheMuzzleAlongTheBore()
         {
             WeaponDataSO data = Data(BoltType.ClosedBolt, FireMode.Semi);

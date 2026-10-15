@@ -51,15 +51,16 @@ namespace FPS.EditorTools
 
         public static void CreateTestWeapons()
         {
+            BallisticsContentBuilder.CreateContent();
             ProjectSetupWizard.EnsureFolder(ArtFolder);
             ProjectSetupWizard.EnsureFolder(PrefabFolder);
             ProjectSetupWizard.EnsureFolder(DataFolder);
             ProjectSetupWizard.EnsureFolder(CaliberFolder);
 
-            CaliberDataSO nato556 = Caliber("Caliber_556x45", "5.56x45mm NATO (M855)", 4.0f, 5.7f, 940f, 20f, 7.5f, DragModel.G7, 0.151f, 40f, 35f);
-            Caliber("Caliber_762x51", "7.62x51mm NATO (M80)", 9.5f, 7.82f, 840f, 22f, 5.5f, DragModel.G7, 0.2f, 55f, 55f);
-            Caliber("Caliber_9x19", "9x19mm Parabellum (124gr FMJ)", 8.0f, 9.01f, 360f, 4f, 4.5f, DragModel.G1, 0.15f, 15f, 30f);
-            CaliberDataSO winMag = Caliber("Caliber_300WM", ".300 Winchester Magnum (190gr)", 12.3f, 7.82f, 880f, 24f, 7.6f, DragModel.G7, 0.29f, 70f, 90f);
+            CaliberDataSO nato556 = Caliber("Caliber_556x45", "5.56x45mm NATO (M855)", 4.0f, 5.7f, 940f, 20f, 7.5f, DragModel.G7, 0.151f, 40f, 35f, "Casing_556x45");
+            Caliber("Caliber_762x51", "7.62x51mm NATO (M80)", 9.5f, 7.82f, 840f, 22f, 5.5f, DragModel.G7, 0.2f, 55f, 55f, "Casing_762x51");
+            Caliber("Caliber_9x19", "9x19mm Parabellum (124gr FMJ)", 8.0f, 9.01f, 360f, 4f, 4.5f, DragModel.G1, 0.15f, 15f, 30f, "Casing_9x19");
+            CaliberDataSO winMag = Caliber("Caliber_300WM", ".300 Winchester Magnum (190gr)", 12.3f, 7.82f, 880f, 24f, 7.6f, DragModel.G7, 0.29f, 70f, 90f, "Casing_300WM");
 
             Material metal = LitMaterial("Gunmetal", new Color(0.16f, 0.16f, 0.17f), 0.85f, 0.45f);
             Material polymer = LitMaterial("Polymer", new Color(0.05f, 0.05f, 0.05f), 0f, 0.3f);
@@ -242,6 +243,7 @@ namespace FPS.EditorTools
                 magazine.name = prefabName;
                 magazine.transform.localScale = size;
                 magazine.GetComponent<MeshRenderer>().sharedMaterial = material;
+                magazine.layer = GameLayers.Debris;
                 var body = magazine.AddComponent<Rigidbody>();
                 body.mass = massKg;
                 body.interpolation = RigidbodyInterpolation.Interpolate;
@@ -255,7 +257,8 @@ namespace FPS.EditorTools
         }
 
         private static CaliberDataSO Caliber(string assetName, string displayName, float grams, float diameterMm, float velocity,
-            float referenceBarrel, float velocityPerInch, DragModel drag, float ballisticCoefficient, float penetration, float damage)
+            float referenceBarrel, float velocityPerInch, DragModel drag, float ballisticCoefficient, float penetration, float damage,
+            string casingName)
         {
             CaliberDataSO caliber = LoadOrCreate<CaliberDataSO>($"{CaliberFolder}/{assetName}.asset");
             Configure(caliber, so =>
@@ -270,6 +273,7 @@ namespace FPS.EditorTools
                 Set(so, "ballisticCoefficient", ballisticCoefficient);
                 Set(so, "penetrationPower", penetration);
                 Set(so, "damage", damage);
+                Set(so, "casingPrefab", BallisticsContentBuilder.Casing(casingName));
             });
             return caliber;
         }
@@ -395,7 +399,7 @@ namespace FPS.EditorTools
             return texture;
         }
 
-        private static T LoadOrCreate<T>(string path) where T : ScriptableObject
+        internal static T LoadOrCreate<T>(string path) where T : ScriptableObject
         {
             var asset = AssetDatabase.LoadAssetAtPath<T>(path);
             if (asset != null) return asset;
@@ -405,7 +409,7 @@ namespace FPS.EditorTools
             return asset;
         }
 
-        private static void Configure(Object asset, Action<SerializedObject> apply)
+        internal static void Configure(Object asset, Action<SerializedObject> apply)
         {
             var serialized = new SerializedObject(asset);
             apply(serialized);
@@ -413,16 +417,16 @@ namespace FPS.EditorTools
             EditorUtility.SetDirty(asset);
         }
 
-        private static SerializedProperty Property(SerializedObject so, string field) =>
+        internal static SerializedProperty Property(SerializedObject so, string field) =>
             so.FindProperty(field) ?? throw new InvalidOperationException($"{so.targetObject.GetType().Name} has no serialized field '{field}'.");
 
-        private static void Set(SerializedObject so, string field, float value) => Property(so, field).floatValue = value;
-        private static void Set(SerializedObject so, string field, int value) => Property(so, field).intValue = value;
-        private static void Set(SerializedObject so, string field, bool value) => Property(so, field).boolValue = value;
-        private static void Set(SerializedObject so, string field, string value) => Property(so, field).stringValue = value;
-        private static void Set(SerializedObject so, string field, Object value) => Property(so, field).objectReferenceValue = value;
-        private static void Set(SerializedObject so, string field, Vector3 value) => Property(so, field).vector3Value = value;
-        private static void SetEnum(SerializedObject so, string field, int index) => Property(so, field).enumValueIndex = index;
+        internal static void Set(SerializedObject so, string field, float value) => Property(so, field).floatValue = value;
+        internal static void Set(SerializedObject so, string field, int value) => Property(so, field).intValue = value;
+        internal static void Set(SerializedObject so, string field, bool value) => Property(so, field).boolValue = value;
+        internal static void Set(SerializedObject so, string field, string value) => Property(so, field).stringValue = value;
+        internal static void Set(SerializedObject so, string field, Object value) => Property(so, field).objectReferenceValue = value;
+        internal static void Set(SerializedObject so, string field, Vector3 value) => Property(so, field).vector3Value = value;
+        internal static void SetEnum(SerializedObject so, string field, int index) => Property(so, field).enumValueIndex = index;
 
         private static void SetFireModes(SerializedObject so, params FireMode[] modes)
         {
@@ -431,7 +435,7 @@ namespace FPS.EditorTools
             for (int i = 0; i < modes.Length; i++) list.GetArrayElementAtIndex(i).enumValueIndex = (int)modes[i];
         }
 
-        private static void SetLayerRecursively(Transform root, int layer)
+        internal static void SetLayerRecursively(Transform root, int layer)
         {
             root.gameObject.layer = layer;
             for (int i = 0; i < root.childCount; i++) SetLayerRecursively(root.GetChild(i), layer);

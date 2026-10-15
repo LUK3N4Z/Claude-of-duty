@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8969dc1aa3c113947b570e6253324ef1, type: 3}
+  m_Name: Surface_Wood
+  m_EditorClassIdentifier: FPS.Ballistics::FPS.Ballistics.SurfaceMaterialSO
+  displayName: Wood
+  densityKgM3: 600
+  hardness: 35
+  exitDeflection: 2
+  ricochetAngle: 8
+  ricochetSpeedRetention: 0.4
+  ricochetSpread: 10
+  casingImpactClips:
+  - {fileID: 8300000, guid: 1a12873bc0e56b2419e7a728521500c9, type: 3}
+  - {fileID: 8300000, guid: 48b35c122ff0f5e46bb603ac48cc135b, type: 3}
+  - {fileID: 8300000, guid: ae9511f29ac8f6b498a6a75cad24d1c9, type: 3}

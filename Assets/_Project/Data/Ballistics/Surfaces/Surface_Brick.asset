@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8969dc1aa3c113947b570e6253324ef1, type: 3}
+  m_Name: Surface_Brick
+  m_EditorClassIdentifier: FPS.Ballistics::FPS.Ballistics.SurfaceMaterialSO
+  displayName: Brick
+  densityKgM3: 1900
+  hardness: 45
+  exitDeflection: 4
+  ricochetAngle: 15
+  ricochetSpeedRetention: 0.45
+  ricochetSpread: 8
+  casingImpactClips:
+  - {fileID: 8300000, guid: 75eb794c719680948a25edecac018631, type: 3}
+  - {fileID: 8300000, guid: 084be5dfe35bc784eacb32839dd0989d, type: 3}
+  - {fileID: 8300000, guid: f1c6d3b77fe663b48a02ca1ae1134dc3, type: 3}

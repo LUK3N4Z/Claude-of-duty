@@ -100,11 +100,14 @@ namespace FPS.EditorTools
             Tunnel(level, "Crawl Tunnel 0.6m", new Vector3(15f, 0f, -8f), 0.6f);
 
             // Optics: boards down range for the PiP scope; the narrow corridor exercises barrel tucking.
-            Block(level, "Range Floor", new Vector3(20f, -0.5f, 140f), new Vector3(12f, 1f, 200f), Quaternion.identity);
+            Block(level, "Range Floor", new Vector3(20f, -0.5f, 140f), new Vector3(12f, 1f, 200f), Quaternion.identity)
+                .gameObject.AddComponent<FPS.Ballistics.SurfaceIdentifier>().Surface = BallisticsContentBuilder.Surface("Dirt");
             foreach (float distance in new[] { 25f, 50f, 100f, 200f })
                 Block(level, $"Target {distance:0}m", new Vector3(20f, 1f, distance), new Vector3(1f, 2f, 0.1f), Quaternion.identity);
             Block(level, "Corridor Left", new Vector3(-21f, 1.5f, -8f), new Vector3(0.3f, 3f, 8f), Quaternion.identity);
             Block(level, "Corridor Right", new Vector3(-19.8f, 1.5f, -8f), new Vector3(0.3f, 3f, 8f), Quaternion.identity);
+
+            BallisticsContentBuilder.BuildRange(level);
 
             var player = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab, scene);
             player.transform.SetPositionAndRotation(new Vector3(0f, 0f, -4f), Quaternion.identity);

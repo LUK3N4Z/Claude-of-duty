@@ -1,4 +1,5 @@
 using System;
+using FPS.Ballistics;
 using FPS.Core;
 using UnityEngine;
 
@@ -101,6 +102,13 @@ namespace FPS.Locomotion
         [Tooltip("Natural frequency of the critically damped landing spring (rad/s).")]
         [SerializeField] private float landingSpringFrequency = 12f;
 
+        [Header("Injury & Flinch")]
+        [Tooltip("Extra sway at full arm injury (multiplier gain).")]
+        [SerializeField] private float armInjurySwayGain = 1.5f;
+        [Tooltip("Peak head flinch from a round cracking past at full intensity (deg).")]
+        [SerializeField] private float maxFlinch = 2.5f;
+        [SerializeField] private float flinchSpringFrequency = 14f;
+
         [Header("Slide & Dive")]
         [SerializeField] private float slideLowering = 0.12f;
         [SerializeField] private float slideRoll = 5f;
@@ -111,6 +119,8 @@ namespace FPS.Locomotion
         private StanceAndLeanController stance;
         private PlayerRig rig;
         private InputReader input;
+        private TacticalHealthAndArmorSystem health;
+        private Vector2 flinchAngles, flinchVelocity;
 
         private float heartRate, stress;
         private float breathPhase, heartbeatPhase;
@@ -140,6 +150,7 @@ namespace FPS.Locomotion
             stance = GetComponent<StanceAndLeanController>();
             rig = GetComponent<PlayerRig>();
             input = rig.Input;
+            TryGetComponent(out health);
             heartRate = restingHeartRate;
         }
 
@@ -221,6 +232,7 @@ namespace FPS.Locomotion
         {
             float steadiness = StanceSwayMultiplier() * stance.SwayMultiplier * Mathf.Lerp(1f, holdSwayMultiplier, holdBlend);
             float amplitude = Mathf.Lerp(restingSway, maxSway, HeartRate01) * steadiness;
+            if (health != null) amplitude *= 1f + armInjurySwayGain * health.ArmInjury01;
             if (IsGasping) amplitude *= gaspSwayMultiplier;
 
             // 1:2 Lissajous = the classic figure-8 of a breathing shooter.
@@ -250,27 +262,42 @@ namespace FPS.Locomotion
             float roll = bob.roll * multiplier * Mathf.Sin(phase);
             float nod = -vertical * bobPitchPerMeter;
 
-            StepLandingSpring(dt);
+            StepSprings(dt);
             slideBlend = Mathf.MoveTowards(slideBlend, locomotion.IsSliding ? 1f : 0f, dt / postureBlendTime);
             diveBlend = Mathf.MoveTowards(diveBlend, locomotion.IsDiving ? 1f : 0f, dt / postureBlendTime);
 
             Vector2 sway = WeaponSwayEuler * cameraSwayFraction;
             rig.HeadMotion.localPosition = new Vector3(lateral, vertical + landingOffset - slideLowering * slideBlend, 0f);
             rig.HeadMotion.localRotation = Quaternion.Euler(
-                nod + sway.x + divePitch * diveBlend,
-                sway.y,
+                nod + sway.x + divePitch * diveBlend + flinchAngles.x,
+                sway.y + flinchAngles.y,
                 roll + slideRoll * slideBlend);
         }
 
-        private void StepLandingSpring(float dt)
+        /// <summary>
+        /// Involuntary head flinch away from a round passing at <paramref name="worldOffset"/> from the eye (closest point
+        /// minus eye), scaled by <paramref name="intensity"/> 0-1.
+        /// </summary>
+        public void Flinch(Vector3 worldOffset, float intensity)
         {
-            float w = landingSpringFrequency;
+            Vector3 local = rig.PitchPivot.InverseTransformDirection(worldOffset);
+            float side = local.x >= 0f ? -1f : 1f; // turn away from the crack
+            float kick = maxFlinch * Mathf.Clamp01(intensity) * flinchSpringFrequency * (float)Math.E;
+            flinchVelocity += new Vector2(-0.6f * kick, side * kick); // duck and turn
+        }
+
+        private void StepSprings(float dt)
+        {
             int steps = Mathf.CeilToInt(dt / SpringStep);
             float h = dt / steps;
+            float w = landingSpringFrequency;
+            float f = flinchSpringFrequency;
             for (int i = 0; i < steps; i++)
             {
                 landingVelocity += (-w * w * landingOffset - 2f * w * landingVelocity) * h;
                 landingOffset += landingVelocity * h;
+                flinchVelocity += (-f * f * flinchAngles - 2f * f * flinchVelocity) * h;
+                flinchAngles += flinchVelocity * h;
             }
         }
 
@@ -283,6 +310,7 @@ namespace FPS.Locomotion
 
         private void OnSuppressed(in SuppressionEvent evt)
         {
+            if (evt.Listener != rig.PlayerCamera.transform) return; // someone else's near miss
             stress = Mathf.Min(maxStressHeartRate, stress + Mathf.Clamp01(evt.Intensity) * suppressionHeartRate);
         }
 

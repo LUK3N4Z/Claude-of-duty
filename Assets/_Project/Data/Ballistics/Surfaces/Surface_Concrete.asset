@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8969dc1aa3c113947b570e6253324ef1, type: 3}
+  m_Name: Surface_Concrete
+  m_EditorClassIdentifier: FPS.Ballistics::FPS.Ballistics.SurfaceMaterialSO
+  displayName: Concrete
+  densityKgM3: 2400
+  hardness: 60
+  exitDeflection: 4
+  ricochetAngle: 20
+  ricochetSpeedRetention: 0.5
+  ricochetSpread: 6
+  casingImpactClips:
+  - {fileID: 8300000, guid: cc27cda4998a37e48840df7ab87c1439, type: 3}
+  - {fileID: 8300000, guid: e75e6b758aa9c9f4f888413fa276bd0a, type: 3}
+  - {fileID: 8300000, guid: 41268cd7e6a888940bfa3cebf2b8502a, type: 3}

@@ -36,6 +36,7 @@ namespace FPS.EditorTools
             int world = EnsureLayer(layers, GameLayers.WorldGeometryName, 10);
             int hitbox = EnsureLayer(layers, GameLayers.HitboxName, 11);
             int interactable = EnsureLayer(layers, GameLayers.InteractableName, 12);
+            int debris = EnsureLayer(layers, GameLayers.DebrisName, 13);
             tagManager.ApplyModifiedPropertiesWithoutUndo();
 
             // Viewmodel is purely visual: barrel tucking and leaning use casts against the world, never contacts.
@@ -44,10 +45,13 @@ namespace FPS.EditorTools
             Physics.IgnoreLayerCollision(hitbox, hitbox, true);       // kinematic query targets only
             Physics.IgnoreLayerCollision(interactable, player, true); // interaction is ray-based; props never block
             Physics.IgnoreLayerCollision(interactable, hitbox, true);
+            Physics.IgnoreLayerCollision(debris, player, true);       // casings and dropped magazines never trip the player
+            Physics.IgnoreLayerCollision(debris, hitbox, true);
+            Physics.IgnoreLayerCollision(debris, interactable, true);
 
             AssetDatabase.SaveAssets();
             Debug.Log($"[FPS Builder] Layers ready: Player={player}, FirstPersonViewmodel={viewmodel}, " +
-                      $"WorldGeometry={world}, Hitbox={hitbox}, Interactable={interactable}. Collision matrix configured.");
+                      $"WorldGeometry={world}, Hitbox={hitbox}, Interactable={interactable}, Debris={debris}. Collision matrix configured.");
         }
 
         [MenuItem(MenuRoot + "2. Create Core Assets", priority = 2)]

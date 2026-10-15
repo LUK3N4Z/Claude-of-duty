@@ -1,5 +1,5 @@
 {
     "name": "FPS.Player",
     "rootNamespace": "FPS.Locomotion",
-    "references": ["FPS.Core", "FPS.Audio", "FPS.Ballistics"]
+    "references": ["FPS.Core", "FPS.Audio", "FPS.Ballistics", "Unity.RenderPipelines.HighDefinition.Runtime", "Unity.RenderPipelines.Core.Runtime"]
 }

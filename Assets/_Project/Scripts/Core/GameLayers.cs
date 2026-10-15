@@ -14,6 +14,7 @@ namespace FPS.Core
         public const string WorldGeometryName = "WorldGeometry";
         public const string HitboxName = "Hitbox";
         public const string InteractableName = "Interactable";
+        public const string DebrisName = "Debris";
 
         /// <summary>Unity built-in "Ignore Raycast" layer.</summary>
         public const int IgnoreRaycast = 2;
@@ -23,9 +24,13 @@ namespace FPS.Core
         public static readonly int WorldGeometry = Require(WorldGeometryName);
         public static readonly int Hitbox = Require(HitboxName);
         public static readonly int Interactable = Require(InteractableName);
+        public static readonly int Debris = Require(DebrisName);
 
         /// <summary>Solid level geometry (Default + WorldGeometry): ground probes, stance clearance, lean and mount casts.</summary>
         public static readonly int EnvironmentMask = (1 << 0) | (1 << WorldGeometry);
+
+        /// <summary>What bullets can hit: environment plus hitboxes (never capsules, viewmodels or debris).</summary>
+        public static readonly int BallisticMask = EnvironmentMask | (1 << Hitbox);
 
         private static int Require(string layerName)
         {
