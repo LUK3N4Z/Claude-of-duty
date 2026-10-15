@@ -1,0 +1,5 @@
+{
+    "name": "FPS.Audio",
+    "rootNamespace": "FPS.Audio",
+    "references": ["FPS.Core"]
+}

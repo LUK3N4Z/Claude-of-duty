@@ -1,0 +1,5 @@
+{
+    "name": "FPS.Core",
+    "rootNamespace": "FPS.Core",
+    "references": ["Unity.InputSystem"]
+}

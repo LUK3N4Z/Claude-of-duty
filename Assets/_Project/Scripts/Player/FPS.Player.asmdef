@@ -1,0 +1,5 @@
+{
+    "name": "FPS.Player",
+    "rootNamespace": "FPS.Locomotion",
+    "references": ["FPS.Core", "FPS.Audio", "FPS.Ballistics", "FPS.Weapons"]
+}

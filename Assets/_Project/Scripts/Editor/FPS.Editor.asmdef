@@ -1,0 +1,7 @@
+{
+    "name": "FPS.Editor",
+    "rootNamespace": "FPS.EditorTools",
+    "references": ["FPS.Core", "FPS.Audio", "FPS.Ballistics", "FPS.Weapons", "FPS.Player", "FPS.AI", "FPS.UI", "Unity.InputSystem"],
+    "includePlatforms": ["Editor"],
+    "autoReferenced": false
+}

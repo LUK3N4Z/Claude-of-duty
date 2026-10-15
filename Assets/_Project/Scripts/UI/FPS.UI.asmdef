@@ -1,0 +1,5 @@
+{
+    "name": "FPS.UI",
+    "rootNamespace": "FPS.UI",
+    "references": ["FPS.Core", "FPS.Ballistics", "FPS.Weapons", "FPS.Player"]
+}
