@@ -26,6 +26,7 @@ namespace FPS.Tests
             string dir = Environment.GetEnvironmentVariable("FPS_CAPTURE_DIR");
             if (string.IsNullOrEmpty(dir)) Assert.Ignore("FPS_CAPTURE_DIR not set");
             TestInput.IgnoreFocus();
+            FPS.Gameplay.SaveProfileManager.DirectoryOverride = FreshProfileFolder(dir, "range");
             var keyboard = InputSystem.AddDevice<Keyboard>();
             var mouse = InputSystem.AddDevice<Mouse>();
 
@@ -99,6 +100,19 @@ namespace FPS.Tests
             yield return new WaitForSeconds(1f);
             Save(rt, Path.Combine(dir, "devices.png"));
             weapons.ToggleDevices();
+
+            // Night vision in the shoot house: the goggles' view, then canted active aim by the infrared laser.
+            var goggles = rig.GetComponent<NightVisionGoggles>();
+            goggles.SetOn(true);
+            yield return new WaitForSeconds(1.5f);
+            Save(rt, Path.Combine(dir, "nvg.png"));
+            Press(mouse.rightButton);
+            yield return new WaitForSeconds(0.8f);
+            Save(rt, Path.Combine(dir, "nvg_active_aim.png"));
+            Debug.Log($"[Capture] nvg: blend={goggles.Blend} activeAim={rig.GetComponent<ProceduralADSAndOpticsController>().IsActiveAiming}");
+            Release(mouse.rightButton);
+            goggles.SetOn(false);
+            yield return new WaitForSeconds(0.6f);
 
             // Live gunsmith swaps: a short suppressed CQB build, then a long compensated one.
             Teleport(rig, cc, new Vector3(20f, 0f, 2f));
@@ -182,6 +196,7 @@ namespace FPS.Tests
             Save(rt, Path.Combine(dir, "operator_closeup.png"));
             Object.Destroy(closeup.gameObject);
             foreach (GameObject soldier in staged) Object.Destroy(soldier);
+            FPS.Gameplay.SaveProfileManager.DirectoryOverride = null;
         }
 
         [UnityTest]
@@ -190,6 +205,7 @@ namespace FPS.Tests
             string dir = Environment.GetEnvironmentVariable("FPS_CAPTURE_DIR");
             if (string.IsNullOrEmpty(dir)) Assert.Ignore("FPS_CAPTURE_DIR not set");
             TestInput.IgnoreFocus();
+            FPS.Gameplay.SaveProfileManager.DirectoryOverride = FreshProfileFolder(dir, "modes");
             InputSystem.AddDevice<Keyboard>();
             InputSystem.AddDevice<Mouse>();
 
@@ -233,6 +249,8 @@ namespace FPS.Tests
                 rig.PlayerCamera.targetTexture = null;
                 rt.Release();
             }
+
+            FPS.Gameplay.SaveProfileManager.DirectoryOverride = null;
         }
 
         [UnityTest]
@@ -243,14 +261,14 @@ namespace FPS.Tests
             TestInput.IgnoreFocus();
             InputSystem.AddDevice<Keyboard>();
             InputSystem.AddDevice<Mouse>();
-            FPS.Gameplay.SaveProfileManager.DirectoryOverride = Path.Combine(dir, "profile");
+            FPS.Gameplay.SaveProfileManager.DirectoryOverride = FreshProfileFolder(dir, "armory");
 
             yield return EditorSceneManager.LoadSceneAsyncInPlayMode("Assets/_Project/Scenes/Armory.unity", new LoadSceneParameters(LoadSceneMode.Single));
-            yield return new WaitForSeconds(1.5f);
+            yield return null;
             var rig = Object.FindAnyObjectByType<PlayerRig>();
             var rt = new RenderTexture(1280, 720, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
-            rig.PlayerCamera.targetTexture = rt;
-            yield return new WaitForSeconds(0.5f);
+            rig.PlayerCamera.targetTexture = rt; // retargeting restarts eye adaptation: give it time to settle
+            yield return new WaitForSeconds(2.5f);
             Save(rt, Path.Combine(dir, "armory_workshop.png"));
 
             var bench = Object.FindAnyObjectByType<FPS.Gameplay.GunsmithWorkbenchController>();
@@ -324,6 +342,15 @@ namespace FPS.Tests
             RenderTexture.active = previous;
             File.WriteAllBytes(path, texture.EncodeToPNG());
             Object.Destroy(texture);
+        }
+
+        /// <summary>An empty profile folder under the capture directory, so no saved loadout leaks between captures.</summary>
+        private static string FreshProfileFolder(string dir, string name)
+        {
+            string folder = Path.Combine(dir, "profiles", name);
+            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+            Directory.CreateDirectory(folder);
+            return folder;
         }
 
         private static void SaveHdr(RenderTexture rt, string path)

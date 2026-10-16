@@ -46,7 +46,7 @@ Active Input Handling is `Input System Package (New)` (`activeInputHandler: 1`).
 `Unity.exe -batchmode -nographics -projectPath . -runTests -testPlatform PlayMode -testResults results.xml`.
 New non-trivial logic ships with a test there.
 Visual check: set `FPS_CAPTURE_DIR` and run `-testFilter FPS.Tests.RenderCapture` **without** `-nographics`; it renders
-the test range (hip/ADS/canted/reload/impacts/devices/gunsmith builds/AI firefight), the three mode scenes and the
+the test range (hip/ADS/canted/reload/impacts/devices/night vision/gunsmith builds/AI firefight), the three mode scenes and the
 armory (workbench views, indoor range) to PNGs and logs stats (ignored otherwise).
 
 ## Coding standards
@@ -136,7 +136,8 @@ Bullets use `GameLayers.BallisticMask` (Default + WorldGeometry + Hitbox). No cu
 | SwitchSight | X | D-pad ↑ | `SwitchSightPressed` |
 | MountWeapon | V | R3 | `MountWeaponPressed` |
 | Interact | F | A | `InteractPressed` (`Interactor` → focused `IInteractable`); `InteractHeld` for hold-to-use objectives |
-| ToggleDevice | T | View | `ToggleDevicePressed` (all lights/lasers on the held weapon) |
+| ToggleDevice | T | View (tap) | `ToggleDevicePressed` (all lights/lasers on the held weapon) |
+| ToggleNightVision | N | View (hold 0.4 s) | `ToggleNightVisionPressed` (`NightVisionGoggles`) |
 | ThrowLethal | G, mouse forward | RB | `LethalPressed` (pin, cook) / `LethalReleased` (throw) |
 | ThrowTactical | H, mouse back | LB | `TacticalPressed` / `TacticalReleased` |
 | Menu (map `System`) | Escape | Start | `MenuPressed`; the System map is enabled with `EnableSystemInput()` and stays on while gameplay input is off |
@@ -410,6 +411,39 @@ Contracts for later milestones:
 - **Weapon racks:** `WeaponRack` (FPS.Gameplay, IInteractable) swaps a loadout slot to the next rack weapon and
   saves the loadout; Armory west wall and the test range carry a primary and a secondary rack.
 
+## Photoreal look & combat VFX (M12)
+
+- **World look** (`WorldLook`, editor; shared profile `Settings/Rendering/WorldLook.asset`, added by every scene
+  builder): physically based sky + generated cumulus `CloudLayer` (casts shadows; `Art/Sky/CloudMap.png`), sun at
+  90 000 lux / 5600 K with contact shadows, histogram auto exposure (EV 4.5–15.5), ACES, film grain 0.18, chromatic
+  aberration 0.08, split toning, SSR, SSGI (half res), SSAO, contact and micro shadows, thin volumetric fog.
+  `EnablePipelineFeatures` turns the matching HDRP asset support flags on.
+- **Interiors:** `WorldLook.Interior(parent, name, centre, size)` per room = box-projected realtime reflection probe +
+  a local `IndirectLightingController` volume (trigger box on Ignore Raycast) that cuts the open-sky ambient the roof
+  blocks. Used for the shoot house, both arena rooms, the workshop and the indoor range.
+- **Environment materials** (`EnvironmentMaterials`, `Art/Environment`; delete to regenerate): `Dress(level, ground)`
+  gives blockout primitives on WorldGeometry a weathered HDRP/LayeredLit material by ballistic surface — layer 0 the
+  surface, layer 1 grime, layer 2 wet patches on ground only (`ConcreteFloor`, asphalt, dirt), all world-space
+  triplanar with height-based blending and main-layer influence. `WeatherMask.png`: R grime, G wet, **A = 1** (HDRP
+  reads the main layer's weight from alpha). Objects named `*Floor*`/`*Ground*` count as ground.
+- **Edge wear:** `MeshKit` writes UV1.x = 0.75 on chamfers/edge bands (0.25 on faces); worn finishes
+  (`SurfaceFinishes.WearsAtEdges`) sample `EdgeWear_Detail.png` with UV1 (left half neutral, right half bare metal).
+- **Noise helpers:** `SurfaceFinishes.Smoothstep` is the shader smoothstep; `Mathf.SmoothStep(a, b, t)` interpolates
+  between a and b and must not be used as a threshold.
+- **Impacts:** steel (`SurfaceMaterialSO.sparks`) throws collision-enabled stretched sparks along the reflected path
+  (double on ricochet) and leaves an emissive thermal ring decal (`FadingDecal`, (1 − t)² over 3 s, not on ricochet);
+  masonry and soil (`lingeringDust`) leave a pooled `VolumetricPuff` (LocalVolumetricFog) that spreads and thins.
+- **Muzzle:** per shot a shock cone (lathe mesh, ~45 ms, scaled by √flash), HDR embers, and at most every 0.12 s a
+  volumetric smoke wisp; suppressed builds (flash 0) skip shock and embers.
+- **Night vision** (`NightVisionGoggles`, player): N / hold View flips a Player-layer global volume in over 0.35 s —
+  monochrome white (P45) or green phosphor, auto-brightness exposure (down to EV −4, `gain` EV above normal), bloom
+  halos, scintillation grain, round tube vignette. Sets `FPS.Core.NightVision.Active`: lasers swap to their infrared
+  material (`TacticalDevice` IR beam), and with a laser fitted aiming becomes canted active aim (45° roll, laser forced
+  on, no optic or zoom).
+- **Scope lens:** the PiP output goes through `Hidden/FPS/ScopeLens` (`ProceduralADSAndOpticsController.lensShader`):
+  barrel distortion, rim chromatic aberration, eye-relief shadow disc, field stop, etched duplex and an HDR lit centre
+  (`WeaponSight.ConfigureReticle`: `DuplexDot` = 1, `Chevron` = 2). Without the shader the vignette shadow is used.
+
 ## Milestones
 
 - [x] **M1** Project init, `CLAUDE.md`, assemblies, `InputReader`, `EventBus`, `ObjectPoolManager`, `ProjectSetupWizard`
@@ -423,7 +457,7 @@ Contracts for later milestones:
 - [x] **M9** Game modes, match director, tactical equipment
 - [x] **M10** 3D gunsmith workbench, loadout persistence, HDRP settings menu
 - [x] **M11** Meshy asset pipeline, high-detail procedural models, weapon mechanisms, battle rifle and sidearm
-- [ ] **M12** Photoreal HDRP overhaul (SSGI/SSR, contact shadows, physical sky, weathered materials, combat VFX, NVG)
+- [x] **M12** Photoreal HDRP overhaul (SSGI/SSR, contact shadows, physical sky, weathered materials, combat VFX, NVG)
 - [ ] **M13** Physical gunshot synthesis, environment tails, Doppler cracks, gear foley
 - [ ] **M14** Mantling and vaulting, slide cancel, compressed ready, physical doors, inspect, camera kick
 - [ ] **M15** Deployment station, scene flow, loading screen, complete settings and key rebinding

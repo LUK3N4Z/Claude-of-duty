@@ -55,6 +55,8 @@ namespace FPS.Core
         public event Action InteractPressed;
         /// <summary>Toggle the weapon's flashlight / laser.</summary>
         public event Action ToggleDevicePressed;
+        /// <summary>Night vision goggles down / up (N, hold View).</summary>
+        public event Action ToggleNightVisionPressed;
         /// <summary>Lethal throwable: press pulls the pin and cooks, release throws.</summary>
         public event Action LethalPressed;
         public event Action LethalReleased;
@@ -68,7 +70,7 @@ namespace FPS.Core
         private InputAction menu;
         private InputAction move, look, fire, aim, sprint, tacticalSprint, holdBreath, walkSlow, walkSpeedAdjust;
         private InputAction crouch, prone, leanLeft, leanRight, reload, checkMagazine, changeFireMode, switchSight, mountWeapon;
-        private InputAction selectPrimary, selectSecondary, switchWeapon, interact, toggleDevice, throwLethal, throwTactical;
+        private InputAction selectPrimary, selectSecondary, switchWeapon, interact, toggleDevice, throwLethal, throwTactical, toggleNightVision;
         private double lastReloadTapTime = double.NegativeInfinity;
 
         public Vector2 Move => move.ReadValue<Vector2>();
@@ -160,6 +162,7 @@ namespace FPS.Core
             switchWeapon = Find("SwitchWeapon");
             interact = Find("Interact");
             toggleDevice = Find("ToggleDevice");
+            toggleNightVision = Find("ToggleNightVision");
             throwLethal = Find("ThrowLethal");
             throwTactical = Find("ThrowTactical");
             playerMap.actionTriggered += OnActionTriggered;
@@ -221,6 +224,7 @@ namespace FPS.Core
                 else if (action == switchWeapon) WeaponSlotRequested?.Invoke(-1);
                 else if (action == interact) InteractPressed?.Invoke();
                 else if (action == toggleDevice) ToggleDevicePressed?.Invoke();
+                else if (action == toggleNightVision) ToggleNightVisionPressed?.Invoke();
                 else if (action == walkSpeedAdjust)
                 {
                     float scroll = context.ReadValue<float>();

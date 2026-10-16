@@ -10,13 +10,19 @@ namespace FPS.EditorTools
     /// polygon prisms and side-profile extrusions, picatinny rails, tori and ellipsoids, under a transform stack.
     /// Triangles are wound from their intended normal, so every face points outward whatever order points arrive in.
     /// UVs are planar or cylindrical in metres times <see cref="UvScale"/>, so tiling PBR materials keep a constant
-    /// texel density across parts of any size.
+    /// texel density across parts of any size. UV1 marks wear: u = 0.75 on chamfers and small edge bands (where paint
+    /// and anodizing rub off first), 0.25 on broad faces, with v a position-based noise coordinate; the finishes'
+    /// edge-wear detail map reads it.
     /// </summary>
     internal sealed class MeshKit
     {
         private readonly List<Vector3> vertices = new List<Vector3>();
         private readonly List<Vector3> normals = new List<Vector3>();
         private readonly List<Vector2> uvs = new List<Vector2>();
+        private readonly List<Vector2> wear = new List<Vector2>();
+        /// <summary>Lathe bands shorter than this count as edges for wear (m).</summary>
+        private const float EdgeBand = 0.0035f;
+        private bool edge;
         private readonly List<int> triangles = new List<int>();
         private readonly Stack<Matrix4x4> stack = new Stack<Matrix4x4>();
         private Matrix4x4 matrix = Matrix4x4.identity;
@@ -78,6 +84,7 @@ namespace FPS.EditorTools
             }
 
             if (b <= 0f) return;
+            edge = true; // chamfer strips and corners wear first
 
             for (int a = 0; a < 3; a++)
             {
@@ -111,6 +118,7 @@ namespace FPS.EditorTools
             for (int sy = -1; sy <= 1; sy += 2)
             for (int sz = -1; sz <= 1; sz += 2)
                 Polygon(new[] { V(sx, sy, sz, 0), V(sx, sy, sz, 1), V(sx, sy, sz, 2) }, new Vector3(sx, sy, sz));
+            edge = false;
         }
 
         /// <summary>
@@ -135,6 +143,7 @@ namespace FPS.EditorTools
             {
                 Vector2 a = profile[s], b = profile[s + 1];
                 if ((b - a).sqrMagnitude < 1e-12f) continue;
+                edge = (b - a).magnitude < EdgeBand && a.x > 1e-6f && b.x > 1e-6f; // chamfers and lips, not caps
                 Vector2 na = smooth && s > 0 ? (segmentNormals[s - 1] + segmentNormals[s]).normalized : segmentNormals[s];
                 Vector2 nb = smooth && s < segmentNormals.Length - 1 ? (segmentNormals[s] + segmentNormals[s + 1]).normalized : segmentNormals[s];
                 int baseIndex = vertices.Count;
@@ -159,6 +168,8 @@ namespace FPS.EditorTools
                     if (b.x > 1e-6f) Triangle(r0 + 1, r1, r1 + 1, expected);
                 }
             }
+
+            edge = false;
         }
 
         /// <summary>Closed cylinder along local +Z from <paramref name="z0"/> to <paramref name="z1"/>, ends chamfered by <paramref name="chamfer"/>.</summary>
@@ -298,6 +309,7 @@ namespace FPS.EditorTools
             mesh.SetVertices(vertices);
             mesh.SetNormals(normals);
             mesh.SetUVs(0, uvs);
+            mesh.SetUVs(1, wear);
             mesh.SetTriangles(triangles, 0);
             mesh.RecalculateTangents();
             mesh.RecalculateBounds();
@@ -336,9 +348,11 @@ namespace FPS.EditorTools
 
         private int AddVertex(Vector3 position, Vector3 normal, Vector2 uv)
         {
-            vertices.Add(matrix.MultiplyPoint3x4(position));
+            Vector3 world = matrix.MultiplyPoint3x4(position);
+            vertices.Add(world);
             normals.Add(matrix.MultiplyVector(normal).normalized);
             uvs.Add(uv);
+            wear.Add(new Vector2(edge ? 0.75f : 0.25f, (world.x * 1.3f + world.y * 2.1f + world.z * 0.7f) * 12f));
             return vertices.Count - 1;
         }
 

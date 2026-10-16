@@ -15,6 +15,7 @@ namespace FPS.EditorTools
         private const string PlayerPrefabPath = "Assets/_Project/Prefabs/Player/Player.prefab";
         private const string TestScenePath = "Assets/_Project/Scenes/LocomotionTestRange.unity";
         private const string IceMaterialPath = "Assets/_Project/Settings/Physics/Ice.asset";
+        private const string ScopeLensShaderPath = "Assets/_Project/Art/Shaders/ScopeLens.shader";
         private const StaticEditorFlags LevelStaticFlags = StaticEditorFlags.BatchingStatic | StaticEditorFlags.ContributeGI |
                                                            StaticEditorFlags.OccluderStatic | StaticEditorFlags.OccludeeStatic |
                                                            StaticEditorFlags.ReflectionProbeStatic;
@@ -155,6 +156,9 @@ namespace FPS.EditorTools
             ProceduralProps.PlaceWeaponRack(level, "Secondary Rack", new Vector3(6.4f, 0.8f, -3.2f), Quaternion.identity, 1,
                 TestWeaponBuilder.MarksmanName, TestWeaponBuilder.SidearmName);
 
+            WorldLook.Interior(level, "Shoot House", new Vector3(-26f, 1.5f, 6f), new Vector3(5.7f, 3f, 5.7f));
+            EnvironmentMaterials.Dress(level, EnvironmentSurface.Concrete);
+
             AIContentBuilder.BuildEncounters(level); // last: bakes the NavMesh over all of the level
 
             var player = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab, scene);
@@ -166,36 +170,15 @@ namespace FPS.EditorTools
         }
 
         /// <summary>Light volumetric fog so flashlight and muzzle-flash cones read in the air.</summary>
+        /// <summary>
+        /// The photoreal world look for a level: pipeline features, the shared sky/exposure/grading/fog volume and the
+        /// scene's directional light calibrated as the sun.
+        /// </summary>
         internal static void AtmosphereVolume(Transform level)
         {
-            const string profilePath = "Assets/_Project/Settings/Rendering/TestRangeAtmosphere.asset";
-            var profile = AssetDatabase.LoadAssetAtPath<UnityEngine.Rendering.VolumeProfile>(profilePath);
-            if (profile == null)
-            {
-                ProjectSetupWizard.EnsureFolder(FolderOf(profilePath));
-                profile = ScriptableObject.CreateInstance<UnityEngine.Rendering.VolumeProfile>();
-                AssetDatabase.CreateAsset(profile, profilePath);
-            }
-
-            if (!profile.TryGet(out UnityEngine.Rendering.HighDefinition.Fog fog))
-            {
-                fog = profile.Add<UnityEngine.Rendering.HighDefinition.Fog>();
-                AssetDatabase.AddObjectToAsset(fog, profile);
-            }
-
-            // Thin outdoors so the 300 m targets stay readable; the shoot house adds its own dust.
-            fog.enabled.Override(true);
-            fog.enableVolumetricFog.Override(true);
-            fog.meanFreePath.Override(250f);
-            fog.albedo.Override(new Color(0.8f, 0.82f, 0.85f));
-            EditorUtility.SetDirty(fog);
-            AssetDatabase.SaveAssets();
-
-            var volumeObject = new GameObject("Atmosphere (volumetric fog)");
-            volumeObject.transform.SetParent(level, false);
-            var volume = volumeObject.AddComponent<UnityEngine.Rendering.Volume>();
-            volume.isGlobal = true;
-            volume.sharedProfile = profile;
+            WorldLook.EnablePipelineFeatures();
+            WorldLook.AddVolume(level);
+            WorldLook.ConfigureSun(level.gameObject.scene, new Vector3(50f, -35f, 0f));
         }
 
         private static void BuildPlayer(GameObject root, InputReader input)
@@ -218,6 +201,12 @@ namespace FPS.EditorTools
             EditorUtility.SetDirty(profiles);
             if (!root.TryGetComponent(out FPS.Gameplay.HDRPSettingsMenu _)) root.AddComponent<FPS.Gameplay.HDRPSettingsMenu>();
             EffectsContentBuilder.ConfigurePlayer(root);
+
+            // Night vision goggles (N) and the PiP lens pass (refraction, aberration, parallax shadow, lit reticle).
+            if (!root.TryGetComponent(out NightVisionGoggles goggles)) goggles = root.AddComponent<NightVisionGoggles>();
+            TestWeaponBuilder.Configure(goggles, so => TestWeaponBuilder.Set(so, "gain", 1f));
+            TestWeaponBuilder.Configure(root.GetComponent<ProceduralADSAndOpticsController>(),
+                so => TestWeaponBuilder.Set(so, "lensShader", AssetDatabase.LoadAssetAtPath<Shader>(ScopeLensShaderPath)));
 
             var controller = root.GetComponent<RealisticWeaponController>();
             var serialized = new SerializedObject(controller);

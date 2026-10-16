@@ -230,6 +230,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "ToggleNightVision",
+                    "type": "Button",
+                    "id": "0747ae8a-b67e-5735-b3ed-ccdb79ea301c",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -732,7 +741,7 @@
                     "name": "",
                     "id": "7924ef38-ea5b-5662-8fa6-38cb199dd56c",
                     "path": "<Gamepad>/select",
-                    "interactions": "",
+                    "interactions": "Tap",
                     "processors": "",
                     "groups": "Gamepad",
                     "action": "ToggleDevice",
@@ -802,6 +811,28 @@
                     "processors": "",
                     "groups": "Gamepad",
                     "action": "ThrowTactical",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "3b90dcbc-bb0b-561a-a654-8dd877273629",
+                    "path": "<Keyboard>/n",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "ToggleNightVision",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "15d91a1f-189f-5526-9980-91e663140a04",
+                    "path": "<Gamepad>/select",
+                    "interactions": "Hold(duration=0.4)",
+                    "processors": "",
+                    "groups": "Gamepad",
+                    "action": "ToggleNightVision",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

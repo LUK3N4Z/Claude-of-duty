@@ -33,27 +33,38 @@ namespace FPS.EditorTools
 
             Texture2D puff = Texture("PuffFlipbook", false, FlipbookPixel, 256);
             Texture2D hole = Texture("BulletHole", false, BulletHolePixel, 128);
+            Texture2D crater = Texture("BulletCraterNormal", true, CraterNormalPixel, 128);
+            Texture2D dot = Texture("SoftDot", false, SoftDotPixel, 64);
+            Unlit("Ember", Color.white, dot, true, false);
+            Unlit("Spark", Color.white, dot, true, false);
+            Material shock = Unlit("MuzzleShock", Color.white, Texture("ShockGradient", false, ShockPixel, 64), true, false);
+            shock.SetFloat("_DoubleSidedEnable", 1f); // the cone reads from inside and out
+            HDMaterial.ValidateMaterial(shock);
+            EditorUtility.SetDirty(shock);
+            ThermalDecal("ImpactThermal", Texture("ThermalRing", false, ThermalRingPixel, 128));
+            VolumeNoise();
+            ShockMesh();
             Texture2D haze = Texture("HeatDistortion", true, DistortionPixel, 128);
             Unlit("ImpactDust", Color.white, puff, false, false);
             Unlit("MuzzleGas", new Color(1f, 0.75f, 0.45f, 0.9f), puff, true, false);
             Unlit("BreechSmoke", new Color(0.55f, 0.55f, 0.55f, 0.45f), puff, false, false);
             Unlit("HeatShimmer", Color.white, haze, false, true);
 
-            Surface("Concrete", new Color(0.17f, 0.16f, 0.15f), new Color(0.6f, 0.58f, 0.55f, 0.8f), hole,
+            Surface("Concrete", new Color(0.17f, 0.16f, 0.15f), new Color(0.6f, 0.58f, 0.55f, 0.8f), hole, crater, false, true,
                 s => s.Noise(1f, 0f, 0.0005f, 0.02f).HighPass(1200f).Noise(0.3f, 0.01f, 0.01f, 0.12f).LowPass(5000f));
-            Surface("Brick", new Color(0.2f, 0.12f, 0.1f), new Color(0.55f, 0.35f, 0.28f, 0.8f), hole,
+            Surface("Brick", new Color(0.2f, 0.12f, 0.1f), new Color(0.55f, 0.35f, 0.28f, 0.8f), hole, crater, false, true,
                 s => s.Noise(1f, 0f, 0.0005f, 0.025f).HighPass(800f).Noise(0.35f, 0.01f, 0.01f, 0.12f).LowPass(3500f));
-            Surface("Wood", new Color(0.12f, 0.08f, 0.05f), new Color(0.45f, 0.35f, 0.22f, 0.8f), hole,
+            Surface("Wood", new Color(0.12f, 0.08f, 0.05f), new Color(0.45f, 0.35f, 0.22f, 0.8f), hole, crater, false, false,
                 s => s.Tone(320f, 280f, 0.8f, 0f, 0.001f, 0.04f).Noise(0.5f, 0f, 0.0005f, 0.02f).LowPass(4000f));
-            Surface("Drywall", new Color(0.26f, 0.25f, 0.24f), new Color(0.85f, 0.84f, 0.82f, 0.85f), hole,
+            Surface("Drywall", new Color(0.26f, 0.25f, 0.24f), new Color(0.85f, 0.84f, 0.82f, 0.85f), hole, crater, false, true,
                 s => s.Noise(0.8f, 0f, 0.001f, 0.03f).LowPass(1800f).Tone(180f, 160f, 0.4f, 0f, 0.001f, 0.03f));
-            Surface("Metal", new Color(0.08f, 0.08f, 0.09f), new Color(1f, 0.78f, 0.45f, 0.9f), hole,
+            Surface("Metal", new Color(0.08f, 0.08f, 0.09f), new Color(1f, 0.78f, 0.45f, 0.9f), hole, crater, true, false,
                 s => s.Partials(new[] { 1800f, 3300f, 5100f, 7400f }, 0.9f, 0f, 0.25f).Noise(0.4f, 0f, 0.0003f, 0.005f));
-            Surface("Glass", new Color(0.55f, 0.58f, 0.62f), new Color(0.85f, 0.9f, 0.95f, 0.6f), hole,
+            Surface("Glass", new Color(0.55f, 0.58f, 0.62f), new Color(0.85f, 0.9f, 0.95f, 0.6f), hole, crater, false, false,
                 s => s.Noise(0.6f, 0f, 0.0005f, 0.06f).HighPass(3000f).Partials(new[] { 3800f, 6100f, 8900f }, 0.6f, 0f, 0.08f));
-            Surface("Dirt", new Color(0.1f, 0.08f, 0.06f), new Color(0.42f, 0.34f, 0.25f, 0.85f), hole,
+            Surface("Dirt", new Color(0.1f, 0.08f, 0.06f), new Color(0.42f, 0.34f, 0.25f, 0.85f), hole, crater, false, true,
                 s => s.Noise(0.8f, 0f, 0.002f, 0.03f).LowPass(600f).Tone(90f, 60f, 0.5f, 0f, 0.002f, 0.05f));
-            Surface("Flesh", Color.clear, new Color(0.35f, 0.04f, 0.03f, 0.7f), null,
+            Surface("Flesh", Color.clear, new Color(0.35f, 0.04f, 0.03f, 0.7f), null, null, false, false,
                 s => s.Noise(0.4f, 0f, 0.002f, 0.03f).LowPass(900f).Tone(140f, 90f, 0.8f, 0f, 0.002f, 0.05f));
 
             WeaponReport(TestWeaponBuilder.CarbineName, 1f, 1f, false);
@@ -91,12 +102,22 @@ namespace FPS.EditorTools
                 SetClips(TestWeaponBuilder.Property(so, "supersonicCracks"), Load(Clip("Foley", "SupersonicCrack_0")), Load(Clip("Foley", "SupersonicCrack_1")));
                 TestWeaponBuilder.Set(so, "tinnitus", Tinnitus());
             });
-            TestWeaponBuilder.Configure(player.GetComponent<ImpactEffectsController>(), so => TestWeaponBuilder.Set(so, "dustMaterial", Vfx("ImpactDust")));
+            TestWeaponBuilder.Configure(player.GetComponent<ImpactEffectsController>(), so =>
+            {
+                TestWeaponBuilder.Set(so, "dustMaterial", Vfx("ImpactDust"));
+                TestWeaponBuilder.Set(so, "sparkMaterial", Vfx("Spark"));
+                TestWeaponBuilder.Set(so, "thermalDecalMaterial", Vfx("ImpactThermal"));
+                TestWeaponBuilder.Set(so, "dustVolumeMask", AssetDatabase.LoadAssetAtPath<Texture3D>(VolumeNoisePath));
+            });
             TestWeaponBuilder.Configure(player.GetComponent<MuzzleAndSmokeVFXController>(), so =>
             {
                 TestWeaponBuilder.Set(so, "gasMaterial", Vfx("MuzzleGas"));
                 TestWeaponBuilder.Set(so, "smokeMaterial", Vfx("BreechSmoke"));
                 TestWeaponBuilder.Set(so, "shimmerMaterial", Vfx("HeatShimmer"));
+                TestWeaponBuilder.Set(so, "shockMesh", AssetDatabase.LoadAssetAtPath<Mesh>(ShockMeshPath));
+                TestWeaponBuilder.Set(so, "shockMaterial", Vfx("MuzzleShock"));
+                TestWeaponBuilder.Set(so, "emberMaterial", Vfx("Ember"));
+                TestWeaponBuilder.Set(so, "smokeVolumeMask", AssetDatabase.LoadAssetAtPath<Texture3D>(VolumeNoisePath));
             });
         }
 
@@ -251,7 +272,8 @@ namespace FPS.EditorTools
             return profile;
         }
 
-        private static void Surface(string surfaceName, Color decalColor, Color dustColor, Texture2D hole, Func<AudioSynth, AudioSynth> impact)
+        private static void Surface(string surfaceName, Color decalColor, Color dustColor, Texture2D hole, Texture2D crater, bool sparks, bool lingeringDust,
+            Func<AudioSynth, AudioSynth> impact)
         {
             var clips = new AudioClip[2];
             for (int i = 0; i < clips.Length; i++)
@@ -260,13 +282,15 @@ namespace FPS.EditorTools
                 clips[i] = AudioSynth.LoadOrCreate(Clip("Impacts", $"Impact_{surfaceName}_{i}"), () => impact(new AudioSynth(0.4f, seed)));
             }
 
-            Material decal = hole != null ? Decal($"Decal_{surfaceName}", decalColor, hole) : null;
+            Material decal = hole != null ? Decal($"Decal_{surfaceName}", decalColor, hole, crater) : null;
             SurfaceMaterialSO surface = BallisticsContentBuilder.Surface(surfaceName);
             TestWeaponBuilder.Configure(surface, so =>
             {
                 SetClips(TestWeaponBuilder.Property(so, "impactClips"), clips);
                 TestWeaponBuilder.Set(so, "impactDecal", decal);
                 TestWeaponBuilder.Property(so, "impactDustColor").colorValue = dustColor;
+                TestWeaponBuilder.Set(so, "sparks", sparks);
+                TestWeaponBuilder.Set(so, "lingeringDust", lingeringDust);
             });
         }
 
@@ -297,19 +321,161 @@ namespace FPS.EditorTools
             return material;
         }
 
-        private static Material Decal(string materialName, Color color, Texture texture)
+        /// <summary>Bullet-hole decal: dark hole and spall in the base map, a crater normal (depth and raised lip) blended by its alpha.</summary>
+        private static Material Decal(string materialName, Color color, Texture texture, Texture normal)
         {
             string path = $"{VfxFolder}/{materialName}.mat";
             var material = AssetDatabase.LoadAssetAtPath<Material>(path);
-            if (material != null) return material;
-
-            material = new Material(Shader.Find("HDRP/Decal")) { name = materialName };
+            bool created = material == null;
+            if (created) material = new Material(Shader.Find("HDRP/Decal")) { name = materialName };
             material.SetTexture("_BaseColorMap", texture);
             material.SetColor("_BaseColor", color);
             material.SetFloat("_DecalBlend", 1f);
+            material.SetTexture("_NormalMap", normal);
+            material.SetFloat("_AffectNormal", normal != null ? 1f : 0f);
+            material.SetFloat("_NormalBlendSrc", 1f); // base colour alpha
             HDMaterial.ValidateMaterial(material);
-            AssetDatabase.CreateAsset(material, path);
+            if (created) AssetDatabase.CreateAsset(material, path);
+            else EditorUtility.SetDirty(material);
             return material;
+        }
+
+        /// <summary>Emissive-only decal: the hot ring a round leaves in steel (faded by FadingDecal).</summary>
+        private static Material ThermalDecal(string materialName, Texture ring)
+        {
+            string path = $"{VfxFolder}/{materialName}.mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            bool created = material == null;
+            if (created) material = new Material(Shader.Find("HDRP/Decal")) { name = materialName };
+            material.SetFloat("_AffectAlbedo", 0f);
+            material.SetFloat("_AffectNormal", 0f);
+            material.SetFloat("_AffectEmission", 1f);
+            material.SetTexture("_EmissiveColorMap", ring);
+            Color ldr = new Color(1f, 0.55f, 0.2f);
+            const float nits = 2500f;
+            material.SetColor("_EmissiveColorLDR", ldr);
+            material.SetFloat("_UseEmissiveIntensity", 1f);
+            material.SetFloat("_EmissiveIntensity", nits);
+            material.SetColor("_EmissiveColor", ldr.linear * nits);
+            material.SetFloat("_EmissiveExposureWeight", 0.6f); // glows in daylight, not only in the dark
+            HDMaterial.ValidateMaterial(material);
+            if (created) AssetDatabase.CreateAsset(material, path);
+            else EditorUtility.SetDirty(material);
+            return material;
+        }
+
+        internal const string VolumeNoisePath = VfxFolder + "/VolumeNoise.asset";
+        internal const string ShockMeshPath = MeshStore.Folder + "/VFX/VFX_MuzzleShock.asset";
+
+        /// <summary>Tileable 32³ noise for volumetric smoke and dust (RGB white, A density pockets).</summary>
+        private static Texture3D VolumeNoise()
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<Texture3D>(VolumeNoisePath);
+            if (existing != null) return existing;
+
+            const int size = 32;
+            var texture = new Texture3D(size, size, size, TextureFormat.RGBA32, false) { name = "VolumeNoise", wrapMode = TextureWrapMode.Repeat };
+            var pixels = new Color32[size * size * size];
+            for (int z = 0; z < size; z++)
+            {
+                for (int y = 0; y < size; y++)
+                {
+                    for (int x = 0; x < size; x++)
+                    {
+                        float n = 0f, amplitude = 0.5f, total = 0f;
+                        for (int octave = 0; octave < 3; octave++)
+                        {
+                            int period = 4 << octave;
+                            n += Noise3(x * period / (float)size, y * period / (float)size, z * period / (float)size, period, 97 + octave) * amplitude;
+                            total += amplitude;
+                            amplitude *= 0.5f;
+                        }
+
+                        byte density = (byte)Mathf.RoundToInt(SurfaceFinishes.Smoothstep(0.3f, 0.75f, n / total) * 255f);
+                        pixels[(z * size + y) * size + x] = new Color32(255, 255, 255, density);
+                    }
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply(false);
+            AssetDatabase.CreateAsset(texture, VolumeNoisePath);
+            return texture;
+        }
+
+        private static float Noise3(float x, float y, float z, int period, int seed)
+        {
+            int x0 = Mathf.FloorToInt(x), y0 = Mathf.FloorToInt(y), z0 = Mathf.FloorToInt(z);
+            float fx = Smooth(x - x0), fy = Smooth(y - y0), fz = Smooth(z - z0);
+            float Lattice(int i, int j, int k)
+            {
+                unchecked
+                {
+                    uint h = (uint)(((i % period + period) % period) * 73856093 ^ ((j % period + period) % period) * 19349663 ^
+                                    ((k % period + period) % period) * 83492791 ^ seed * 2654435761);
+                    h = (h ^ (h >> 13)) * 1274126177u;
+                    return ((h ^ (h >> 16)) & 0xFFFF) / 65535f;
+                }
+            }
+
+            float a = Mathf.Lerp(Lattice(x0, y0, z0), Lattice(x0 + 1, y0, z0), fx);
+            float b = Mathf.Lerp(Lattice(x0, y0 + 1, z0), Lattice(x0 + 1, y0 + 1, z0), fx);
+            float c = Mathf.Lerp(Lattice(x0, y0, z0 + 1), Lattice(x0 + 1, y0, z0 + 1), fx);
+            float d = Mathf.Lerp(Lattice(x0, y0 + 1, z0 + 1), Lattice(x0 + 1, y0 + 1, z0 + 1), fx);
+            return Mathf.Lerp(Mathf.Lerp(a, b, fy), Mathf.Lerp(c, d, fy), fz);
+        }
+
+        private static float Smooth(float t) => t * t * (3f - 2f * t);
+
+        /// <summary>The muzzle shock: a 1 m bottle-shaped blast envelope along +Z (UV v runs base to tip).</summary>
+        private static Mesh ShockMesh()
+        {
+            var kit = new MeshKit { UvScale = 1f };
+            kit.Lathe(new[]
+            {
+                new Vector2(0.06f, 0f), new Vector2(0.3f, 0.12f), new Vector2(0.48f, 0.35f), new Vector2(0.5f, 0.55f),
+                new Vector2(0.36f, 0.8f), new Vector2(0.12f, 0.96f), new Vector2(0f, 1f),
+            }, 20, true);
+            return MeshStore.Save("VFX", kit.ToMesh("VFX_MuzzleShock"));
+        }
+
+        private static Color CraterNormalPixel(float u, float v)
+        {
+            // Height: a deep hole, a raised spall lip, then the undisturbed surface.
+            float Height(float x, float y)
+            {
+                float r = Mathf.Sqrt(x * x + y * y);
+                return r < 0.07f ? -1f : -0.6f * Mathf.Exp(-(r - 0.07f) * 14f) + 0.35f * Mathf.Exp(-Mathf.Pow((r - 0.13f) * 22f, 2f));
+            }
+
+            float px = u - 0.5f, py = v - 0.5f, e = 0.004f;
+            float dx = (Height(px + e, py) - Height(px - e, py)) / (2f * e);
+            float dy = (Height(px, py + e) - Height(px, py - e)) / (2f * e);
+            Vector3 n = new Vector3(-dx * 0.04f, -dy * 0.04f, 1f).normalized;
+            return new Color(n.x * 0.5f + 0.5f, n.y * 0.5f + 0.5f, n.z * 0.5f + 0.5f, 1f); // alpha 1: HDRP unpacks x by alpha
+        }
+
+        private static Color SoftDotPixel(float u, float v)
+        {
+            float x = u - 0.5f, y = v - 0.5f;
+            float a = Mathf.Exp(-(x * x + y * y) * 40f);
+            return new Color(1f, 1f, 1f, a);
+        }
+
+        private static Color ShockPixel(float u, float v)
+        {
+            float streaks = Mathf.PerlinNoise(u * 24f, v * 3f);
+            float a = Mathf.Pow(1f - v, 1.5f) * (0.55f + 0.45f * streaks);
+            return new Color(a, a * 0.85f, a * 0.65f, a);
+        }
+
+        private static Color ThermalRingPixel(float u, float v)
+        {
+            float x = u - 0.5f, y = v - 0.5f;
+            float r = Mathf.Sqrt(x * x + y * y);
+            float heat = r < 0.06f ? 0f : Mathf.Exp(-(r - 0.06f) * 16f) * Mathf.Clamp01((r - 0.06f) * 60f);
+            Color hot = Color.Lerp(new Color(1f, 0.35f, 0.08f), new Color(1f, 0.92f, 0.7f), heat);
+            return new Color(hot.r * heat, hot.g * heat, hot.b * heat, heat);
         }
 
         private static Texture2D Texture(string textureName, bool linear, Func<float, float, Color> pixel, int size)

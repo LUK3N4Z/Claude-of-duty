@@ -22,6 +22,12 @@ namespace FPS.Audio
             public float GravityModifier;
             public float NoiseStrength;
             public int MaxParticles;
+            /// <summary>Stretch along velocity (s of travel per unit length); 0 keeps billboards.</summary>
+            public float Stretch;
+            /// <summary>Plain sprite (no 4×4 alpha flipbook): sparks and embers.</summary>
+            public bool NoFlipbook;
+            /// <summary>Bounce off world geometry (sparks).</summary>
+            public bool Collide;
         }
 
         /// <summary>A stopped, non-looping, world-space system emitting along its +Z through a cone; drive it with Emit or rate.</summary>
@@ -65,14 +71,29 @@ namespace FPS.Audio
             }
 
             ParticleSystem.TextureSheetAnimationModule sheet = system.textureSheetAnimation;
-            sheet.enabled = true;
+            sheet.enabled = !settings.NoFlipbook;
             sheet.numTilesX = FlipbookTiles;
             sheet.numTilesY = FlipbookTiles;
             sheet.cycleCount = 1;
 
+            if (settings.Collide)
+            {
+                ParticleSystem.CollisionModule collision = system.collision;
+                collision.enabled = true;
+                collision.type = ParticleSystemCollisionType.World;
+                collision.mode = ParticleSystemCollisionMode.Collision3D;
+                collision.quality = ParticleSystemCollisionQuality.Low;
+                collision.collidesWith = FPS.Core.GameLayers.EnvironmentMask;
+                collision.bounce = 0.35f;
+                collision.dampen = 0.45f;
+                collision.lifetimeLoss = 0.25f;
+            }
+
             var renderer = systemObject.GetComponent<ParticleSystemRenderer>();
             renderer.sharedMaterial = material;
-            renderer.renderMode = ParticleSystemRenderMode.Billboard;
+            renderer.renderMode = settings.Stretch > 0f ? ParticleSystemRenderMode.Stretch : ParticleSystemRenderMode.Billboard;
+            renderer.velocityScale = settings.Stretch;
+            renderer.lengthScale = 1f;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
             if (systemObject.activeInHierarchy) system.Play(); // armed; nothing appears until Emit or a rate is set

@@ -264,3 +264,6 @@ MonoBehaviour:
   lensRenderer: {fileID: 0}
   eyeBoxRadius: 0.006
   eyeReliefTolerance: 0.02
+  reticle: 0
+  reticleGlow: {r: 4, g: 0.25, b: 0.12, a: 1}
+  reticleScale: 1

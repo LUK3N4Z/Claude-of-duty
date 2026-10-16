@@ -38,6 +38,10 @@ namespace FPS.Ballistics
         [Tooltip("HDRP/Decal material for bullet marks; none leaves no mark.")]
         [SerializeField] private Material impactDecal;
         [SerializeField] private Color impactDustColor = new Color(0.55f, 0.53f, 0.5f, 0.8f);
+        [Tooltip("Hard steel: hits throw a spark shower and leave a glowing ring that cools over a few seconds.")]
+        [SerializeField] private bool sparks;
+        [Tooltip("Friable masonry and soil: hits leave a lingering volumetric dust cloud.")]
+        [SerializeField] private bool lingeringDust;
 
         public string DisplayName => displayName;
         public float DensityKgM3 => densityKgM3;
@@ -51,6 +55,8 @@ namespace FPS.Ballistics
 
         public Material ImpactDecal => impactDecal;
         public Color ImpactDustColor => impactDustColor;
+        public bool Sparks => sparks;
+        public bool LingeringDust => lingeringDust;
 
         public AudioClip RandomCasingClip() =>
             casingImpactClips.Length == 0 ? null : casingImpactClips[Random.Range(0, casingImpactClips.Length)];

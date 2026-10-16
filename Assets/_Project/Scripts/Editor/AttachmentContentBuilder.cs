@@ -63,8 +63,9 @@ namespace FPS.EditorTools
                 // Eyepiece at the mount (the sight aligner); the lens fills the measured eyepiece.
                 float lensRadius = Mathf.Max(0.008f, Mathf.Min(shape.RearHalfExtents.x, shape.RearHalfExtents.y) * (shape.Imported ? 0.8f : 1f));
                 MeshRenderer lens = Disc(root, "Ocular Lens", disc, shape.Rear.z - 0.001f, lensRadius, UnlitMaterial("Scope Lens", Color.white, null, false));
-                Disc(root, "Reticle", disc, shape.Rear.z - 0.0015f, lensRadius, UnlitMaterial("Scope Reticle", Color.black, ReticleTexture(), true));
-                root.gameObject.AddComponent<WeaponSight>().Configure(4f, 0.07f, 1.25f, lens);
+                var sight = root.gameObject.AddComponent<WeaponSight>();
+                sight.Configure(4f, 0.07f, 1.25f, lens);
+                sight.ConfigureReticle(ReticleStyle.Chevron, new Color(5f, 0.45f, 0.12f), 0.9f); // fibre-lit red chevron
             }, so => Set(so, "adsTimeMultiplier", 1.1f));
             Attachment("Optic_RedDot", "Red Dot Sight", AttachmentSlot.Optic, 0.15f, new Vector3(0f, -0.01f, 0.03f), 0f, (root, shape) =>
             {
@@ -102,7 +103,7 @@ namespace FPS.EditorTools
             AttachmentDataSO laser = Attachment("Rail_Laser", "Visible Laser", AttachmentSlot.Laser, 0.09f, new Vector3(0.01f, 0f, 0f), -1f, (root, shape) =>
             {
                 Transform emitter = Socket(root, "Emitter", shape.Front, Quaternion.identity);
-                root.gameObject.AddComponent<TacticalDevice>().Configure(TacticalDeviceType.Laser, emitter, LaserMaterial());
+                root.gameObject.AddComponent<TacticalDevice>().Configure(TacticalDeviceType.Laser, emitter, LaserMaterial(), InfraredLaserMaterial());
             });
             AttachmentDataSO light = Attachment("Rail_Light", "Weapon Light", AttachmentSlot.Light, 0.12f, new Vector3(-0.012f, 0f, 0.01f), -1f, (root, shape) =>
             {
@@ -171,6 +172,22 @@ namespace FPS.EditorTools
             dot.AddComponent<MeshFilter>().sharedMesh = DiscMesh();
             dot.AddComponent<MeshRenderer>().sharedMaterial = UnlitMaterial("Red Dot", new Color(1f, 0.08f, 0.05f), null, false);
             return dot.transform;
+        }
+
+        /// <summary>The IR beam as night vision shows it: a wide, soft white-green additive line.</summary>
+        private static Material InfraredLaserMaterial()
+        {
+            string path = $"{ArtFolder}/LaserInfrared.mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material != null) return material;
+
+            material = new Material(Shader.Find("HDRP/Unlit")) { name = "LaserInfrared" };
+            HDMaterial.SetSurfaceType(material, true);
+            material.SetFloat("_BlendMode", 1f); // additive
+            material.SetColor("_UnlitColor", new Color(0.55f, 0.9f, 0.6f, 1f));
+            HDMaterial.ValidateMaterial(material);
+            AssetDatabase.CreateAsset(material, path);
+            return material;
         }
 
         private static Material LaserMaterial()

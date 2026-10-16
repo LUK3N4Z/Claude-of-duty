@@ -102,6 +102,9 @@ namespace FPS.EditorTools
             Workshop(level);
             Workbench(level, catalog);
             IndoorRange(level);
+            WorldLook.Interior(level, "Workshop", new Vector3(0f, 1.5f, 0f), new Vector3(12f, 3f, 10f));
+            WorldLook.Interior(level, "Indoor Range", new Vector3(21.5f, 1.5f, 0f), new Vector3(31f, 3f, 6f));
+            EnvironmentMaterials.Dress(level, EnvironmentSurface.Concrete);
 
             var player = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab, scene);
             player.transform.SetPositionAndRotation(new Vector3(-3f, 0f, -2.5f), Quaternion.Euler(0f, 20f, 0f));
@@ -198,6 +201,7 @@ namespace FPS.EditorTools
             lamp.intensity = lumen;
             lamp.range = 12f;
             lamp.shadows = LightShadows.Soft;
+            WorldLook.EnableContactShadows(lamp);
         }
 
         private static BoxCollider Crate(Transform level, string crateName, Vector3 position, Vector3? size = null)

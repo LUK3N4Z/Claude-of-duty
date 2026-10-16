@@ -71,6 +71,17 @@ namespace FPS.Tests
         }
 
         [UnityTest]
+        public IEnumerator Pool_DestroyedWithInstancesOut_TakesThemAlong()
+        {
+            PoolProbe spawned = pool.Spawn(prefab, Vector3.zero, Quaternion.identity, lifetime: 30f);
+            Assert.IsNull(spawned.transform.parent, "spawned at the scene root, outside the pool");
+            Object.DestroyImmediate(pool.gameObject);
+            yield return null;
+            Assert.IsTrue(spawned == null, "an orphan nothing could ever release again");
+            pool = ObjectPoolManager.Instance; // for TearDown
+        }
+
+        [UnityTest]
         public IEnumerator Pool_TimedRelease_SkipsInstanceReusedAfterManualRelease()
         {
             PoolProbe first = pool.Spawn(prefab, Vector3.zero, Quaternion.identity, lifetime: 0.05f);

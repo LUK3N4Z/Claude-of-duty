@@ -28,3 +28,5 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 55f60cb7f001754418c9d490f2e583a7, type: 3}
   impactDecal: {fileID: 2100000, guid: 939b0628c3ad21e428b30f9f8a38d8b8, type: 2}
   impactDustColor: {r: 1, g: 0.78, b: 0.45, a: 0.9}
+  sparks: 1
+  lingeringDust: 0

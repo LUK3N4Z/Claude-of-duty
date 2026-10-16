@@ -8,6 +8,8 @@ namespace FPS.Audio
     /// <summary>
     /// Presents bullet impacts: a pooled HDRP decal from the surface's material (sized by calibre, parented to what was
     /// hit), a dust puff tinted by the surface, and the surface's impact sound delayed by its distance to the listener.
+    /// Steel throws a spark shower (more on a ricochet) and keeps a glowing thermal ring that cools over three seconds;
+    /// masonry and soil leave a lingering volumetric dust cloud lit by the scene.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class ImpactEffectsController : MonoBehaviour
@@ -26,12 +28,32 @@ namespace FPS.Audio
         [SerializeField] private Material dustMaterial;
         [SerializeField, Min(1)] private int dustParticles = 10;
 
+        [Header("Steel")]
+        [Tooltip("HDRP/Unlit additive spark sprite.")]
+        [SerializeField] private Material sparkMaterial;
+        [SerializeField] private Color sparkColor = new Color(6f, 3.2f, 1.1f, 1f);
+        [SerializeField, Min(1)] private int sparksPerHit = 12;
+        [Tooltip("HDRP/Decal, emissive only: the hot ring around a hole in steel.")]
+        [SerializeField] private Material thermalDecalMaterial;
+        [SerializeField] private float thermalSize = 0.045f;
+
+        [Header("Lingering Dust")]
+        [Tooltip("3D noise for the volumetric dust cloud (A = density).")]
+        [SerializeField] private Texture3D dustVolumeMask;
+        [SerializeField] private float dustCloudSize = 0.35f;
+        [SerializeField] private float dustCloudLifetime = 3.5f;
+        [Tooltip("Mean free path of a fresh cloud (m): smaller is thicker.")]
+        [SerializeField] private float dustCloudFreePath = 0.5f;
+
         [Header("Audio")]
         [SerializeField] private float impactMaxDistance = 60f;
         [SerializeField] private float impactMinDistance = 2f;
 
         private DecalProjector decalTemplate;
         private ParticleSystem dustTemplate;
+        private ParticleSystem sparkTemplate;
+        private FadingDecal thermalTemplate;
+        private VolumetricPuff cloudTemplate;
         private AudioEmitter emitterTemplate;
         private MaterialPropertyBlock tint;
         private Transform listener;
@@ -41,6 +63,7 @@ namespace FPS.Audio
             get => dustMaterial;
             set => dustMaterial = value;
         }
+
 
         private void Awake()
         {
@@ -63,13 +86,47 @@ namespace FPS.Audio
                 MaxParticles = 32,
             });
 
+            sparkTemplate = EffectParticles.Create("Impact Sparks", templates, sparkMaterial, new EffectParticles.Settings
+            {
+                Lifetime = new Vector2(0.15f, 0.55f), Speed = new Vector2(2.5f, 9f), Size = new Vector2(0.004f, 0.01f),
+                SizeGrowth = 0.25f, ConeAngle = 55f, ConeRadius = 0.004f, GravityModifier = 1f, MaxParticles = 48,
+                Stretch = 0.035f, NoFlipbook = true, Collide = true,
+            });
+
+            var thermalObject = new GameObject("Thermal Ring");
+            thermalObject.transform.SetParent(templates, false);
+            var thermalProjector = thermalObject.AddComponent<DecalProjector>();
+            thermalProjector.material = thermalDecalMaterial;
+            thermalTemplate = thermalObject.AddComponent<FadingDecal>();
+
+            var cloudObject = new GameObject("Dust Cloud");
+            cloudObject.transform.SetParent(templates, false);
+            var cloudFog = cloudObject.AddComponent<LocalVolumetricFog>();
+            LocalVolumetricFogArtistParameters cloud = cloudFog.parameters;
+            cloud.volumeMask = dustVolumeMask;
+            cloud.textureTiling = Vector3.one;
+            cloud.textureScrollingSpeed = new Vector3(0.05f, 0.12f, 0.03f);
+            cloud.positiveFade = cloud.negativeFade = Vector3.one * 0.45f; // soft edges, no box
+            cloud.falloffMode = LocalVolumetricFogFalloffMode.Exponential;
+            cloud.distanceFadeStart = 40f;
+            cloud.distanceFadeEnd = 60f;
+            cloudFog.parameters = cloud;
+            cloudTemplate = cloudObject.AddComponent<VolumetricPuff>();
+
             var emitterObject = new GameObject("Impact Audio");
             emitterObject.transform.SetParent(templates, false);
             emitterObject.AddComponent<AudioSource>();
             emitterTemplate = emitterObject.AddComponent<AudioEmitter>();
         }
 
-        private void Start() => ObjectPoolManager.Instance.Prewarm(decalTemplate, 16, maxDecals);
+        private void Start()
+        {
+            ObjectPoolManager pool = ObjectPoolManager.Instance;
+            pool.Prewarm(decalTemplate, 16, maxDecals);
+            pool.Prewarm(thermalTemplate, 4, 24);
+            pool.Prewarm(cloudTemplate, 4, 16);
+            pool.Prewarm(sparkTemplate, 4, 16);
+        }
 
         private void OnEnable() => EventBus<ProjectileImpactEvent>.Subscribe(OnImpact);
 
@@ -104,6 +161,38 @@ namespace FPS.Audio
                 dustRenderer.SetPropertyBlock(tint);
                 if (!dust.isPlaying) dust.Play();
                 dust.Emit(Mathf.RoundToInt(dustParticles * Mathf.Clamp(calibre, 0.7f, 1.6f)));
+            }
+
+            bool ricochet = impact.Outcome == ImpactOutcome.Ricocheted;
+            if (surface.Sparks && sparkMaterial != null)
+            {
+                // Sparks leave along the deflected path: the incoming round reflected about the surface.
+                Vector3 incoming = impact.Velocity.sqrMagnitude > 1e-4f ? impact.Velocity.normalized : -impact.Normal;
+                Vector3 spray = Vector3.Reflect(incoming, impact.Normal);
+                ParticleSystem sparks = pool.Spawn(sparkTemplate, impact.Point, Quaternion.LookRotation(Vector3.Slerp(impact.Normal, spray, 0.6f)), null, 1f);
+                var sparkRenderer = sparks.GetComponent<ParticleSystemRenderer>();
+                sparkRenderer.GetPropertyBlock(tint);
+                tint.SetColor(UnlitColorId, sparkColor);
+                sparkRenderer.SetPropertyBlock(tint);
+                if (!sparks.isPlaying) sparks.Play();
+                sparks.Emit(Mathf.RoundToInt(sparksPerHit * (ricochet ? 2f : 1f) * Mathf.Clamp(calibre, 0.7f, 1.8f)));
+
+                if (!ricochet && thermalDecalMaterial != null)
+                {
+                    Transform parent = impact.Collider != null ? impact.Collider.transform : null;
+                    FadingDecal ring = pool.Spawn(thermalTemplate, impact.Point + impact.Normal * (decalDepth * 0.25f),
+                        Quaternion.LookRotation(-impact.Normal), parent, thermalTemplate.Duration);
+                    float ringSize = thermalSize * Mathf.Clamp(calibre, 0.7f, 2f);
+                    ring.GetComponent<DecalProjector>().size = new Vector3(ringSize, ringSize, decalDepth);
+                }
+            }
+
+            if (surface.LingeringDust && dustVolumeMask != null && !ricochet)
+            {
+                VolumetricPuff cloud = pool.Spawn(cloudTemplate, impact.Point + impact.Normal * 0.12f, Quaternion.identity, null, dustCloudLifetime);
+                Color dust = surface.ImpactDustColor;
+                cloud.Play(new Color(dust.r, dust.g, dust.b, 1f), dustCloudSize * Mathf.Clamp(calibre, 0.8f, 1.6f), 3.5f, dustCloudFreePath,
+                    dustCloudLifetime, impact.Normal * 0.6f + Vector3.up * 0.05f);
             }
 
             AudioClip clip = surface.RandomImpactClip();

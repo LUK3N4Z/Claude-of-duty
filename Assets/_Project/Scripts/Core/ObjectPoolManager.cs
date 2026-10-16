@@ -147,6 +147,13 @@ namespace FPS.Core
         private void OnDestroy()
         {
             if (instance == this) instance = null;
+
+            // Spawned instances live outside the pool's hierarchy (scene root or a hit collider), but they belong to
+            // the pool: without it nothing would ever release them, so they go with it.
+            foreach (Handle handle in handles.Values)
+            {
+                if (handle.Active && handle.GameObject != null) Destroy(handle.GameObject);
+            }
         }
 
         private void Update()

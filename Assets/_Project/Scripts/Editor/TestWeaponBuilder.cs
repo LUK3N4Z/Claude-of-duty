@@ -216,8 +216,9 @@ namespace FPS.EditorTools
                     visual = ProceduralWeapons.Marksman(t, primary, magazineSocket, out _);
                     float lensRadius = spec.ScopeDiameter * 0.4125f;
                     MeshRenderer lensRenderer = Disc(primary, "Ocular Lens", DiscMesh(), -0.001f, lensRadius, UnlitMaterial("Scope Lens", Color.white, null, false));
-                    Disc(primary, "Reticle", DiscMesh(), -0.0015f, lensRadius, UnlitMaterial("Scope Reticle", Color.black, ReticleTexture(), true));
-                    primary.gameObject.AddComponent<WeaponSight>().Configure(spec.Magnification, spec.EyeRelief, spec.AdsZoom, lensRenderer);
+                    var sight = primary.gameObject.AddComponent<WeaponSight>();
+                    sight.Configure(spec.Magnification, spec.EyeRelief, spec.AdsZoom, lensRenderer);
+                    sight.ConfigureReticle(ReticleStyle.DuplexDot, new Color(5f, 0.3f, 0.15f), 1f); // etched duplex, illuminated red dot
                 }
 
                 if (spec.CantedIrons) CantedIrons(t, spec.Modular ? 0.38f : 0.48f);
@@ -578,40 +579,6 @@ namespace FPS.EditorTools
             mesh.RecalculateBounds();
             AssetDatabase.CreateAsset(mesh, path);
             return mesh;
-        }
-
-        /// <summary>Duplex crosshair: thick outer posts, fine centre lines, centre dot; transparent elsewhere.</summary>
-        internal static Texture2D ReticleTexture()
-        {
-            string path = $"{ArtFolder}/ReticleDuplex.asset";
-            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
-            if (texture != null) return texture;
-
-            const int size = 512;
-            const float half = size * 0.5f;
-            var pixels = new Color32[size * size];
-            for (int y = 0; y < size; y++)
-            {
-                for (int x = 0; x < size; x++)
-                {
-                    float dx = Mathf.Abs(x + 0.5f - half);
-                    float dy = Mathf.Abs(y + 0.5f - half);
-                    float radius = Mathf.Sqrt(dx * dx + dy * dy);
-                    float along = Mathf.Max(dx, dy);
-                    float across = Mathf.Min(dx, dy);
-                    bool post = along > half * 0.45f && across < 6f;
-                    bool fine = along <= half * 0.45f && across < 1.2f;
-                    bool dot = radius < 3f;
-                    bool ink = radius < half && (post || fine || dot);
-                    pixels[y * size + x] = ink ? new Color32(0, 0, 0, 255) : new Color32(0, 0, 0, 0);
-                }
-            }
-
-            texture = new Texture2D(size, size, TextureFormat.RGBA32, true) { name = "ReticleDuplex", wrapMode = TextureWrapMode.Clamp };
-            texture.SetPixels32(pixels);
-            texture.Apply(true);
-            AssetDatabase.CreateAsset(texture, path);
-            return texture;
         }
 
         internal static T LoadOrCreate<T>(string path) where T : ScriptableObject

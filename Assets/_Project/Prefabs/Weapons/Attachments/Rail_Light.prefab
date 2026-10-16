@@ -178,6 +178,8 @@ MonoBehaviour:
   lightRange: 60
   volumetricDimmer: 1
   beamMaterial: {fileID: 0}
+  infraredMaterial: {fileID: 0}
+  infraredBeamWidth: 0.004
   laserRange: 150
   beamWidth: 0.0015
   dotSize: 0.012

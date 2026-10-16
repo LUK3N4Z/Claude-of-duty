@@ -54,6 +54,9 @@ namespace FPS.EditorTools
             Transform level = new GameObject("Arena").transform;
             PlayerBuilder.AtmosphereVolume(level);
             Arena(level);
+            WorldLook.Interior(level, "West Room", new Vector3(-4f, WallHeight * 0.5f, 0f), new Vector3(7.6f, WallHeight, 9.6f));
+            WorldLook.Interior(level, "East Room", new Vector3(4f, WallHeight * 0.5f, 0f), new Vector3(7.6f, WallHeight, 9.6f));
+            EnvironmentMaterials.Dress(level, EnvironmentSurface.Dirt);
 
             var player = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab, scene);
             player.transform.SetPositionAndRotation(new Vector3(0f, 0f, -34f), Quaternion.identity);

@@ -53,6 +53,8 @@ MonoBehaviour:
   lightRange: 60
   volumetricDimmer: 1
   beamMaterial: {fileID: 2100000, guid: 21361e40e15f0ce489b7d89454e81eb6, type: 2}
+  infraredMaterial: {fileID: 2100000, guid: f083ad126f52e75439c0f5c582f12710, type: 2}
+  infraredBeamWidth: 0.004
   laserRange: 150
   beamWidth: 0.0015
   dotSize: 0.012

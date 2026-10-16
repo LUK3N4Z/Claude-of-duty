@@ -32,6 +32,10 @@ namespace FPS.Weapons
 
         [Header("Laser")]
         [SerializeField] private Material beamMaterial;
+        [Tooltip("Infrared beam and dot: invisible to the naked eye, shown while night vision is on.")]
+        [SerializeField] private Material infraredMaterial;
+        [Tooltip("IR beam width: the illuminator spreads wider than the visible aiming laser (m).")]
+        [SerializeField] private float infraredBeamWidth = 0.004f;
         [SerializeField] private float laserRange = 150f;
         [SerializeField] private float beamWidth = 0.0015f;
         [SerializeField] private float dotSize = 0.012f;
@@ -41,6 +45,8 @@ namespace FPS.Weapons
         private Light flashlight;
         private LineRenderer beam;
         private Transform dot;
+        private MeshRenderer dotRenderer;
+        private bool showingInfrared;
 
         /// <summary>Flashlights currently on (AI illumination and target conspicuity read these).</summary>
         public static IReadOnlyList<TacticalDevice> LitFlashlights => litFlashlights;
@@ -53,12 +59,16 @@ namespace FPS.Weapons
         /// <summary>Where the laser currently lands (beam end).</summary>
         public Vector3 LaserEnd => beam != null ? beam.GetPosition(1) : Vector3.zero;
 
-        public void Configure(TacticalDeviceType deviceType, Transform beamEmitter, Material laserMaterial)
+        public void Configure(TacticalDeviceType deviceType, Transform beamEmitter, Material laserMaterial, Material infrared = null)
         {
             type = deviceType;
             emitter = beamEmitter;
             beamMaterial = laserMaterial;
+            infraredMaterial = infrared;
         }
+
+        /// <summary>The laser is showing its infrared beam (night vision on and an IR material fitted).</summary>
+        public bool ShowingInfrared => showingInfrared;
 
         public void Toggle() => SetOn(!IsOn);
 
@@ -98,6 +108,15 @@ namespace FPS.Weapons
         private void LateUpdate()
         {
             if (!IsOn || beam == null) return;
+
+            bool infrared = NightVision.Active && infraredMaterial != null;
+            if (infrared != showingInfrared)
+            {
+                showingInfrared = infrared; // swap only on change: no per-frame material writes
+                beam.sharedMaterial = infrared ? infraredMaterial : beamMaterial;
+                dotRenderer.sharedMaterial = beam.sharedMaterial;
+                beam.startWidth = beam.endWidth = infrared ? infraredBeamWidth : beamWidth;
+            }
 
             Vector3 origin = emitter.position;
             bool hit = Physics.Raycast(origin, emitter.forward, out RaycastHit surface, laserRange, GameLayers.BallisticMask,
@@ -140,7 +159,8 @@ namespace FPS.Weapons
             GameObject dotObject = GameObject.CreatePrimitive(PrimitiveType.Quad);
             dotObject.name = "Laser Dot";
             Destroy(dotObject.GetComponent<Collider>());
-            dotObject.GetComponent<MeshRenderer>().sharedMaterial = beamMaterial;
+            dotRenderer = dotObject.GetComponent<MeshRenderer>();
+            dotRenderer.sharedMaterial = beamMaterial;
             dot = dotObject.transform;
             dot.SetParent(transform, false);
             dot.localScale = Vector3.one * dotSize;

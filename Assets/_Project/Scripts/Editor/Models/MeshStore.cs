@@ -33,6 +33,7 @@ namespace FPS.EditorTools
             existing.SetNormals(built.normals);
             existing.SetTangents(built.tangents);
             existing.SetUVs(0, built.uv);
+            existing.SetUVs(1, built.uv2);
             existing.subMeshCount = built.subMeshCount;
             for (int i = 0; i < built.subMeshCount; i++) existing.SetTriangles(built.GetTriangles(i), i);
             existing.RecalculateBounds();

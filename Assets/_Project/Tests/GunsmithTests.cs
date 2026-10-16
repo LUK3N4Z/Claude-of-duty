@@ -231,6 +231,57 @@ namespace FPS.Tests
             Assert.IsFalse(pointer.IsOn);
         }
 
+        [UnityTest]
+        public IEnumerator NightVision_ShowsTheInfraredLaser_AndCantsTheWeaponToAimByIt()
+        {
+            var keyboard = InputSystem.AddDevice<Keyboard>();
+            var mouse = InputSystem.AddDevice<Mouse>();
+            var visible = new Material(Shader.Find("HDRP/Unlit"));
+            var infrared = new Material(Shader.Find("HDRP/Unlit"));
+            created.Add(visible);
+            created.Add(infrared);
+            AttachmentDataSO laser = Part(AttachmentSlot.Laser, 0.09f, Model("Laser", r =>
+                r.gameObject.AddComponent<TacticalDevice>().Configure(TacticalDeviceType.Laser, Socket(r, "Emitter", new Vector3(0f, 0f, 0.03f)), visible, infrared)));
+            yield return Equip(laser);
+
+            var goggles = controller.gameObject.AddComponent<NightVisionGoggles>();
+            var ads = controller.GetComponent<ProceduralADSAndOpticsController>();
+            Transform eye = controller.GetComponent<PlayerRig>().PlayerCamera.transform;
+            TacticalDevice pointer = viewmodel.Weapon.GetComponentInChildren<TacticalDevice>();
+            var beam = pointer.GetComponentInChildren<LineRenderer>();
+            controller.ToggleDevices();
+            yield return null;
+            Assert.IsFalse(pointer.ShowingInfrared);
+            Assert.AreSame(visible, beam.sharedMaterial, "naked eye: the visible beam");
+
+            PressAndRelease(keyboard.nKey);
+            yield return new WaitForSeconds(0.5f);
+            Assert.IsTrue(goggles.IsOn);
+            Assert.AreEqual(1f, goggles.Blend, 1e-3f, "flipped down");
+            Assert.IsTrue(NightVision.Active);
+            Assert.IsTrue(pointer.ShowingInfrared);
+            Assert.AreSame(infrared, beam.sharedMaterial, "the IR beam shows through the tube");
+            Assert.IsTrue(goggles.Volume.sharedProfile.TryGet(out ColorAdjustments tube));
+            Assert.AreEqual(-100f, tube.saturation.value, "monochrome phosphor");
+            goggles.Phosphor = PhosphorColor.Green;
+            Assert.AreEqual(NightVisionGoggles.PhosphorTint(PhosphorColor.Green), tube.colorFilter.value);
+
+            controller.ToggleDevices(); // laser off: aiming under the goggles lights it
+            Press(mouse.rightButton);
+            yield return new WaitForSeconds(0.8f);
+            Assert.IsTrue(ads.IsActiveAiming);
+            Assert.IsTrue(pointer.IsOn, "active aim forces the laser on");
+            Assert.That(Vector3.Angle(viewmodel.Weapon.transform.up, eye.up), Is.InRange(40f, 50f), "canted under the goggles");
+            Assert.IsFalse(ads.ScopeCamera.enabled, "no optic through the tube");
+
+            Release(mouse.rightButton);
+            PressAndRelease(keyboard.nKey);
+            yield return new WaitForSeconds(0.5f);
+            Assert.IsFalse(NightVision.Active);
+            Assert.IsFalse(ads.IsActiveAiming);
+            Assert.IsFalse(pointer.IsOn, "the forced laser goes off with the goggles");
+        }
+
         private IEnumerator Equip(params AttachmentDataSO[] parts) => Equip(Data(), parts);
 
         private IEnumerator Equip(WeaponDataSO data, params AttachmentDataSO[] parts)

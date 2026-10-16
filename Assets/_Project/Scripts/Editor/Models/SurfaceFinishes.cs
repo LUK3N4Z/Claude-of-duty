@@ -107,8 +107,111 @@ namespace FPS.EditorTools
                 AssetDatabase.CreateAsset(material, materialPath);
             }
 
+            ApplyEdgeWear(material, finish);
             Cache[finish] = material;
             return material;
+        }
+
+        /// <summary>Finishes that rub through to bare metal or primer at the edges (UV1-driven detail map).</summary>
+        public static bool WearsAtEdges(SurfaceFinish finish)
+        {
+            switch (finish)
+            {
+                case SurfaceFinish.AnodizedBlack:
+                case SurfaceFinish.ParkerizedSteel:
+                case SurfaceFinish.BluedSteel:
+                case SurfaceFinish.CerakoteFde:
+                case SurfaceFinish.PolymerBlack:
+                case SurfaceFinish.PolymerFde:
+                case SurfaceFinish.GrenadeOliveDrab:
+                case SurfaceFinish.StunBlack:
+                case SurfaceFinish.SmokeCanister:
+                case SurfaceFinish.LockerPaint:
+                case SurfaceFinish.BenchSteel:
+                case SurfaceFinish.HelmetTan:
+                case SurfaceFinish.HelmetOlive:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Metallic edge wear: the detail map is sampled with UV1, which MeshKit sets to the worn half (u = 0.75) on
+        /// chamfers and edge bands. There the detail brightens the albedo toward bare metal and raises smoothness
+        /// in patchy, scratched streaks; broad faces read the neutral half and stay untouched.
+        /// </summary>
+        private static void ApplyEdgeWear(Material material, SurfaceFinish finish)
+        {
+            if (!WearsAtEdges(finish)) return;
+            bool polymer = finish == SurfaceFinish.PolymerBlack || finish == SurfaceFinish.PolymerFde || finish == SurfaceFinish.HelmetTan || finish == SurfaceFinish.HelmetOlive;
+            material.SetTexture("_DetailMap", EdgeWearDetail());
+            material.SetFloat("_UVDetail", 1f); // UV1
+            material.SetVector("_UVDetailsMappingMask", new Vector4(0f, 1f, 0f, 0f));
+            material.SetFloat("_DetailAlbedoScale", polymer ? 0.45f : 1.4f); // polymer only scuffs lighter
+            material.SetFloat("_DetailNormalScale", 0.5f);
+            material.SetFloat("_DetailSmoothnessScale", polymer ? 0.4f : 1f);
+            HDMaterial.ValidateMaterial(material);
+            EditorUtility.SetDirty(material);
+        }
+
+        /// <summary>
+        /// HDRP detail map (R desaturated albedo, G normal Y, B smoothness, A normal X; 0.5 neutral). Left half neutral;
+        /// right half carries edge wear: brightened, smoother metal in scratched, patchy streaks along v.
+        /// </summary>
+        internal static Texture2D EdgeWearDetail()
+        {
+            string path = $"{Folder}/EdgeWear_Detail.png";
+            var existing = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            if (existing != null) return existing;
+
+            ProjectSetupWizard.EnsureFolder(Folder);
+            var pixels = new Color32[Size * Size];
+            for (int y = 0; y < Size; y++)
+            {
+                for (int x = 0; x < Size; x++)
+                {
+                    float u = x / (float)Size, v = y / (float)Size;
+                    if (u < 0.5f)
+                    {
+                        pixels[y * Size + x] = new Color(0.5f, 0.5f, 0.5f, 0.5f);
+                        continue;
+                    }
+
+                    float patch = Smoothstep(0.35f, 0.65f, Fbm(0.5f, v, 8, 3, 1709));
+                    float scratch = ValueNoise(u * 8f, v * 160f, 8, 1777);
+                    float amount = Mathf.Clamp01(patch * (0.65f + scratch * 0.35f));
+                    float nx = (ValueNoise(u * 64f, v * 64f, 64, 1801) - 0.5f) * 0.3f * amount;
+                    float ny = (ValueNoise(u * 64f + 17f, v * 64f, 64, 1811) - 0.5f) * 0.3f * amount;
+                    pixels[y * Size + x] = new Color(0.5f + 0.48f * amount, 0.5f + ny, 0.5f + 0.35f * amount, 0.5f + nx);
+                }
+            }
+
+            return WriteTexture(path, pixels, false, false);
+        }
+
+        /// <summary>Shared micro-normal grit detail (neutral albedo and smoothness, fine normal noise).</summary>
+        internal static Texture2D MicroDetail()
+        {
+            string path = $"{Folder}/MicroGrit_Detail.png";
+            var existing = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            if (existing != null) return existing;
+
+            ProjectSetupWizard.EnsureFolder(Folder);
+            var pixels = new Color32[Size * Size];
+            for (int y = 0; y < Size; y++)
+            {
+                for (int x = 0; x < Size; x++)
+                {
+                    float u = x / (float)Size, v = y / (float)Size;
+                    float nx = (Fbm(u, v, 32, 3, 1901) - 0.5f) * 0.5f;
+                    float ny = (Fbm(u, v, 32, 3, 1907) - 0.5f) * 0.5f;
+                    float s = (Fbm(u, v, 16, 2, 1913) - 0.5f) * 0.3f;
+                    pixels[y * Size + x] = new Color(0.5f, 0.5f + ny, 0.5f + s, 0.5f + nx);
+                }
+            }
+
+            return WriteTexture(path, pixels, false, false);
         }
 
         /// <summary>Texture repeats per metre that suit a finish (cloth and wood read at a coarser scale than gun metal).</summary>
@@ -291,7 +394,7 @@ namespace FPS.EditorTools
                 case FinishPattern.Stipple:
                 {
                     float n = ValueNoise(u * 96f * scale, v * 96f * scale, Mathf.RoundToInt(96f * scale), seed + 3);
-                    return Mathf.SmoothStep(0.45f, 0.75f, n) * 0.5f;
+                    return Smoothstep(0.45f, 0.75f, n) * 0.5f;
                 }
                 case FinishPattern.Brushed:
                     return Fbm(u, v * 0.05f + u * 0.002f, Mathf.RoundToInt(128f * scale), 2, seed + 5) * 0.15f +
@@ -316,7 +419,7 @@ namespace FPS.EditorTools
                     return (Mathf.Abs(a) + Mathf.Abs(b)) * 0.1f;
                 }
                 case FinishPattern.Pores:
-                    return Mathf.SmoothStep(0.62f, 0.8f, ValueNoise(u * 128f * scale, v * 128f * scale, Mathf.RoundToInt(128f * scale), seed + 29)) * -0.25f;
+                    return Smoothstep(0.62f, 0.8f, ValueNoise(u * 128f * scale, v * 128f * scale, Mathf.RoundToInt(128f * scale), seed + 29)) * -0.25f;
                 default:
                     return 0f;
             }
@@ -337,6 +440,16 @@ namespace FPS.EditorTools
                 int i = py * Size + px;
                 scratch[i] = Mathf.Max(scratch[i], strength * taper);
             }
+        }
+
+        /// <summary>
+        /// Hermite step from 0 at <paramref name="edge0"/> to 1 at <paramref name="edge1"/> (shader smoothstep; Unity's
+        /// Mathf.SmoothStep interpolates between its first two arguments instead).
+        /// </summary>
+        internal static float Smoothstep(float edge0, float edge1, float x)
+        {
+            float t = Mathf.Clamp01((x - edge0) / (edge1 - edge0));
+            return t * t * (3f - 2f * t);
         }
 
         /// <summary>Fractal sum of periodic value noise; the base lattice repeats every <paramref name="period"/> cells.</summary>

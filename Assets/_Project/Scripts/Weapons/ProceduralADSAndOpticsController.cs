@@ -10,8 +10,11 @@ namespace FPS.Weapons
     /// <summary>
     /// Procedural aiming with no baked ADS animation: solves the exact pose that puts the active sight aligner on the
     /// eye's line of sight (primary or 45° canted sight), blends it with the hip pose, drives camera zoom and look
-    /// sensitivity, and runs dual-render Picture-in-Picture for magnified optics: a secondary camera renders into the
-    /// lens with a geometric eye-relief shadow, while the main view blurs the periphery. Owns AdsPivot.
+    /// sensitivity, and runs dual-render Picture-in-Picture for magnified optics: a secondary camera renders the
+    /// magnified view, a lens shader pass adds glass refraction, rim chromatic aberration, the parallax eye-relief
+    /// shadow and the etched reticle with its illuminated (blooming) centre, while the main view blurs the periphery.
+    /// With night vision down and a laser fitted it switches to canted active aiming: the weapon rolls 45° under the
+    /// goggles and aims by the infrared laser instead of the optic. Owns AdsPivot.
     /// </summary>
     [DefaultExecutionOrder(-20)]
     [DisallowMultipleComponent]
@@ -19,6 +22,14 @@ namespace FPS.Weapons
     public sealed class ProceduralADSAndOpticsController : MonoBehaviour
     {
         private static readonly int UnlitColorMapId = Shader.PropertyToID("_UnlitColorMap");
+        private static readonly int ShadowCenterId = Shader.PropertyToID("_ShadowCenter");
+        private static readonly int ShadowRadiusId = Shader.PropertyToID("_ShadowRadius");
+        private static readonly int ShadowSoftnessId = Shader.PropertyToID("_ShadowSoftness");
+        private static readonly int AberrationId = Shader.PropertyToID("_Aberration");
+        private static readonly int DistortionId = Shader.PropertyToID("_Distortion");
+        private static readonly int ReticleStyleId = Shader.PropertyToID("_ReticleStyle");
+        private static readonly int ReticleScaleId = Shader.PropertyToID("_ReticleScale");
+        private static readonly int GlowColorId = Shader.PropertyToID("_GlowColor");
         private const float PiPActivationBlend = 0.02f;
 
         [Header("Aim")]
@@ -42,6 +53,20 @@ namespace FPS.Weapons
         [Tooltip("How far the bright exit pupil slides with the eye offset (screen fraction).")]
         [SerializeField, Range(0f, 0.5f)] private float maxShadowShift = 0.25f;
 
+        [Header("Lens")]
+        [Tooltip("Hidden/FPS/ScopeLens. Without it the lens shows the raw scope image and a vignette shadow.")]
+        [SerializeField] private Shader lensShader;
+        [Tooltip("Rim chromatic aberration (UV offset per channel at the rim).")]
+        [SerializeField, Range(0f, 0.05f)] private float lensAberration = 0.012f;
+        [Tooltip("Barrel refraction toward the rim.")]
+        [SerializeField, Range(0f, 0.5f)] private float lensDistortion = 0.12f;
+
+        [Header("Active Aiming (night vision)")]
+        [Tooltip("Stock contact point in eye space while aiming by laser under goggles (m).")]
+        [SerializeField] private Vector3 activeAimStock = new Vector3(0.08f, -0.14f, -0.07f);
+        [Tooltip("Weapon cant while active aiming (deg about the bore): the laser comes up under the goggles.")]
+        [SerializeField] private float activeAimCant = -45f;
+
         [Header("Peripheral Blur")]
         [SerializeField] private float blurFarStart = 0.6f;
         [SerializeField] private float blurFarEnd = 4f;
@@ -63,7 +88,10 @@ namespace FPS.Weapons
         private Quaternion adsRotation = Quaternion.identity;
 
         private Camera scopeCamera;
-        private RenderTexture scopeTexture;
+        private RenderTexture scopeTexture, lensTexture;
+        private Material lensMaterial;
+        private TacticalDevice laser;
+        private bool laserForced;
         private MaterialPropertyBlock lensBlock;
         private Renderer litLens;
         private Volume blurVolume;
@@ -78,6 +106,13 @@ namespace FPS.Weapons
         public Transform ActiveAligner => aligners[activeSlot];
         public WeaponSight ActiveSight => sights[activeSlot];
         public Camera ScopeCamera => scopeCamera;
+        /// <summary>The shader lens pass is running (the lens shows the processed image).</summary>
+        public bool LensProcessing => lensMaterial != null;
+        /// <summary>The image the lens shows: processed when the lens shader runs, else the raw scope render.</summary>
+        public RenderTexture LensTexture => lensMaterial != null ? lensTexture : scopeTexture;
+        public Material LensMaterial => lensMaterial;
+        /// <summary>Aiming by laser with night vision down (weapon canted, no optic).</summary>
+        public bool IsActiveAiming { get; private set; }
 
         /// <summary>Vertical field of view at the hip (deg); aiming zooms relative to it.</summary>
         public float BaseFieldOfView
@@ -96,7 +131,7 @@ namespace FPS.Weapons
                 if (clamped == scopeResolution) return;
                 scopeResolution = clamped;
                 CreateScopeTexture();
-                if (litLens != null) SetLensTexture(litLens, scopeTexture);
+                if (litLens != null) SetLensTexture(litLens, LensTexture);
             }
         }
 
@@ -124,6 +159,8 @@ namespace FPS.Weapons
             mainCamera = playerRig.PlayerCamera;
             baseFieldOfView = mainCamera.fieldOfView;
             lensBlock = new MaterialPropertyBlock();
+            if (lensShader != null && lensShader.isSupported)
+                lensMaterial = new Material(lensShader) { name = "PiP Lens", hideFlags = HideFlags.HideAndDontSave };
 
             // Volumes are filtered by layer: the main camera never sees the viewmodel layer (scope-only volume),
             // the scope camera never sees the Player layer (main-only blur volume).
@@ -139,6 +176,7 @@ namespace FPS.Weapons
         {
             viewmodel.WeaponChanged += OnWeaponChanged;
             if (input != null) input.SwitchSightPressed += OnSwitchSight;
+            RenderPipelineManager.endCameraRendering += OnEndCameraRendering;
             OnWeaponChanged();
         }
 
@@ -146,6 +184,9 @@ namespace FPS.Weapons
         {
             viewmodel.WeaponChanged -= OnWeaponChanged;
             if (input != null) input.SwitchSightPressed -= OnSwitchSight;
+            RenderPipelineManager.endCameraRendering -= OnEndCameraRendering;
+            ReleaseForcedLaser();
+            IsActiveAiming = false;
             DeactivateScope();
             ApplyView(1f, 1f, 0f);
         }
@@ -158,6 +199,13 @@ namespace FPS.Weapons
                 Destroy(scopeTexture);
             }
 
+            if (lensTexture != null)
+            {
+                lensTexture.Release();
+                Destroy(lensTexture);
+            }
+
+            if (lensMaterial != null) Destroy(lensMaterial);
             Destroy(scopeProfile);
             Destroy(blurProfile);
         }
@@ -184,8 +232,31 @@ namespace FPS.Weapons
 
             WeaponSight sight = sights[activeSlot];
             Transform pivot = viewmodel.AdsPivot;
+            Vector3 stock = viewmodel.Weapon.StockPivotSocket != null
+                ? pivot.InverseTransformPoint(viewmodel.Weapon.StockPivotSocket.position)
+                : Vector3.zero;
             SolveSightAlignment(pivot, aligner, sight != null ? sight.EyeRelief : defaultEyeRelief,
                 out Vector3 sightPosition, out Quaternion sightRotation);
+
+            // Goggles down: the eye cannot get behind the optic, so the weapon cants under them and aims by laser.
+            bool activeAim = NightVision.Active && laser != null;
+            if (activeAim != IsActiveAiming)
+            {
+                IsActiveAiming = activeAim;
+                if (!activeAim) ReleaseForcedLaser();
+            }
+
+            if (activeAim)
+            {
+                if (wantsAds && !laser.IsOn)
+                {
+                    laser.SetOn(true);
+                    laserForced = true;
+                }
+
+                sightRotation = Quaternion.Euler(0f, 0f, activeAimCant);
+                sightPosition = activeAimStock - sightRotation * stock;
+            }
             if (!adsPoseValid)
             {
                 adsPosition = sightPosition;
@@ -201,17 +272,14 @@ namespace FPS.Weapons
             }
 
             Quaternion hipRotation = Quaternion.Euler(data.HipEuler);
-            Vector3 stock = viewmodel.Weapon.StockPivotSocket != null
-                ? pivot.InverseTransformPoint(viewmodel.Weapon.StockPivotSocket.position)
-                : Vector3.zero;
             Vector3 hipPosition = data.HipStockOffset - hipRotation * stock;
 
             Vector3 position = Vector3.LerpUnclamped(hipPosition, adsPosition, blend);
             position.y -= Mathf.Sin(blend * Mathf.PI) * adsDip;
             pivot.SetLocalPositionAndRotation(position, Quaternion.Slerp(hipRotation, adsRotation, blend));
 
-            bool magnified = sight != null && sight.IsMagnified;
-            float zoom = Mathf.Lerp(1f, sight != null ? sight.AdsZoom : defaultAdsZoom, blend);
+            bool magnified = !activeAim && sight != null && sight.IsMagnified;
+            float zoom = activeAim ? 1f : Mathf.Lerp(1f, sight != null ? sight.AdsZoom : defaultAdsZoom, blend);
             float magnification = magnified ? Mathf.Lerp(1f, sight.Magnification, blend) : 1f;
             ApplyView(zoom, magnification, magnified ? blend : 0f);
 
@@ -225,6 +293,16 @@ namespace FPS.Weapons
             scopeCamera.transform.SetParent(transform, false); // never let the outgoing weapon take the camera with it
 
             WeaponModelRig weapon = viewmodel.Weapon;
+            laserForced = false; // the old weapon's laser went with it
+            laser = null;
+            if (weapon != null)
+            {
+                foreach (TacticalDevice device in weapon.GetComponentsInChildren<TacticalDevice>(true))
+                {
+                    if (device.Type == TacticalDeviceType.Laser) laser = device;
+                }
+            }
+
             for (int slot = 0; slot < aligners.Length; slot++)
             {
                 WeaponSight sight = null;
@@ -268,7 +346,7 @@ namespace FPS.Weapons
             {
                 if (litLens != null) SetLensTexture(litLens, Texture2D.blackTexture);
                 litLens = lens;
-                SetLensTexture(lens, scopeTexture);
+                SetLensTexture(lens, LensTexture);
             }
 
             // True magnification: the lens subtends some angle at the eye; the scope shows 1/M of that angle across it.
@@ -285,8 +363,26 @@ namespace FPS.Weapons
             Vector2 lateral = new Vector2(eyeLocal.x, eyeLocal.y) / sight.EyeBoxRadius;
             float axial = (-eyeLocal.z - sight.EyeRelief) / sight.EyeReliefTolerance;
             float misalignment = Mathf.Sqrt(lateral.sqrMagnitude + axial * axial);
-            scopeShadow.intensity.Override(Mathf.Clamp01(restingScopeShadow + misalignment * scopeShadowPerMisalignment));
-            scopeShadow.center.Override(new Vector2(0.5f, 0.5f) - Vector2.ClampMagnitude(lateral, 1f) * maxShadowShift);
+            float closing = Mathf.Clamp01(restingScopeShadow + misalignment * scopeShadowPerMisalignment);
+            Vector2 shadowCenter = new Vector2(0.5f, 0.5f) - Vector2.ClampMagnitude(lateral, 1f) * maxShadowShift;
+            if (lensMaterial != null)
+            {
+                // The lens pass draws the parallax shadow, glass effects and reticle; the vignette stays off.
+                scopeShadow.intensity.Override(0f);
+                lensMaterial.SetVector(ShadowCenterId, shadowCenter);
+                lensMaterial.SetFloat(ShadowRadiusId, Mathf.Lerp(1.05f, 0.2f, closing));
+                lensMaterial.SetFloat(ShadowSoftnessId, scopeShadowSmoothness * 0.6f);
+                lensMaterial.SetFloat(AberrationId, lensAberration);
+                lensMaterial.SetFloat(DistortionId, lensDistortion);
+                lensMaterial.SetFloat(ReticleStyleId, (float)sight.Reticle);
+                lensMaterial.SetFloat(ReticleScaleId, sight.ReticleScale);
+                lensMaterial.SetColor(GlowColorId, sight.ReticleGlow);
+            }
+            else
+            {
+                scopeShadow.intensity.Override(closing);
+                scopeShadow.center.Override(shadowCenter);
+            }
 
             scopeCamera.enabled = true;
         }
@@ -296,6 +392,22 @@ namespace FPS.Weapons
             if (scopeCamera != null) scopeCamera.enabled = false;
             if (litLens != null) SetLensTexture(litLens, Texture2D.blackTexture);
             litLens = null;
+        }
+
+        private void OnEndCameraRendering(ScriptableRenderContext context, Camera rendered)
+        {
+            if (rendered != scopeCamera || lensMaterial == null || lensTexture == null) return;
+            CommandBuffer command = CommandBufferPool.Get("PiP Lens");
+            command.Blit(scopeTexture, lensTexture, lensMaterial);
+            context.ExecuteCommandBuffer(command);
+            CommandBufferPool.Release(command);
+            context.Submit();
+        }
+
+        private void ReleaseForcedLaser()
+        {
+            if (laserForced && laser != null) laser.SetOn(false);
+            laserForced = false;
         }
 
         private void SetLensTexture(Renderer lens, Texture texture)
@@ -338,6 +450,19 @@ namespace FPS.Weapons
             };
             scopeTexture.Create();
             scopeCamera.targetTexture = scopeTexture;
+
+            if (lensTexture != null)
+            {
+                lensTexture.Release();
+                Destroy(lensTexture);
+            }
+
+            lensTexture = new RenderTexture(scopeResolution, scopeResolution, 0, GraphicsFormat.R16G16B16A16_SFloat)
+            {
+                name = "PiP Lens",
+                useMipMap = false,
+            };
+            lensTexture.Create();
         }
 
         private void CreateVolumes()
