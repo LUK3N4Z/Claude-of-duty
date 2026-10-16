@@ -63,6 +63,7 @@ namespace FPS.AI
         private Quaternion aimRotation = Quaternion.identity;
         private Vector2 recoil;
         private float pelvisHeight, lean, leanTarget;
+        private Transform droppedWeapon;
 
         public Transform Pelvis => pelvis;
         public Transform Torso => torso;
@@ -156,6 +157,7 @@ namespace FPS.AI
                 var weaponBody = dropped.gameObject.AddComponent<Rigidbody>();
                 weaponBody.mass = 3.5f;
                 weaponBody.linearVelocity = direction * 1.5f + Vector3.up;
+                droppedWeapon = dropped;
                 weapon = null;
             }
 
@@ -163,6 +165,12 @@ namespace FPS.AI
             body.mass = 80f;
             body.interpolation = RigidbodyInterpolation.Interpolate;
             body.AddForceAtPosition(direction.normalized * 160f, head != null ? head.position : transform.position + Vector3.up * 1.5f, ForceMode.Impulse);
+        }
+
+        /// <summary>The dropped rifle goes when the body is cleared away.</summary>
+        private void OnDestroy()
+        {
+            if (droppedWeapon != null) Destroy(droppedWeapon.gameObject);
         }
 
         private void Awake()

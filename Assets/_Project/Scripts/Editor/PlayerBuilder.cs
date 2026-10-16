@@ -202,6 +202,13 @@ namespace FPS.EditorTools
             equipment.SetLoadout(EquipmentSlot.Lethal, EquipmentContentBuilder.Grenade(EquipmentContentBuilder.FragName), 2);
             equipment.SetLoadout(EquipmentSlot.Tactical, EquipmentContentBuilder.Grenade(EquipmentContentBuilder.FlashName), 2);
             EditorUtility.SetDirty(equipment);
+
+            // Saved loadout and settings, the options menu (Escape / Start).
+            ArmoryContentBuilder.EnableUpscalers();
+            if (!root.TryGetComponent(out FPS.Gameplay.SaveProfileManager profiles)) profiles = root.AddComponent<FPS.Gameplay.SaveProfileManager>();
+            profiles.Configure(ArmoryContentBuilder.Catalog(), true);
+            EditorUtility.SetDirty(profiles);
+            if (!root.TryGetComponent(out FPS.Gameplay.HDRPSettingsMenu _)) root.AddComponent<FPS.Gameplay.HDRPSettingsMenu>();
             EffectsContentBuilder.ConfigurePlayer(root);
 
             var controller = root.GetComponent<RealisticWeaponController>();

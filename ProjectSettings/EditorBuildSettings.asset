@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/_Project/Scenes/Armory.unity
+    guid: 4beb757b926aaff41a2f2ca6f4b8ecb6
+  - enabled: 1
     path: Assets/_Project/Scenes/Mode_Raid.unity
     guid: 4f8609163f835854998399c5e7794bc7
   - enabled: 1

@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b15e75661e00574b802737013afa2d9, type: 3}
+  m_Name: ArmoryCatalog
+  m_EditorClassIdentifier: FPS.Weapons::FPS.Weapons.ArmoryCatalogSO
+  weapons:
+  - model: {fileID: 6777321880289407487, guid: b2528bbd0923e4247927cc23bae446db, type: 3}
+    data: {fileID: 11400000, guid: f2a5f64a19176824d83450d25aa95f6d, type: 2}
+  - model: {fileID: 7474368256386697039, guid: 3801b3d77f58e784c8688ce0155523b6, type: 3}
+    data: {fileID: 11400000, guid: 40251d029beb98344b61d95cddb4cba5, type: 2}
+  attachments:
+  - {fileID: 11400000, guid: 2ca5b35a36c0ef445824e66f314a64b3, type: 2}
+  - {fileID: 11400000, guid: 275e29e79bf4dfa4c8583117e74eba02, type: 2}
+  - {fileID: 11400000, guid: 20c33ca86c6f60740a796e1f12e7f68b, type: 2}
+  - {fileID: 11400000, guid: 188ce99ac11754f4382e2f65d2ed4e1b, type: 2}
+  - {fileID: 11400000, guid: d73c5ed0c08691d4fa5afefc942633fa, type: 2}
+  - {fileID: 11400000, guid: c247ee76c7eb27345a3c0629f138d9ba, type: 2}
+  - {fileID: 11400000, guid: 25a937385eda3484299afae562141db7, type: 2}
+  - {fileID: 11400000, guid: f8efd2b3755109f468ac25e31d3e4d64, type: 2}
+  - {fileID: 11400000, guid: c3ea5cc77689d6f4ea924d0b792598fe, type: 2}
+  - {fileID: 11400000, guid: d8fd5d1a4613c9c45ab9f144d8b703f2, type: 2}
+  - {fileID: 11400000, guid: fb6902c4ea5249741a42a30740110976, type: 2}
+  - {fileID: 11400000, guid: 467d81f6fba6d0b45b9f11b66cd9073a, type: 2}
+  - {fileID: 11400000, guid: ee84c5509ea1b13498de512d55d4d934, type: 2}
+  - {fileID: 11400000, guid: b445e54b297e2ba4c9065b2787152ec8, type: 2}
+  grenades:
+  - {fileID: 11400000, guid: ca3e4b5da7997554fbd0ad76cb850586, type: 2}
+  - {fileID: 11400000, guid: a5f9d55e2b9752e4eabaa2d059c217ce, type: 2}
+  - {fileID: 11400000, guid: 25e525d30a0c9eb4fbe8301fc3231423, type: 2}

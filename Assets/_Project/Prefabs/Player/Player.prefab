@@ -1659,6 +1659,8 @@ GameObject:
   - component: {fileID: 4317091135136689978}
   - component: {fileID: 1010109812828240328}
   - component: {fileID: 2005833790374209104}
+  - component: {fileID: 441123400318696145}
+  - component: {fileID: 2940810432426083151}
   m_Layer: 8
   m_Name: Player
   m_TagString: Untagged
@@ -2286,6 +2288,35 @@ MonoBehaviour:
   recoverTime: 0.35
   throwElevation: 10
   releaseOffset: {x: 0.2, y: -0.1, z: 0.35}
+--- !u!114 &441123400318696145
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8904463417187941275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d406dcc8f953714b80def6e4825333f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FPS.Gameplay::FPS.Gameplay.SaveProfileManager
+  catalog: {fileID: 11400000, guid: 4902e2d560e5181449744d9a4dee492b, type: 2}
+  fileName: profile.json
+  applyOnStart: 1
+--- !u!114 &2940810432426083151
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8904463417187941275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cd4854404e455e64280772304e937e4a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FPS.Gameplay::FPS.Gameplay.HDRPSettingsMenu
+  fovStep: 5
+  fovRange: {x: 60, y: 100}
 --- !u!1 &8960694533623877074
 GameObject:
   m_ObjectHideFlags: 0

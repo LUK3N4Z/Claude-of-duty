@@ -13,6 +13,7 @@ namespace FPS.Core
     public sealed class InputReader : ScriptableObject
     {
         public const string PlayerMapName = "Player";
+        public const string SystemMapName = "System";
         public const string ActionAssetFieldName = nameof(actionAsset);
 
         [SerializeField] private InputActionAsset actionAsset;
@@ -60,8 +61,11 @@ namespace FPS.Core
         /// <summary>Tactical throwable: press pulls the pin and cooks, release throws.</summary>
         public event Action TacticalPressed;
         public event Action TacticalReleased;
+        /// <summary>Options menu / leave a station (Escape, Start). Lives in the System map, which stays on with gameplay input off.</summary>
+        public event Action MenuPressed;
 
-        private InputActionMap playerMap;
+        private InputActionMap playerMap, systemMap;
+        private InputAction menu;
         private InputAction move, look, fire, aim, sprint, tacticalSprint, holdBreath, walkSlow, walkSpeedAdjust;
         private InputAction crouch, prone, leanLeft, leanRight, reload, checkMagazine, changeFireMode, switchSight, mountWeapon;
         private InputAction selectPrimary, selectSecondary, switchWeapon, interact, toggleDevice, throwLethal, throwTactical;
@@ -88,6 +92,13 @@ namespace FPS.Core
         public bool IsCheckingMagazine { get; private set; }
         public bool PlayerInputEnabled => playerMap != null && playerMap.enabled;
 
+        /// <summary>Turns on the System map (menu key). Independent of gameplay input.</summary>
+        public void EnableSystemInput()
+        {
+            Resolve();
+            systemMap.Enable();
+        }
+
         public void EnablePlayerInput()
         {
             Resolve();
@@ -113,6 +124,9 @@ namespace FPS.Core
             playerMap.actionTriggered -= OnActionTriggered;
             playerMap.Disable();
             playerMap = null;
+            systemMap.actionTriggered -= OnSystemActionTriggered;
+            systemMap.Disable();
+            systemMap = null;
         }
 
         private void Resolve()
@@ -149,6 +163,10 @@ namespace FPS.Core
             throwLethal = Find("ThrowLethal");
             throwTactical = Find("ThrowTactical");
             playerMap.actionTriggered += OnActionTriggered;
+
+            systemMap = actionAsset.FindActionMap(SystemMapName, throwIfNotFound: true);
+            menu = systemMap.FindAction("Menu", throwIfNotFound: true);
+            systemMap.actionTriggered += OnSystemActionTriggered;
         }
 
         private InputAction Find(string actionName) => playerMap.FindAction(actionName, throwIfNotFound: true);
@@ -209,6 +227,11 @@ namespace FPS.Core
                     if (scroll != 0f) WalkSpeedStepped?.Invoke(scroll > 0f ? 1 : -1);
                 }
             }
+        }
+
+        private void OnSystemActionTriggered(InputAction.CallbackContext context)
+        {
+            if (context.action == menu && context.performed) MenuPressed?.Invoke();
         }
 
         private void OnReloadTap(double time)

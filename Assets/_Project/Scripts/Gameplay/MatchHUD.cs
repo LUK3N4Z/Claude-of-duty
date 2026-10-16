@@ -96,62 +96,29 @@ namespace FPS.Gameplay
 
         private void Build()
         {
-            var canvasObject = new GameObject("Match HUD");
-            canvasObject.transform.SetParent(transform, false);
-            var canvas = canvasObject.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 10;
-            var scaler = canvasObject.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-            scaler.matchWidthOrHeight = 0.5f;
-            var root = canvas.GetComponent<RectTransform>();
-
-            mode = Label(root, 24, new Vector2(0f, 1f), new Vector2(240f, -40f), new Vector2(420f, 34f), TextAnchor.MiddleLeft);
-            objective = Label(root, 20, new Vector2(0f, 1f), new Vector2(240f, -72f), new Vector2(420f, 30f), TextAnchor.MiddleLeft);
-            clock = Label(root, 26, new Vector2(0.5f, 1f), new Vector2(0f, -112f), new Vector2(200f, 34f), TextAnchor.MiddleCenter);
-            score = Label(root, 20, new Vector2(0.5f, 1f), new Vector2(0f, -142f), new Vector2(420f, 30f), TextAnchor.MiddleCenter);
-            banner = Label(root, 40, new Vector2(0.5f, 0.5f), new Vector2(0f, 160f), new Vector2(1200f, 60f), TextAnchor.MiddleCenter);
+            RectTransform root = UIFactory.Canvas(transform, "Match HUD", 10, false);
+            mode = UIFactory.Label(root, 24, new Vector2(0f, 1f), new Vector2(240f, -40f), new Vector2(420f, 34f), TextAnchor.MiddleLeft);
+            objective = UIFactory.Label(root, 20, new Vector2(0f, 1f), new Vector2(240f, -72f), new Vector2(420f, 30f), TextAnchor.MiddleLeft);
+            clock = UIFactory.Label(root, 26, new Vector2(0.5f, 1f), new Vector2(0f, -112f), new Vector2(200f, 34f), TextAnchor.MiddleCenter);
+            score = UIFactory.Label(root, 20, new Vector2(0.5f, 1f), new Vector2(0f, -142f), new Vector2(420f, 30f), TextAnchor.MiddleCenter);
+            banner = UIFactory.Label(root, 40, new Vector2(0.5f, 0.5f), new Vector2(0f, 160f), new Vector2(1200f, 60f), TextAnchor.MiddleCenter);
             banner.text = string.Empty;
             clock.text = string.Empty;
 
-            progressBar = new GameObject("Hold Progress", typeof(RectTransform));
-            var bar = progressBar.GetComponent<RectTransform>();
-            bar.SetParent(root, false);
-            Place(bar, new Vector2(0.5f, 0.5f), new Vector2(0f, -130f), new Vector2(300f, 8f));
-            progressBar.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.5f);
+            RectTransform bar = UIFactory.Panel(root, "Hold Progress", new Vector2(0.5f, 0.5f), new Vector2(0f, -130f), new Vector2(300f, 8f),
+                new Color(0f, 0f, 0f, 0.5f));
+            bar.GetComponent<Image>().raycastTarget = false;
+            progressBar = bar.gameObject;
             progressFill = new GameObject("Fill").AddComponent<Image>();
             progressFill.rectTransform.SetParent(bar, false);
             progressFill.rectTransform.anchorMin = Vector2.zero;
             progressFill.rectTransform.anchorMax = Vector2.one;
             progressFill.rectTransform.offsetMin = progressFill.rectTransform.offsetMax = Vector2.zero;
             progressFill.color = new Color(1f, 1f, 1f, 0.85f);
-            progressFill.sprite = null;
+            progressFill.raycastTarget = false;
             progressFill.type = Image.Type.Filled;
             progressFill.fillMethod = Image.FillMethod.Horizontal;
             progressBar.SetActive(false);
-        }
-
-        private static Text Label(RectTransform parent, int fontSize, Vector2 anchor, Vector2 position, Vector2 size, TextAnchor alignment)
-        {
-            var label = new GameObject("Label").AddComponent<Text>();
-            label.rectTransform.SetParent(parent, false);
-            Place(label.rectTransform, anchor, position, size);
-            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            label.fontSize = fontSize;
-            label.alignment = alignment;
-            label.color = new Color(1f, 1f, 1f, 0.9f);
-            label.raycastTarget = false;
-            label.gameObject.AddComponent<Shadow>().effectColor = new Color(0f, 0f, 0f, 0.6f);
-            return label;
-        }
-
-        private static void Place(RectTransform rect, Vector2 anchor, Vector2 position, Vector2 size)
-        {
-            rect.anchorMin = rect.anchorMax = anchor;
-            rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = position;
-            rect.sizeDelta = size;
         }
     }
 }

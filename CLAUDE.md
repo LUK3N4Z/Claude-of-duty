@@ -25,7 +25,10 @@ ballistics, Picture-in-Picture optics, procedural inertia, photoreal HDRP.
 7. `Tools/FPS Builder/7. Build Game Mode Scenes` → `Scenes/Mode_Raid`, `Mode_SearchAndDestroy`, `Mode_Hardpoint` (one
    arena: two-room warehouse, west compound, east container yard; each with its director, objectives, spawns and
    NavMesh) and adds them to the build settings. Needs steps 3–4.
-8. Optional: `Window > Rendering > HDRP Wizard` for any remaining platform checks.
+8. `Tools/FPS Builder/8. Build Armory` → `Scenes/Armory.unity` (the hub, first in the build settings): workshop with
+   the gunsmith workbench, ammo and equipment, opening onto a 30 m indoor range; also `Data/Armory/ArmoryCatalog`
+   and HDRP dynamic resolution (TAAU, DLSS, FSR2) in the pipeline asset.
+9. Optional: `Window > Rendering > HDRP Wizard` for any remaining platform checks.
 
 **Importing a weapon model:** select the FBX/GLTF → `Tools/FPS Builder/6. Build Weapon From Selected Model` (or
 right-click → FPS → Build Weapon Prefab From Model). It wraps the model under a `WeaponModelRig` root (model as child
@@ -34,14 +37,15 @@ viewmodel layer, guesses sockets (named nodes first, then bounds) and magazine r
 Then open the prefab: the WeaponModelRig inspector lists validation issues and offers fix buttons; place sockets with
 the gizmos (red muzzle, magenta stock, cyan sights, green grips), add a `WeaponSight` to optics.
 
-Steps 2–7 are already applied and committed; all are idempotent, rerun after a settings reset.
+Steps 2–8 are already applied and committed; all are idempotent, rerun after a settings reset.
 Active Input Handling is `Input System Package (New)` (`activeInputHandler: 1`).
 
 **Tests** (`Assets/_Project/Tests`, PlayMode, NUnit + `InputTestFixture`): Test Runner window, or headless:
 `Unity.exe -batchmode -nographics -projectPath . -runTests -testPlatform PlayMode -testResults results.xml`.
 New non-trivial logic ships with a test there.
 Visual check: set `FPS_CAPTURE_DIR` and run `-testFilter FPS.Tests.RenderCapture` **without** `-nographics`; it renders
-hip/ADS/canted/reload/impact/device/gunsmith-build PNGs of the test range and logs build stats (ignored otherwise).
+the test range (hip/ADS/canted/reload/impacts/devices/gunsmith builds/AI firefight), the three mode scenes and the
+armory (workbench views, indoor range) to PNGs and logs stats (ignored otherwise).
 
 ## Coding standards
 
@@ -133,6 +137,7 @@ Bullets use `GameLayers.BallisticMask` (Default + WorldGeometry + Hitbox). No cu
 | ToggleDevice | T | View | `ToggleDevicePressed` (all lights/lasers on the held weapon) |
 | ThrowLethal | G, mouse forward | RB | `LethalPressed` (pin, cook) / `LethalReleased` (throw) |
 | ThrowTactical | H, mouse back | LB | `TacticalPressed` / `TacticalReleased` |
+| Menu (map `System`) | Escape | Start | `MenuPressed`; the System map is enabled with `EnableSystemInput()` and stays on while gameplay input is off |
 
 Tap/hold threshold 0.35 s. Fast reload is an *upgrade*: the first tap always starts a tactical reload.
 
@@ -351,6 +356,30 @@ Contracts for later milestones:
   fighting, and do not chase threats beyond a 25 m leash. Modes advance plants/defuses while
   `TacticalAIBrain.IsWorkingObjective`. Friendly-fire checks cover everyone on the team, the player included.
 
+## Armory, profiles & settings (M10)
+
+- **Catalog** (`ArmoryCatalogSO`, `Data/Armory/ArmoryCatalog`): weapons (model + data), attachments, grenades; ids are
+  asset names — renaming an asset orphans it in saved profiles (missing parts are skipped with a warning).
+- **Profiles** (`SaveProfileManager`, on the player): `PlayerProfile` JSON (`JsonUtility`) at
+  `persistentDataPath/profile.json` — blueprints (weapon + attachment ids), loadout (blueprint per slot, grenade ids)
+  and `GameSettings`. Saves write `.tmp` then swap it in, keeping `.bak`; an unreadable file is copied to `.corrupt`
+  and the backup (or defaults) loaded. Applies the saved loadout at start. `DirectoryOverride` redirects it (tests).
+- **Workbench** (`GunsmithWorkbenchController`, an `IInteractable`): pauses the player (`PlayerControl`), swaps the
+  player camera for the bench camera, lays the carried weapon on the turntable (centred between stock and muzzle) with
+  a `WorkbenchNode` marker per mount; drag turns it and clicks pick mounts (`WorkbenchInputSurface` on the UI), the part
+  list comes from the catalog (`CompatibleParts`), fitting rebuilds the preview (assembled clone, measured inertia) and
+  the stats. "Fit to weapon" → `RealisticWeaponController.SetBuild` + `StoreLoadout`; Leave/Menu hands back control.
+- **Settings** (`HDRPSettingsMenu`, on the player, Menu key): FOV (`ProceduralADSAndOpticsController.BaseFieldOfView`),
+  PiP scope resolution, motion blur (Player-layer volume), upscaling (camera `allowDynamicResolution` /
+  `allowDeepLearningSuperSampling` / `allowFidelityFX2SuperResolution` + `DynamicResolutionHandler` percentage; DLSS
+  and FSR2 only where detected, else TAAU), audio dynamic range; applied live, saved with the profile; pauses the
+  player while open.
+- **Dynamic range** (`DynamicRangeProcessor` on the AudioListener, master bus via `OnAudioFilterRead`): compressor +
+  limiter presets War Tapes (makeup +4 dB, soft limiter), Studio Reference (transparent), Night Mode (5:1 from −30 dB,
+  +12 dB makeup, −6 dB ceiling).
+- UI for match HUD, menu and workbench is built in code through `UIFactory` (uGUI, legacy font, Input System UI module
+  created on demand).
+
 ## Milestones
 
 - [x] **M1** Project init, `CLAUDE.md`, assemblies, `InputReader`, `EventBus`, `ObjectPoolManager`, `ProjectSetupWizard`
@@ -362,4 +391,4 @@ Contracts for later milestones:
 - [x] **M7** Gunsmith & attachment physics
 - [x] **M8** Tactical AI & squad CQB
 - [x] **M9** Game modes, match director, tactical equipment
-- [ ] **M10** 3D gunsmith workbench, loadout persistence, HDRP settings menu
+- [x] **M10** 3D gunsmith workbench, loadout persistence, HDRP settings menu

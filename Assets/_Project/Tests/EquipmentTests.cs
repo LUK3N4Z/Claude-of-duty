@@ -123,7 +123,7 @@ namespace FPS.Tests
 
             soldier.GetComponent<FPS.Ballistics.TacticalHealthAndArmorSystem>().ApplyDamage(FPS.Ballistics.HitZone.Head, 500f, soldier.Body.Head.position, Vector3.forward);
             yield return new WaitForSeconds(0.3f);
-            DroppedWeapon loot = Object.FindAnyObjectByType<DroppedWeapon>();
+            DroppedWeapon loot = soldier.WeaponHandler.Weapon.GetComponentInChildren<DroppedWeapon>();
             Assert.IsNotNull(loot, "the fallen rifle can be looted");
             Assert.AreEqual(4, loot.Remaining, "the magazine in the rifle and three spares");
 

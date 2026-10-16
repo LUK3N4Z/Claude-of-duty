@@ -101,6 +101,7 @@ namespace FPS.Audio
             listener = audioListener.transform;
             TryGetComponent(out health);
             if (!listener.TryGetComponent(out lowPass)) lowPass = listener.gameObject.AddComponent<AudioLowPassFilter>();
+            if (!listener.TryGetComponent(out DynamicRangeProcessor _)) listener.gameObject.AddComponent<DynamicRangeProcessor>(); // master-bus dynamics
             lowPass.cutoffFrequency = openCutoff;
 
             var mix = new GameObject("Acoustics").transform;

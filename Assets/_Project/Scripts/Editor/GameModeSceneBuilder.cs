@@ -283,7 +283,7 @@ namespace FPS.EditorTools
             return point;
         }
 
-        private static void Block(Transform parent, string blockName, Vector3 position, Vector3 size, string surface = "Concrete")
+        internal static void Block(Transform parent, string blockName, Vector3 position, Vector3 size, string surface = "Concrete")
         {
             GameObject block = GameObject.CreatePrimitive(PrimitiveType.Cube);
             block.name = blockName;

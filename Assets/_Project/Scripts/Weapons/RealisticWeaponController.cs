@@ -192,6 +192,37 @@ namespace FPS.Weapons
             if (activeSlot == slot || activeSlot < 0) BeginEquip(slot);
         }
 
+        /// <summary>The model and base (un-built) data carried in <paramref name="slot"/>; false when it is empty.</summary>
+        public bool GetLoadoutWeapon(int slot, out WeaponModelRig model, out WeaponDataSO data)
+        {
+            bool filled = slot >= 0 && slot < loadout.Length && states[slot] != null;
+            model = filled ? loadout[slot].model : null;
+            data = filled ? loadout[slot].data : null;
+            return filled;
+        }
+
+        /// <summary>Replaces the whole build of a slot's weapon in one refit (rounds, chamber and reload progress kept).</summary>
+        public void SetBuild(int slot, IReadOnlyList<AttachmentDataSO> parts)
+        {
+            if (states[slot] == null) throw new InvalidOperationException($"Loadout slot {slot} is empty.");
+            List<AttachmentDataSO> build = builds[slot];
+            build.Clear();
+            for (int i = 0; i < parts.Count; i++)
+            {
+                if (parts[i] != null) build.Add(parts[i]);
+            }
+
+            WeaponDataSO previous = states[slot].Data;
+            states[slot].Data = GunsmithAssembler.Assemble(loadout[slot].data, build);
+            if (slot == activeSlot)
+            {
+                InterruptReload();
+                viewmodel.Equip(loadout[slot].model, states[slot].Data, build).SetMagazineVisible(states[slot].HasMagazine);
+            }
+
+            Destroy(previous);
+        }
+
         /// <summary>The attachments fitted to a slot's weapon.</summary>
         public IReadOnlyList<AttachmentDataSO> GetAttachments(int slot) => builds[slot];
 

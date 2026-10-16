@@ -119,7 +119,7 @@ namespace FPS.EditorTools
             GameObjectUtility.SetStaticEditorFlags(wall, StaticEditorFlags.BatchingStatic | StaticEditorFlags.ContributeGI);
         }
 
-        private static void Dummy(Transform parent, string dummyName, Vector3 position, bool armored)
+        internal static void Dummy(Transform parent, string dummyName, Vector3 position, bool armored, float yaw = 180f)
         {
             Material skin = TestWeaponBuilder.LitMaterial("DummySkin", new Color(0.55f, 0.45f, 0.36f), 0f, 0.35f);
             Material gear = TestWeaponBuilder.LitMaterial("DummyGear", new Color(0.18f, 0.2f, 0.14f), 0f, 0.3f);
@@ -127,7 +127,7 @@ namespace FPS.EditorTools
 
             var root = new GameObject(dummyName);
             root.transform.SetParent(parent, false);
-            root.transform.SetLocalPositionAndRotation(position, Quaternion.Euler(0f, 180f, 0f)); // facing the shooter
+            root.transform.SetLocalPositionAndRotation(position, Quaternion.Euler(0f, yaw, 0f)); // facing the shooter
             TacticalHealthAndArmorSystem health = root.AddComponent<TacticalHealthAndArmorSystem>();
 
             Zone(root.transform, HitZone.Head, PrimitiveType.Sphere, new Vector3(0f, 1.62f, 0f), new Vector3(0.22f, 0.22f, 0.22f), skin, flesh);

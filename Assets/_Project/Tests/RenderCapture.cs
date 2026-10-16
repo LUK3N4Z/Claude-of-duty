@@ -211,6 +211,67 @@ namespace FPS.Tests
             }
         }
 
+        [UnityTest]
+        public IEnumerator CaptureArmory()
+        {
+            string dir = Environment.GetEnvironmentVariable("FPS_CAPTURE_DIR");
+            if (string.IsNullOrEmpty(dir)) Assert.Ignore("FPS_CAPTURE_DIR not set");
+            TestInput.IgnoreFocus();
+            InputSystem.AddDevice<Keyboard>();
+            InputSystem.AddDevice<Mouse>();
+            FPS.Gameplay.SaveProfileManager.DirectoryOverride = Path.Combine(dir, "profile");
+
+            yield return EditorSceneManager.LoadSceneAsyncInPlayMode("Assets/_Project/Scenes/Armory.unity", new LoadSceneParameters(LoadSceneMode.Single));
+            yield return new WaitForSeconds(1.5f);
+            var rig = Object.FindAnyObjectByType<PlayerRig>();
+            var rt = new RenderTexture(1280, 720, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            rig.PlayerCamera.targetTexture = rt;
+            yield return new WaitForSeconds(0.5f);
+            Save(rt, Path.Combine(dir, "armory_workshop.png"));
+
+            var bench = Object.FindAnyObjectByType<FPS.Gameplay.GunsmithWorkbenchController>();
+            bench.BenchCamera.targetTexture = rt;
+            bench.Interact(rig.gameObject);
+            yield return new WaitForSeconds(0.5f);
+            Save(rt, Path.Combine(dir, "armory_bench.png"));
+            bench.SelectSlot(AttachmentSlot.Optic);
+            foreach (AttachmentDataSO option in bench.Options)
+            {
+                if (option.name == "Optic_RedDot") bench.Fit(option);
+            }
+
+            bench.SelectSlot(AttachmentSlot.Muzzle);
+            foreach (AttachmentDataSO option in bench.Options)
+            {
+                if (option.name == "Muzzle_Suppressor") bench.Fit(option);
+            }
+
+            bench.Rotate(new Vector2(-120f, 20f));
+            yield return new WaitForSeconds(0.3f);
+            Save(rt, Path.Combine(dir, "armory_bench_build.png"));
+            Debug.Log($"[Capture] bench build: {bench.PreviewData.MassKg:F2} kg, flash {bench.PreviewData.MuzzleFlashMultiplier:F2}, nodes {bench.Nodes.Count}");
+            bench.Apply();
+            bench.Leave();
+            bench.BenchCamera.targetTexture = null;
+
+            var weapons = rig.GetComponent<RealisticWeaponController>();
+            var cc = rig.GetComponent<CharacterController>();
+            Teleport(rig, cc, new Vector3(7.2f, 0f, 0f));
+            rig.GetComponent<RealisticLocomotionController>().SetLook(90f, 0f);
+            yield return new WaitForSeconds(1.2f);
+            for (int i = 0; i < 3; i++)
+            {
+                weapons.PullTrigger();
+                weapons.ReleaseTrigger();
+                yield return new WaitForSeconds(0.2f);
+            }
+
+            Save(rt, Path.Combine(dir, "armory_range.png"));
+            Debug.Log($"[Capture] range: fitted {weapons.GetAttachments(weapons.ActiveSlot).Count} parts, rounds {weapons.ActiveState.LoadedRounds}");
+            rig.PlayerCamera.targetTexture = null;
+            FPS.Gameplay.SaveProfileManager.DirectoryOverride = null;
+        }
+
         private static AttachmentDataSO Part(string partName) =>
             AssetDatabase.LoadAssetAtPath<AttachmentDataSO>($"Assets/_Project/Data/Weapons/Attachments/{partName}.asset");
 

@@ -75,6 +75,8 @@ namespace FPS.Weapons
         public ThrownGrenade LastThrown { get; private set; }
 
         public int Count(EquipmentSlot slot) => counts[(int)slot];
+        /// <summary>How many of the slot's grenade the loadout carries when restocked.</summary>
+        public int Capacity(EquipmentSlot slot) => slot == EquipmentSlot.Lethal ? lethal.count : tactical.count;
         public GrenadeDataSO Grenade(EquipmentSlot slot) => slot == EquipmentSlot.Lethal ? lethal.grenade : tactical.grenade;
 
         public void SetLoadout(EquipmentSlot slot, GrenadeDataSO grenade, int count)
