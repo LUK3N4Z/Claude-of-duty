@@ -235,6 +235,44 @@ namespace FPS.Tests
             Assert.AreEqual(1f / 3f, AcousticPropagationSystem.LowAmmoShift(2, 3), 1e-5f);
             Assert.AreEqual(1f, AcousticPropagationSystem.LowAmmoShift(0, 3));
             Assert.AreEqual(0f, AcousticPropagationSystem.LowAmmoShift(-1, 3), "no magazine, no ping");
+
+            float near = AcousticPropagationSystem.RemoteTailGain(6f, 6f, 1500f);
+            Assert.AreEqual(0.7f * (1f - 6f / 1500f), near, 1e-5f);
+            Assert.AreEqual(near / 2f, AcousticPropagationSystem.RemoteTailGain(24f, 6f, 1500f), 0.01f, "reverb falls 3 dB per doubling: half at four times the distance");
+            Assert.Greater(AcousticPropagationSystem.RemoteTailGain(300f, 6f, 1500f), 6f / 300f, "far shots are mostly reverb, but no longer as loud as close ones");
+            Assert.Less(AcousticPropagationSystem.RemoteTailGain(300f, 6f, 1500f), 0.15f);
+            Assert.AreEqual(0f, AcousticPropagationSystem.RemoteTailGain(1500f, 6f, 1500f), "silent at the audible limit");
+        }
+
+        [Test]
+        public void MasterLimiter_RidesOversDown_InsteadOfFlatToppingThem()
+        {
+            var listenerObject = new GameObject("Listener");
+            created.Add(listenerObject);
+            listenerObject.AddComponent<AudioListener>();
+            var processor = listenerObject.AddComponent<DynamicRangeProcessor>();
+            processor.Preset = AudioDynamicRange.StudioReference;
+            float ceiling = Mathf.Pow(10f, DynamicRangeProcessor.CurveFor(AudioDynamicRange.StudioReference).CeilingDb / 20f);
+
+            // A gunshot-like over: 0.25 s of a 1 kHz tone at +3.5 dBFS (1.5 x full scale), stereo.
+            int frames = (int)(AudioSettings.outputSampleRate * 0.25f);
+            var data = new float[frames * 2];
+            for (int i = 0; i < frames; i++) data[2 * i] = data[2 * i + 1] = 1.5f * Mathf.Sin(2f * Mathf.PI * 1000f * i / AudioSettings.outputSampleRate);
+            processor.Process(data, 2);
+
+            int atCeiling = 0;
+            float loudest = 0f;
+            for (int i = 0; i < data.Length; i++)
+            {
+                float level = Mathf.Abs(data[i]);
+                loudest = Mathf.Max(loudest, level);
+                if (level > ceiling * 0.995f) atCeiling++;
+            }
+
+            Assert.LessOrEqual(loudest, ceiling + 1e-4f, "nothing passes the ceiling");
+            Assert.Less(atCeiling, data.Length / 5, "only the crests touch it: the wave keeps its shape (a clamp flat-tops over half of it)");
+            Assert.Greater(loudest, ceiling * 0.98f, "and it is still full level");
+            Assert.Greater(processor.GainReductionDb, 3f, "about 3.8 dB of limiting");
         }
 
         [UnityTest]
@@ -256,7 +294,7 @@ namespace FPS.Tests
             EventBus<GunshotEvent>.Raise(new GunshotEvent { Position = ear.position, Shooter = player.transform, Profile = profile, RoundsLeft = 0 });
             AudioSource hallTail = Source(hall), pingSource = Source(ping);
             Assert.IsNotNull(hallTail, "warehouse tail");
-            Assert.Greater(hallTail.volume, 0.5f);
+            Assert.Greater(hallTail.volume, 0.4f);
             Assert.IsNull(Source(room), "no small-room slapback in a hall");
             Assert.IsNotNull(pingSource, "last round pings");
             Assert.Greater(pingSource.pitch, 1.1f, "the follower is up: highest ping");
@@ -264,6 +302,17 @@ namespace FPS.Tests
             pingSource.clip = null;
             EventBus<GunshotEvent>.Raise(new GunshotEvent { Position = ear.position, Shooter = player.transform, Profile = profile, RoundsLeft = 12 });
             Assert.IsNull(Source(ping), "plenty left: no ping");
+
+            // Sustained fire: each round rings its own tail voice instead of restarting the last one before it is heard.
+            for (int i = 0; i < AcousticPropagationSystem.TailVoices; i++)
+                EventBus<GunshotEvent>.Raise(new GunshotEvent { Position = ear.position, Shooter = player.transform, Profile = profile, RoundsLeft = 12 });
+            int hallVoices = 0;
+            foreach (AudioSource source in Object.FindObjectsByType<AudioSource>())
+            {
+                if (source.clip == hall) hallVoices++;
+            }
+
+            Assert.AreEqual(AcousticPropagationSystem.TailVoices, hallVoices, "every voice of the hall is ringing");
         }
 
         // ---- Gear ----

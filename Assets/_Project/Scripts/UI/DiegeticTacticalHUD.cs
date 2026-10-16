@@ -49,6 +49,7 @@ namespace FPS.UI
         private SuppressionFeedback suppression;
         private TacticalHealthAndArmorSystem health;
         private Text bearing, status, prompt;
+        private Canvas canvas;
         private CanvasGroup statusGroup;
         private Image crosshair;
         private Vignette vignette;
@@ -83,9 +84,18 @@ namespace FPS.UI
             BuildStressVolume();
         }
 
-        private void OnEnable() => EventBus<WeaponActionEvent>.Subscribe(OnWeaponAction);
+        // Switching the HUD off (a menu or station took over) hides it with the rest of its work.
+        private void OnEnable()
+        {
+            EventBus<WeaponActionEvent>.Subscribe(OnWeaponAction);
+            if (canvas != null) canvas.enabled = true;
+        }
 
-        private void OnDisable() => EventBus<WeaponActionEvent>.Unsubscribe(OnWeaponAction);
+        private void OnDisable()
+        {
+            EventBus<WeaponActionEvent>.Unsubscribe(OnWeaponAction);
+            if (canvas != null) canvas.enabled = false; // already gone when the scene unloads
+        }
 
         private void OnDestroy() => Destroy(stressProfile);
 
@@ -157,7 +167,7 @@ namespace FPS.UI
         {
             var canvasObject = new GameObject("Tactical HUD");
             canvasObject.transform.SetParent(transform, false);
-            var canvas = canvasObject.AddComponent<Canvas>();
+            canvas = canvasObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             var scaler = canvasObject.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;

@@ -16,6 +16,11 @@ namespace FPS.Audio
     public sealed class AcousticPropagationSystem : MonoBehaviour
     {
         private const int SmallRoom = 0, Warehouse = 1, Urban = 2, Open = 3;
+        /// <summary>
+        /// Voices per space. Each shot starts its tail on the oldest voice, so in sustained fire every tail rings for a few
+        /// shots (its early reflections and the build-up) instead of being restarted by the next round before it is heard.
+        /// </summary>
+        public const int TailVoices = 4;
 
         [Header("Handling Foley")]
         [SerializeField] private AudioClip dryFire;
@@ -28,6 +33,8 @@ namespace FPS.Audio
         [Header("Mix")]
         [Tooltip("How much own-weapon audio is placed in the world rather than in the head.")]
         [SerializeField, Range(0f, 1f)] private float firstPersonSpatialBlend = 0.3f;
+        [Tooltip("Own-shot layers are each normalized near full scale; this leaves the summed shot headroom under the master limiter.")]
+        [SerializeField, Range(0f, 1f)] private float firstPersonGain = 0.6f;
         [SerializeField, Range(0f, 1f)] private float tailVolume = 0.8f;
         [SerializeField, Range(0f, 1f)] private float subBassVolume = 0.85f;
         [SerializeField] private float remoteMinDistance = 6f;
@@ -67,7 +74,8 @@ namespace FPS.Audio
         [Tooltip("Time for full deafness to wear off (s).")]
         [SerializeField, Min(0.1f)] private float deafnessRecovery = 6f;
 
-        private readonly AudioSource[] tails = new AudioSource[4];
+        private readonly AudioSource[] tails = new AudioSource[4 * TailVoices];
+        private readonly int[] nextTailVoice = new int[4];
         private Transform listener;
         private AudioSource firstPerson;
         private AudioSource mechanism;
@@ -88,6 +96,13 @@ namespace FPS.Audio
         /// <summary>Stun-grenade deafness, 0-1.</summary>
         public float Deafness { get; private set; }
         public float CutoffFrequency => lowPass != null ? lowPass.cutoffFrequency : openCutoff;
+
+        /// <summary>
+        /// Share of a remote shot's loudness in its reverb tail: reverberant energy falls about 3 dB per doubling of
+        /// distance beyond <paramref name="nearDistance"/> (the direct report falls 6 dB), fading out at the audible limit.
+        /// </summary>
+        public static float RemoteTailGain(float distance, float nearDistance, float maxAudible) =>
+            0.7f * Mathf.Sqrt(Mathf.Min(1f, nearDistance / Mathf.Max(distance, 0.01f))) * Mathf.Clamp01(1f - distance / maxAudible);
 
         /// <summary>Time for sound to cover <paramref name="distance"/> metres.</summary>
         public static float PropagationDelay(float distance) => distance / BallisticsMath.SpeedOfSound;
@@ -201,15 +216,16 @@ namespace FPS.Audio
 
             if (shot.Shooter == transform)
             {
+                float loudness = profile.Loudness * firstPersonGain;
                 firstPerson.pitch = Random.Range(0.97f, 1.03f);
-                PlayFirstPerson(profile.PressureTransient, profile.Loudness);
-                PlayFirstPerson(profile.SubBass, profile.Loudness * subBassVolume);
-                PlayFirstPerson(profile.BodyResonance, profile.Loudness * 0.9f);
+                PlayFirstPerson(profile.PressureTransient, loudness);
+                PlayFirstPerson(profile.SubBass, loudness * subBassVolume);
+                PlayFirstPerson(profile.BodyResonance, loudness * 0.9f);
 
                 float lowAmmo = LowAmmoShift(shot.RoundsLeft, profile.LowAmmoRounds);
                 mechanism.pitch = Random.Range(0.98f, 1.02f) * (1f + lowAmmoActionRise * lowAmmo);
                 AudioClip action = profile.MechanicalCycle;
-                if (action != null) mechanism.PlayOneShot(action, profile.Loudness * 0.8f);
+                if (action != null) mechanism.PlayOneShot(action, loudness * 0.8f);
                 if (lowAmmo > 0f && profile.LowAmmoPing != null)
                 {
                     ping.clip = profile.LowAmmoPing;
@@ -218,7 +234,7 @@ namespace FPS.Audio
                     ping.Play();
                 }
 
-                PlayTails(profile, 0f, profile.Loudness);
+                PlayTails(profile, 0f, loudness);
                 return;
             }
 
@@ -231,7 +247,10 @@ namespace FPS.Audio
             AudioClip report = distant ? profile.DistantReport : profile.PressureTransient;
             Emit(report, shot.Position, profile.Loudness, pitch, delay, remoteMinDistance, profile.MaxAudibleDistance);
             if (!distant) Emit(profile.SubBass, shot.Position, profile.Loudness * subBassVolume, pitch, delay, remoteMinDistance, profile.DistantThreshold);
-            PlayTails(profile, delay, profile.Loudness * 0.7f * (1f - distance / profile.MaxAudibleDistance));
+            // Up close the action (or an explosion's falling debris) is heard too.
+            if (distance <= remoteFoleyMaxDistance)
+                Emit(profile.MechanicalCycle, shot.Position, profile.Loudness * 0.8f, pitch, delay, 1f, remoteFoleyMaxDistance);
+            PlayTails(profile, delay, profile.Loudness * RemoteTailGain(distance, remoteMinDistance, profile.MaxAudibleDistance));
         }
 
         private void OnWeaponAction(in WeaponActionEvent action)
@@ -276,16 +295,18 @@ namespace FPS.Audio
 
         private void PlayTails(WeaponAudioProfileSO profile, float delay, float volume)
         {
-            PlayTail(tails[SmallRoom], profile.IndoorTail, environment.x * (1f - WarehouseShare) * volume, delay);
-            PlayTail(tails[Warehouse], profile.WarehouseTail, environment.x * WarehouseShare * volume, delay);
-            PlayTail(tails[Urban], profile.UrbanTail, environment.y * volume, delay);
-            PlayTail(tails[Open], profile.OpenTail, environment.z * volume, delay);
+            PlayTail(SmallRoom, profile.IndoorTail, environment.x * (1f - WarehouseShare) * volume, delay);
+            PlayTail(Warehouse, profile.WarehouseTail, environment.x * WarehouseShare * volume, delay);
+            PlayTail(Urban, profile.UrbanTail, environment.y * volume, delay);
+            PlayTail(Open, profile.OpenTail, environment.z * volume, delay);
         }
 
-        private void PlayTail(AudioSource source, AudioClip clip, float volume, float delay)
+        private void PlayTail(int space, AudioClip clip, float volume, float delay)
         {
             if (clip == null || volume < 0.01f) return;
-            // Restarting one voice per environment keeps sustained fire as a single continuous tail.
+            int voice = nextTailVoice[space];
+            nextTailVoice[space] = (voice + 1) % TailVoices;
+            AudioSource source = tails[space * TailVoices + voice];
             source.clip = clip;
             source.volume = volume * tailVolume;
             if (delay > 0f) source.PlayDelayed(delay);

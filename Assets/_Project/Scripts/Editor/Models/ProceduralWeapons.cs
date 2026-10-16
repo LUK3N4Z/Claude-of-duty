@@ -14,6 +14,7 @@ namespace FPS.EditorTools
         public Transform Reciprocating;
         public Transform ChargingHandle;
         public Transform BoltHandle;
+        public Transform[] FoldingSights;
     }
 
     /// <summary>
@@ -280,6 +281,7 @@ namespace FPS.EditorTools
             if (!imported) BattleRifleBody(model);
 
             var visual = new WeaponVisual { Root = model.Root };
+            if (!imported) visual.FoldingSights = FlipUpIrons(model);
             visual.Trigger = model.Moving("Trigger", new Vector3(0f, -0.038f, -0.03f), Quaternion.identity, SurfaceFinish.BluedSteel, kit => kit.Profile(new[]
             {
                 new Vector2(0f, 0f), new Vector2(0.004f, -0.004f), new Vector2(0.006f, -0.012f), new Vector2(0.004f, -0.019f), new Vector2(-0.002f, -0.012f),
@@ -371,12 +373,27 @@ namespace FPS.EditorTools
             }, 0.016f);
             black.Box(new Vector3(0f, -0.032f, -0.415f), new Vector3(0.036f, 0.11f, 0.012f), 0.004f);
             black.Box(new Vector3(0f, 0.021f, -0.3f), new Vector3(0.028f, 0.012f, 0.1f), 0.003f); // cheek riser
+        }
 
-            // Flip-up irons on the rail (rear aperture and front post on the sight line).
-            black.Box(new Vector3(0f, 0.052f, -0.12f), new Vector3(0.022f, 0.024f, 0.012f), 0.002f);
-            hole.Box(new Vector3(0f, 0.075f, -0.12f), new Vector3(0.012f, 0.012f, 0.0125f), 0.002f);
-            black.Box(new Vector3(0f, 0.055f, 0.3f), new Vector3(0.012f, 0.03f, 0.012f), 0.002f);
-            black.Box(new Vector3(0f, 0.075f, 0.3f), new Vector3(0.0025f, 0.012f, 0.003f), 0.0005f);
+        /// <summary>
+        /// Flip-up irons on the top rail, each a separate part pivoting at its base (y = 0.04): a rear ghost ring and a
+        /// front post on the sight line (y = 0.075). <c>WeaponModelRig.SetSightsFolded</c> lays them flat under an optic.
+        /// </summary>
+        private static Transform[] FlipUpIrons(ModelAssembly model)
+        {
+            Transform rear = model.Moving("Rear Iron", new Vector3(0f, 0.04f, -0.12f), Quaternion.identity, SurfaceFinish.AnodizedBlack, kit =>
+            {
+                kit.Box(new Vector3(0f, 0.015f, 0f), new Vector3(0.022f, 0.03f, 0.012f), 0.002f);
+                kit.Push(new Vector3(0f, 0.035f, -0.003f), Quaternion.identity);
+                kit.Tube(0.0075f, 0.0028f, 0f, 0.006f, 20); // open aperture centred on the sight line
+                kit.Pop();
+            });
+            Transform front = model.Moving("Front Iron", new Vector3(0f, 0.04f, 0.3f), Quaternion.identity, SurfaceFinish.AnodizedBlack, kit =>
+            {
+                kit.Box(new Vector3(0f, 0.015f, 0f), new Vector3(0.012f, 0.03f, 0.012f), 0.002f);
+                kit.Box(new Vector3(0f, 0.035f, 0f), new Vector3(0.0025f, 0.012f, 0.003f), 0.0005f); // post
+            });
+            return new[] { rear, front };
         }
 
         // ---- Sidearm (striker pistol, reciprocating slide) ----

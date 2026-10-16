@@ -83,7 +83,11 @@ namespace FPS.Gameplay
             user = rig;
             PlayerControl.Pause(rig.gameObject, paused);
             rig.PlayerCamera.enabled = false;
-            if (stationCamera != null) stationCamera.enabled = true;
+            if (stationCamera != null)
+            {
+                stationCamera.cullingMask &= ~(1 << GameLayers.FirstPersonViewmodel); // the user's own rifle hangs in front of the table
+                stationCamera.enabled = true;
+            }
             SaveProfileManager profiles = rig.GetComponent<SaveProfileManager>();
             SelectDifficulty(profiles != null ? profiles.Profile.settings.aiDifficulty : CombatDifficulty.Current);
             SelectOperation(SelectedOperation);

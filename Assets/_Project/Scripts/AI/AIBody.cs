@@ -181,6 +181,19 @@ namespace FPS.AI
             aimRotation = transform.rotation * Quaternion.Euler(lowReadyPitch, 0f, 0f);
         }
 
+        /// <summary>
+        /// In a built player, soldiers placed in a scene can wake before its NavMeshSurface registers the mesh; the agent
+        /// then fails to place itself and never moves. Once everything has woken, re-enabling it snaps it onto the mesh.
+        /// </summary>
+        private void Start()
+        {
+            if (agent.enabled && !agent.isOnNavMesh)
+            {
+                agent.enabled = false;
+                agent.enabled = true;
+            }
+        }
+
         private void LateUpdate()
         {
             if (IsDead) return;

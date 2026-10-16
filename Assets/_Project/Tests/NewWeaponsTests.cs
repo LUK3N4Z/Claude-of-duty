@@ -86,6 +86,36 @@ namespace FPS.Tests
         }
 
         [UnityTest]
+        public IEnumerator BattleRifle_FoldsItsIronsUnderTheRedDot_SoNothingBlocksTheSightPicture()
+        {
+            WeaponDataSO data = Data("BattleRifle");
+            controller.SetLoadout(0, Model("BattleRifle"), data);
+            yield return new WaitForSeconds(data.DrawTime + 0.1f);
+
+            WeaponModelRig weapon = viewmodel.Weapon;
+            Assert.AreEqual(2, weapon.FoldingSights.Count, "rear ghost ring and front post");
+            Transform aligner = weapon.GetSightAligner(0, out WeaponSight sight);
+            Assert.IsNotNull(sight, "the red dot is the sight");
+            foreach (Transform iron in weapon.FoldingSights)
+                Assert.AreEqual(90f, Quaternion.Angle(Quaternion.identity, iron.localRotation), 0.5f, $"{iron.name} folded flat under the optic");
+
+            // From the eye (eye relief behind the aligner) to the dot, no part of the rifle outside the optic may sit on the line.
+            Vector3 eye = aligner.position - aligner.forward * sight.EyeRelief;
+            foreach (MeshFilter part in weapon.GetComponentsInChildren<MeshFilter>())
+            {
+                if (part.transform.IsChildOf(sight.transform) || part.sharedMesh == null) continue;
+                var local = new Ray(part.transform.InverseTransformPoint(eye), part.transform.InverseTransformDirection(aligner.forward));
+                if (part.sharedMesh.bounds.IntersectRay(local, out float distance))
+                    Assert.Greater(distance, sight.EyeRelief, $"{part.name} blocks the sight picture");
+            }
+
+            controller.SetAttachment(0, AttachmentSlot.Optic, null);
+            yield return null;
+            foreach (Transform iron in viewmodel.Weapon.FoldingSights)
+                Assert.AreEqual(0f, Quaternion.Angle(Quaternion.identity, iron.localRotation), 0.5f, $"{iron.name} stands up again without an optic");
+        }
+
+        [UnityTest]
         public IEnumerator Sidearm_SlideCyclesOnEachShot_AndLocksBackWhenEmpty()
         {
             WeaponDataSO data = Data("Sidearm");

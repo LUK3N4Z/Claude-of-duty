@@ -7,6 +7,7 @@ using FPS.Core;
 using FPS.EditorTools;
 using FPS.Gameplay;
 using FPS.Locomotion;
+using FPS.UI;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -195,6 +196,8 @@ namespace FPS.Tests
         public IEnumerator Deploy_LoadsTheOperationBehindTheLoadingScreen_ThenReturnsToTheArmory()
         {
             player.AddComponent<SaveProfileManager>();
+            var hud = player.AddComponent<DiegeticTacticalHUD>();
+            Canvas hudCanvas = hud.GetComponentInChildren<Canvas>(true);
             var stationObject = new GameObject("Deployment Table");
             created.Add(stationObject);
             var view = new GameObject("Station Camera").AddComponent<Camera>();
@@ -216,6 +219,11 @@ namespace FPS.Tests
             station.Enter(player.GetComponent<PlayerRig>());
             Assert.IsTrue(station.IsActive);
             Assert.IsFalse(player.GetComponent<RealisticLocomotionController>().enabled, "the player is at the table");
+            Assert.IsFalse(hudCanvas.enabled, "the compass and prompts stay off the station screen");
+            Assert.AreEqual(0, view.cullingMask & (1 << GameLayers.FirstPersonViewmodel), "the table camera does not see the user's own rifle");
+            station.Leave();
+            Assert.IsTrue(hudCanvas.enabled, "back in the world, the HUD returns");
+            station.Enter(player.GetComponent<PlayerRig>());
             station.SelectOperation(1);
             station.SelectDifficulty(AIDifficulty.Hardened);
             station.Deploy();
@@ -237,11 +245,21 @@ namespace FPS.Tests
             Assert.AreEqual(SceneFlow.ArmoryScene, SceneFlow.TargetScene);
             yield return WaitForScene(SceneFlow.ArmoryScene);
             Assert.IsNotNull(Object.FindAnyObjectByType<DeploymentStation>(), "back at the hub, the table waits");
+            Physics.SyncTransforms();
+            AssertOpensFromAbove(Object.FindAnyObjectByType<DeploymentStation>().transform, GameObject.Find("Deployment Hologram").transform.position);
+            AssertOpensFromAbove(Object.FindAnyObjectByType<GunsmithWorkbenchController>().transform, GameObject.Find("Turntable").transform.position);
 
             // Leave the hub so later tests start from an empty scene.
             Scene armory = SceneManager.GetActiveScene();
             SceneManager.SetActiveScene(SceneManager.CreateScene("Front End Test Cleanup"));
             yield return SceneManager.UnloadSceneAsync(armory);
+        }
+
+        /// <summary>Looking straight down at a station's table top reaches its interaction volume, not just its front edge.</summary>
+        private static void AssertOpensFromAbove(Transform station, Vector3 tableTop)
+        {
+            bool hit = Physics.Raycast(tableTop + Vector3.up * 0.8f, Vector3.down, out RaycastHit top, 2f, 1 << GameLayers.Interactable, QueryTriggerInteraction.Collide);
+            Assert.IsTrue(hit && top.transform == station, $"{station.name} answers a look at its table top");
         }
 
         private static IEnumerator WaitForScene(string sceneName)

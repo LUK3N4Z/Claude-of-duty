@@ -273,6 +273,17 @@ namespace FPS.EditorTools
             });
         }
 
+        private static void SetFoldingSights(WeaponModelRig rig, WeaponVisual visual)
+        {
+            Transform[] sights = visual.FoldingSights ?? System.Array.Empty<Transform>();
+            Configure(rig, so =>
+            {
+                SerializedProperty list = Property(so, WeaponModelRig.FoldingSightsFieldName);
+                list.arraySize = sights.Length;
+                for (int i = 0; i < sights.Length; i++) list.GetArrayElementAtIndex(i).objectReferenceValue = sights[i];
+            });
+        }
+
         private static void AddMechanism(GameObject root, WeaponVisual visual, Vector3 carrierTravel, Vector3 chargeTravel, bool handleReciprocates)
         {
             root.AddComponent<WeaponMechanism>().Configure(visual.Trigger, visual.Selector, visual.Reciprocating, carrierTravel, visual.ChargingHandle,
@@ -304,6 +315,7 @@ namespace FPS.EditorTools
                 var rig = root.AddComponent<WeaponModelRig>();
                 rig.EnsureSockets();
                 SetMagazineRenderers(rig, visual);
+                SetFoldingSights(rig, visual);
                 AddMechanism(root, visual, new Vector3(0f, 0f, -0.03f), new Vector3(0f, 0f, -0.1f), true);
                 SetLayerRecursively(t, GameLayers.FirstPersonViewmodel);
                 PrefabUtility.SaveAsPrefabAsset(root, PrefabPath(BattleRifleName));

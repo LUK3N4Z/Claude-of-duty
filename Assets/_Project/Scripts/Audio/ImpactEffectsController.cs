@@ -78,6 +78,9 @@ namespace FPS.Audio
             var decalObject = new GameObject("Impact Decal");
             decalObject.transform.SetParent(templates, false);
             decalTemplate = decalObject.AddComponent<DecalProjector>();
+            // HDRP warns whenever a projector wakes without a material; each impact swaps in its surface's decal
+            // before the frame renders, so the clones only need some material to wake with.
+            decalTemplate.material = thermalDecalMaterial;
 
             dustTemplate = EffectParticles.Create("Impact Dust", templates, dustMaterial, new EffectParticles.Settings
             {

@@ -174,10 +174,11 @@ namespace FPS.EditorTools
 
             var station = new GameObject("Gunsmith Workbench (interact)") { layer = GameLayers.Interactable };
             station.transform.SetParent(level, false);
-            station.transform.position = new Vector3(0f, 1f, 2.9f);
+            // Covers the bench top and the space in front of it, so looking at the bench from any side opens it.
+            station.transform.position = new Vector3(0f, 1f, 3.45f);
             var trigger = station.AddComponent<BoxCollider>();
             trigger.isTrigger = true;
-            trigger.size = new Vector3(2.6f, 0.9f, 0.5f);
+            trigger.size = new Vector3(2.8f, 0.9f, 1.6f);
             station.AddComponent<GunsmithWorkbenchController>().Configure(catalog, benchCamera, turntable,
                 UnlitMaterial("Workbench Node", new Color(0.2f, 0.85f, 1f), null, false), UnlitMaterial("Workbench Node Selected", new Color(1f, 0.6f, 0.1f), null, false));
         }
@@ -232,10 +233,11 @@ namespace FPS.EditorTools
 
             var station = new GameObject("Deployment Table (interact)") { layer = GameLayers.Interactable };
             station.transform.SetParent(level, false);
-            station.transform.position = center + new Vector3(0f, 1f, 0.7f);
+            // Covers the table top and the space in front of it, so looking at the hologram from any side opens it.
+            station.transform.position = center + new Vector3(0f, 1f, 0.15f);
             var trigger = station.AddComponent<BoxCollider>();
             trigger.isTrigger = true;
-            trigger.size = new Vector3(2.2f, 0.9f, 0.5f);
+            trigger.size = new Vector3(2.4f, 0.9f, 1.6f);
             station.AddComponent<DeploymentStation>().Configure(Operations(), view, hologram.GetComponent<MeshRenderer>());
         }
 

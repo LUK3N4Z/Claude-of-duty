@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace FPS.Weapons
@@ -36,6 +37,7 @@ namespace FPS.Weapons
         /// <summary>Sight slots: 0 = primary, 1 = canted backup.</summary>
         public const int SightSlotCount = 2;
         public const string MagazineRenderersFieldName = nameof(magazineRenderers);
+        public const string FoldingSightsFieldName = nameof(foldingSights);
 
         [Tooltip("Bore exit; +Z is the barrel axis. Bullets spawn here.")]
         [SerializeField] private Transform muzzleSocket;
@@ -55,6 +57,8 @@ namespace FPS.Weapons
         [SerializeField] private Transform rightHandIKGrip;
         [Tooltip("Renderers of the inserted magazine; hidden while the magazine is out of the weapon.")]
         [SerializeField] private Renderer[] magazineRenderers = Array.Empty<Renderer>();
+        [Tooltip("Flip-up iron sights, each pivoting about X at its base; folded flat while an optic is fitted.")]
+        [SerializeField] private Transform[] foldingSights = Array.Empty<Transform>();
 
         public Transform MuzzleSocket => muzzleSocket;
         public Transform ChamberEjectionSocket => chamberEjectionSocket;
@@ -65,6 +69,7 @@ namespace FPS.Weapons
         public Transform CantedSightSocket => cantedSightSocket;
         public Transform LeftHandIKGrip => leftHandIKGrip;
         public Transform RightHandIKGrip => rightHandIKGrip;
+        public IReadOnlyList<Transform> FoldingSights => foldingSights;
 
         /// <summary>
         /// The aligner for a sight slot and its optional <see cref="WeaponSight"/> (an optic mounted under the socket
@@ -103,6 +108,18 @@ namespace FPS.Weapons
             for (int i = 0; i < magazineRenderers.Length; i++)
             {
                 if (magazineRenderers[i] != null) magazineRenderers[i].enabled = visible;
+            }
+        }
+
+        /// <summary>Folds the flip-up irons flat (front ones forward, rear ones back) or stands them up on the sight line.</summary>
+        public void SetSightsFolded(bool folded)
+        {
+            for (int i = 0; i < foldingSights.Length; i++)
+            {
+                Transform sight = foldingSights[i];
+                if (sight == null) continue;
+                float angle = !folded ? 0f : sight.localPosition.z >= 0f ? 90f : -90f;
+                sight.localRotation = Quaternion.Euler(angle, 0f, 0f);
             }
         }
 

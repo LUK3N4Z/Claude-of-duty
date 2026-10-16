@@ -57,10 +57,11 @@ namespace FPS.Weapons
         /// <summary>
         /// Instantiates each part at its <c>{Slot}Mount</c> (barrels first, so their MuzzleMount exists for muzzle
         /// devices), lets parts override the Muzzle, LeftHandIKGrip and StockPivot sockets, then stores the measured
-        /// mass distribution on <paramref name="data"/> (which must be a build clone).
+        /// mass distribution on <paramref name="data"/> (which must be a build clone). Flip-up irons fold under an optic.
         /// </summary>
         public static void AttachParts(WeaponModelRig weapon, WeaponDataSO data, IReadOnlyList<AttachmentDataSO> parts)
         {
+            weapon.SetSightsFolded(HasOptic(parts));
             if (parts == null || parts.Count == 0) return;
 
             Transform root = weapon.transform;
@@ -110,6 +111,17 @@ namespace FPS.Weapons
             Vector3 receiverCenter = data.BaseCenterOfMass; // stable when the same build is fitted again
             inertia += receiverMass * ((receiverCenter - stock).sqrMagnitude + ReceiverGyration * ReceiverGyration);
             data.ApplyMassDistribution((receiverCenter * receiverMass + weightedParts) / (receiverMass + partsMass), inertia);
+        }
+
+        private static bool HasOptic(IReadOnlyList<AttachmentDataSO> parts)
+        {
+            if (parts == null) return false;
+            for (int i = 0; i < parts.Count; i++)
+            {
+                if (parts[i] != null && parts[i].Slot == AttachmentSlot.Optic && parts[i].Prefab != null) return true;
+            }
+
+            return false;
         }
 
         private static void Redirect(WeaponModelRig weapon, Transform instance, string socketName, WeaponSocket socket)

@@ -15,12 +15,16 @@ namespace FPS.Audio
     /// <summary>
     /// Master-bus dynamics on the AudioListener's GameObject (OnAudioFilterRead sees the whole mix): a feed-forward
     /// compressor (peak follower in dB with attack/release, threshold, ratio, makeup) followed by a limiter at the
-    /// ceiling — soft (tanh) for War Tapes, hard otherwise. Presets set the parameters; the audio thread only reads them.
+    /// ceiling — soft (tanh) saturation for War Tapes; otherwise a peak limiter that pulls the gain down at once to keep
+    /// every sample under the ceiling and lets it recover over <see cref="LimiterReleaseSeconds"/>, so overs are ridden
+    /// down rather than flat-topped. Presets set the parameters; the audio thread only reads them.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(AudioListener))]
     public sealed class DynamicRangeProcessor : MonoBehaviour
     {
+        public const float LimiterReleaseSeconds = 0.08f;
+
         public struct Curve
         {
             public float ThresholdDb;
@@ -34,9 +38,10 @@ namespace FPS.Audio
 
         [SerializeField] private AudioDynamicRange preset = AudioDynamicRange.StudioReference;
 
-        private volatile float thresholdDb, ratio, makeupDb, ceiling, attackCoefficient, releaseCoefficient;
+        private volatile float thresholdDb, ratio, makeupDb, ceiling, attackCoefficient, releaseCoefficient, limiterRelease;
         private volatile bool softLimit;
         private float envelopeDb = -120f;
+        private float limiterGain = 1f;
         private int sampleRate;
 
         public AudioDynamicRange Preset
@@ -78,9 +83,9 @@ namespace FPS.Audio
         public void Process(float[] data, int channels)
         {
             float threshold = thresholdDb, slope = 1f - 1f / ratio, makeup = makeupDb, limit = ceiling;
-            float attack = attackCoefficient, release = releaseCoefficient;
+            float attack = attackCoefficient, release = releaseCoefficient, recover = limiterRelease;
             bool soft = softLimit;
-            float maxReduction = 0f;
+            float maxReduction = 0f, minLimiterGain = 1f;
             for (int frame = 0; frame < data.Length; frame += channels)
             {
                 float peak = 0f;
@@ -93,14 +98,22 @@ namespace FPS.Audio
                 float reduction = over > 0f ? over * slope : 0f;
                 maxReduction = Mathf.Max(maxReduction, reduction);
                 float gain = Mathf.Pow(10f, (makeup - reduction) / 20f);
-                for (int c = 0; c < channels; c++)
+                if (soft)
                 {
-                    float sample = data[frame + c] * gain;
-                    data[frame + c] = soft ? limit * Tanh(sample / limit) : Mathf.Clamp(sample, -limit, limit);
+                    for (int c = 0; c < channels; c++) data[frame + c] = limit * Tanh(data[frame + c] * gain / limit);
+                    continue;
                 }
+
+                // Instant attack: never let this frame through over the ceiling; then recover smoothly towards unity.
+                float framePeak = peak * gain;
+                float needed = framePeak > limit ? limit / framePeak : 1f;
+                limiterGain = Mathf.Min(needed, recover * limiterGain + (1f - recover));
+                minLimiterGain = Mathf.Min(minLimiterGain, limiterGain);
+                gain *= limiterGain;
+                for (int c = 0; c < channels; c++) data[frame + c] *= gain;
             }
 
-            GainReductionDb = maxReduction;
+            GainReductionDb = maxReduction - 20f * Mathf.Log10(minLimiterGain);
         }
 
         private static float Tanh(float x)
@@ -130,6 +143,7 @@ namespace FPS.Audio
             ceiling = Mathf.Pow(10f, curve.CeilingDb / 20f);
             attackCoefficient = Mathf.Exp(-1f / (curve.AttackSeconds * sampleRate));
             releaseCoefficient = Mathf.Exp(-1f / (curve.ReleaseSeconds * sampleRate));
+            limiterRelease = Mathf.Exp(-1f / (LimiterReleaseSeconds * sampleRate));
             softLimit = curve.SoftLimit;
         }
 

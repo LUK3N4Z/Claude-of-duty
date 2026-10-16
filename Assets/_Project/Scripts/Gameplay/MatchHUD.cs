@@ -13,7 +13,11 @@ namespace FPS.Gameplay
     [RequireComponent(typeof(MatchDirector))]
     public sealed class MatchHUD : MonoBehaviour
     {
+        /// <summary>Second banner line once the match is decided: the way out is the menu.</summary>
+        private const string MatchOverHint = "\n<size=24>Esc / Start  —  Return to Armory</size>";
+
         private MatchDirector director;
+        private Canvas canvas;
         private Interactor interactor;
         private Text mode, objective, clock, score, banner;
         private Image progressFill;
@@ -26,6 +30,17 @@ namespace FPS.Gameplay
         {
             director = GetComponent<MatchDirector>();
             Build();
+        }
+
+        // Switched off while a menu or station has the screen (PlayerControl), which hides the overlay.
+        private void OnEnable()
+        {
+            if (canvas != null) canvas.enabled = true;
+        }
+
+        private void OnDisable()
+        {
+            if (canvas != null) canvas.enabled = false; // already gone when the scene unloads
         }
 
         private void Start()
@@ -80,7 +95,8 @@ namespace FPS.Gameplay
             }
             else if (phase != shownPhase)
             {
-                banner.text = phase == MatchPhase.RoundOver || phase == MatchPhase.MatchOver ? director.Message : string.Empty;
+                banner.text = phase == MatchPhase.MatchOver ? director.Message + MatchOverHint
+                    : phase == MatchPhase.RoundOver ? director.Message : string.Empty;
             }
 
             shownPhase = phase;
@@ -97,11 +113,12 @@ namespace FPS.Gameplay
         private void Build()
         {
             RectTransform root = UIFactory.Canvas(transform, "Match HUD", 10, false);
+            canvas = root.GetComponent<Canvas>();
             mode = UIFactory.Label(root, 24, new Vector2(0f, 1f), new Vector2(240f, -40f), new Vector2(420f, 34f), TextAnchor.MiddleLeft);
             objective = UIFactory.Label(root, 20, new Vector2(0f, 1f), new Vector2(240f, -72f), new Vector2(420f, 30f), TextAnchor.MiddleLeft);
             clock = UIFactory.Label(root, 26, new Vector2(0.5f, 1f), new Vector2(0f, -112f), new Vector2(200f, 34f), TextAnchor.MiddleCenter);
             score = UIFactory.Label(root, 20, new Vector2(0.5f, 1f), new Vector2(0f, -142f), new Vector2(420f, 30f), TextAnchor.MiddleCenter);
-            banner = UIFactory.Label(root, 40, new Vector2(0.5f, 0.5f), new Vector2(0f, 160f), new Vector2(1200f, 60f), TextAnchor.MiddleCenter);
+            banner = UIFactory.Label(root, 40, new Vector2(0.5f, 0.5f), new Vector2(0f, 160f), new Vector2(1200f, 100f), TextAnchor.MiddleCenter);
             banner.text = string.Empty;
             clock.text = string.Empty;
 
