@@ -10,6 +10,8 @@ namespace FPS.Weapons
         Fragmentation,
         /// <summary>Stun grenade: blinding flash and deafening bang, no fragments.</summary>
         Flashbang,
+        /// <summary>Burning canister: a dense cloud that blocks sight (volumetric for players, obstruction for AI).</summary>
+        Smoke,
     }
 
     /// <summary>A hand grenade: fuse, throw, and what the detonation does.</summary>
@@ -39,6 +41,17 @@ namespace FPS.Weapons
         [Tooltip("1 = standard stun grenade.")]
         [SerializeField, Min(0f)] private float flashIntensity = 1f;
 
+        [Header("Smoke")]
+        [Tooltip("Radius of the fully built cloud (m).")]
+        [SerializeField, Min(0.5f)] private float smokeRadius = 4.5f;
+        [Tooltip("Time from ignition to the full cloud (s).")]
+        [SerializeField, Min(0.1f)] private float smokeBuildUp = 3f;
+        [Tooltip("How long the cloud holds before it thins out (s).")]
+        [SerializeField, Min(1f)] private float smokeDuration = 35f;
+        [SerializeField, Min(0.1f)] private float smokeFade = 6f;
+        [Tooltip("Optical depth per metre at full density: 1.5 hides anything a metre or two inside.")]
+        [SerializeField, Min(0.01f)] private float smokeExtinction = 1.5f;
+
         [Header("Presentation")]
         [Tooltip("Detonation report: close crack, distant thump and environment tails.")]
         [SerializeField] private WeaponAudioProfileSO detonationAudio;
@@ -61,6 +74,11 @@ namespace FPS.Weapons
         public float BlastRadius => blastRadius;
         public float BlastDamage => blastDamage;
         public float FlashIntensity => flashIntensity;
+        public float SmokeRadius => smokeRadius;
+        public float SmokeBuildUp => smokeBuildUp;
+        public float SmokeDuration => smokeDuration;
+        public float SmokeFade => smokeFade;
+        public float SmokeExtinction => smokeExtinction;
         public WeaponAudioProfileSO DetonationAudio => detonationAudio;
         public float FlashLumen => flashLumen;
         public float SuppressionRadius => suppressionRadius;

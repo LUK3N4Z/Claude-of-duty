@@ -139,6 +139,14 @@ namespace FPS.EditorTools
             resupply.AddComponent<BoxCollider>().size = new Vector3(1.1f, 1.2f, 1.2f);
             resupply.AddComponent<AmmoCrate>();
 
+            // Swaps the player's tactical grenade between stun and smoke.
+            BoxCollider locker = Block(level, "Equipment Locker", new Vector3(3.2f, 0.9f, -3f), new Vector3(0.6f, 1.8f, 0.5f), Quaternion.identity);
+            var swap = new GameObject("Swap tactical (interact)") { layer = GameLayers.Interactable };
+            swap.transform.SetParent(locker.transform, false);
+            swap.AddComponent<BoxCollider>().size = new Vector3(1.3f, 1.1f, 1.4f);
+            swap.AddComponent<EquipmentLocker>().Configure(EquipmentContentBuilder.Grenade(EquipmentContentBuilder.FlashName),
+                EquipmentContentBuilder.Grenade(EquipmentContentBuilder.SmokeName), 2);
+
             AIContentBuilder.BuildEncounters(level); // last: bakes the NavMesh over all of the level
 
             var player = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab, scene);
@@ -150,7 +158,7 @@ namespace FPS.EditorTools
         }
 
         /// <summary>Light volumetric fog so flashlight and muzzle-flash cones read in the air.</summary>
-        private static void AtmosphereVolume(Transform level)
+        internal static void AtmosphereVolume(Transform level)
         {
             const string profilePath = "Assets/_Project/Settings/Rendering/TestRangeAtmosphere.asset";
             var profile = AssetDatabase.LoadAssetAtPath<UnityEngine.Rendering.VolumeProfile>(profilePath);
@@ -189,6 +197,11 @@ namespace FPS.EditorTools
             BuildArms(viewmodel);
             if (!root.TryGetComponent(out FPS.UI.DiegeticTacticalHUD _)) root.AddComponent<FPS.UI.DiegeticTacticalHUD>();
             if (!root.TryGetComponent(out FPS.AI.PerceivableTarget _)) root.AddComponent<FPS.AI.PerceivableTarget>(); // team 0: AI sees and hears the player
+            EquipmentContentBuilder.CreateContent();
+            if (!root.TryGetComponent(out TacticalEquipmentSystem equipment)) equipment = root.AddComponent<TacticalEquipmentSystem>();
+            equipment.SetLoadout(EquipmentSlot.Lethal, EquipmentContentBuilder.Grenade(EquipmentContentBuilder.FragName), 2);
+            equipment.SetLoadout(EquipmentSlot.Tactical, EquipmentContentBuilder.Grenade(EquipmentContentBuilder.FlashName), 2);
+            EditorUtility.SetDirty(equipment);
             EffectsContentBuilder.ConfigurePlayer(root);
 
             var controller = root.GetComponent<RealisticWeaponController>();

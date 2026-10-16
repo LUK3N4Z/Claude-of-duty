@@ -9,9 +9,10 @@ namespace FPS.Weapons
 {
     /// <summary>
     /// A live grenade: a pooled rigid body that bounces and rolls until its fuse runs out. Fragmentation grenades launch
-    /// real fragment projectiles into the ballistics simulation and apply blast overpressure to bodies in the open;
-    /// stun grenades raise a <see cref="FlashbangEvent"/>. Both flash, report through the acoustic system and suppress
-    /// nearby listeners.
+    /// real fragment projectiles into the ballistics simulation, apply blast overpressure to bodies in the open and a
+    /// concussive push to loose objects; stun grenades raise a <see cref="FlashbangEvent"/>. Both flash, report through
+    /// the acoustic system and suppress nearby listeners. Smoke grenades burn quietly into a volumetric cloud that is
+    /// also a <see cref="VisionObstruction"/> for AI sight.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Rigidbody))]
@@ -22,6 +23,7 @@ namespace FPS.Weapons
         private static readonly Collider[] BlastHits = new Collider[MaxBlastColliders];
         private static readonly TacticalHealthAndArmorSystem[] Victims = new TacticalHealthAndArmorSystem[MaxBlastVictims];
         private static readonly int UnlitColorId = Shader.PropertyToID("_UnlitColor");
+        private static readonly Collider[] PushHits = new Collider[MaxBlastColliders];
 
         [Tooltip("Time the spent grenade stays in the pool's hands so the smoke can drift (s).")]
         [SerializeField, Min(0.1f)] private float lingerTime = 4f;
@@ -35,7 +37,9 @@ namespace FPS.Weapons
         private ParticleSystem smoke;
         private MaterialPropertyBlock smokeTint;
         private GrenadeDataSO data;
-        private float detonateAt, flashOffAt, releaseAt;
+        private float detonateAt, flashOffAt, releaseAt, smokeStart;
+        private LocalVolumetricFog smokeVolume;
+        private int smokeCloud;
 
         public GrenadeDataSO Data => data;
         public Transform Thrower { get; private set; }
@@ -75,8 +79,17 @@ namespace FPS.Weapons
             IsLive = false;
             flash.enabled = false;
             body.isKinematic = true;
-            if (smoke != null) smoke.Clear(true);
+            if (smoke != null)
+            {
+                smoke.Clear(true);
+                ParticleSystem.EmissionModule emission = smoke.emission;
+                emission.rateOverTime = 0f;
+            }
+
+            EndSmoke();
         }
+
+        private void OnDisable() => EndSmoke();
 
         private void Awake()
         {
@@ -104,6 +117,7 @@ namespace FPS.Weapons
             if (!HasDetonated) return;
 
             if (flash.enabled && Time.time >= flashOffAt) flash.enabled = false;
+            if (smokeCloud != 0) UpdateSmoke();
             if (Time.time >= releaseAt) ObjectPoolManager.Instance.Release(gameObject);
         }
 
@@ -113,6 +127,12 @@ namespace FPS.Weapons
             HasDetonated = true;
             Vector3 point = transform.position;
             DetonationPoint = point;
+            if (data.Type == GrenadeType.Smoke)
+            {
+                StartSmoke(point); // the canister keeps lying where it stopped
+                return;
+            }
+
             body.isKinematic = true;
             SetSolid(false);
 
@@ -141,6 +161,7 @@ namespace FPS.Weapons
             {
                 LaunchFragments(point);
                 ApplyBlast(point);
+                Push(point);
             }
             else
             {
@@ -193,6 +214,78 @@ namespace FPS.Weapons
             for (int i = 0; i < victims; i++) Victims[i] = null;
         }
 
+        /// <summary>The concussive wave shoves loose bodies: casings, magazines, dropped weapons, the dead.</summary>
+        private void Push(Vector3 point)
+        {
+            float radius = data.BlastRadius * 2f;
+            int count = Physics.OverlapSphereNonAlloc(point, radius, PushHits, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < count; i++)
+            {
+                Rigidbody loose = PushHits[i].attachedRigidbody;
+                if (loose == null || loose.isKinematic || loose == body) continue;
+                loose.AddExplosionForce(data.BlastDamage * 4f, point, radius, 0.5f, ForceMode.Impulse);
+            }
+        }
+
+        private void StartSmoke(Vector3 point)
+        {
+            smokeStart = Time.time;
+            releaseAt = smokeStart + data.SmokeDuration + data.SmokeFade;
+            if (smokeVolume == null)
+            {
+                var volumeObject = new GameObject("Smoke Cloud");
+                volumeObject.transform.SetParent(transform, false);
+                smokeVolume = volumeObject.AddComponent<LocalVolumetricFog>();
+            }
+
+            smokeVolume.enabled = true;
+            if (smokeCloud == 0) smokeCloud = VisionObstruction.Add();
+            if (smoke != null)
+            {
+                smoke.transform.rotation = Quaternion.LookRotation(Vector3.up);
+                ParticleSystem.EmissionModule emission = smoke.emission;
+                emission.rateOverTime = 6f;
+                if (!smoke.isPlaying) smoke.Play();
+            }
+
+            UpdateSmoke();
+        }
+
+        private void UpdateSmoke()
+        {
+            float age = Time.time - smokeStart;
+            float build = Mathf.SmoothStep(0f, 1f, age / data.SmokeBuildUp);
+            float fade = 1f - Mathf.Clamp01((age - data.SmokeDuration) / data.SmokeFade);
+            float radius = data.SmokeRadius * Mathf.Lerp(0.3f, 1f, build);
+            float density = build * fade;
+            // The cloud sits on the ground and grows upward as it spreads.
+            Vector3 center = transform.position + Vector3.up * radius * 0.6f;
+            VisionObstruction.Set(smokeCloud, center, radius, data.SmokeExtinction * density);
+
+            smokeVolume.transform.SetPositionAndRotation(center, Quaternion.identity);
+            LocalVolumetricFogArtistParameters parameters = smokeVolume.parameters;
+            parameters.size = Vector3.one * radius * 2f;
+            parameters.falloffMode = LocalVolumetricFogFalloffMode.Exponential;
+            parameters.positiveFade = Vector3.one * 0.35f;
+            parameters.negativeFade = Vector3.one * 0.35f;
+            parameters.meanFreePath = density > 0.01f ? 1f / (data.SmokeExtinction * density) : 1000f;
+            parameters.albedo = new Color(data.SmokeColor.r, data.SmokeColor.g, data.SmokeColor.b);
+            smokeVolume.parameters = parameters;
+
+            if (smoke != null && age > data.SmokeDuration)
+            {
+                ParticleSystem.EmissionModule emission = smoke.emission;
+                emission.rateOverTime = 0f;
+            }
+        }
+
+        private void EndSmoke()
+        {
+            if (smokeCloud != 0) VisionObstruction.Remove(smokeCloud);
+            smokeCloud = 0;
+            if (smokeVolume != null) smokeVolume.enabled = false;
+        }
+
         private static bool IsVictim(TacticalHealthAndArmorSystem owner, int count)
         {
             for (int i = 0; i < count; i++)
@@ -235,18 +328,33 @@ namespace FPS.Weapons
         {
             if (smoke != null || material == null) return;
 
-            smoke = EffectParticles.Create("Detonation Smoke", transform, material, new EffectParticles.Settings
-            {
-                Lifetime = new Vector2(1.8f, 3.5f),
-                Speed = new Vector2(1.5f, 6f),
-                Size = new Vector2(0.6f, 1.4f),
-                SizeGrowth = 3.5f,
-                ConeAngle = 70f,
-                ConeRadius = 0.2f,
-                GravityModifier = -0.02f,
-                NoiseStrength = 0.4f,
-                MaxParticles = 64,
-            });
+            bool screen = data.Type == GrenadeType.Smoke;
+            smoke = EffectParticles.Create(screen ? "Smoke Screen" : "Detonation Smoke", transform, material, screen
+                ? new EffectParticles.Settings
+                {
+                    // Billowing canister smoke: slow, large and long-lived around the volumetric cloud.
+                    Lifetime = new Vector2(6f, 9f),
+                    Speed = new Vector2(0.4f, 1.6f),
+                    Size = new Vector2(1.5f, 2.8f),
+                    SizeGrowth = 2.2f,
+                    ConeAngle = 60f,
+                    ConeRadius = 0.3f,
+                    GravityModifier = -0.01f,
+                    NoiseStrength = 0.3f,
+                    MaxParticles = 200,
+                }
+                : new EffectParticles.Settings
+                {
+                    Lifetime = new Vector2(1.8f, 3.5f),
+                    Speed = new Vector2(1.5f, 6f),
+                    Size = new Vector2(0.6f, 1.4f),
+                    SizeGrowth = 3.5f,
+                    ConeAngle = 70f,
+                    ConeRadius = 0.2f,
+                    GravityModifier = -0.02f,
+                    NoiseStrength = 0.4f,
+                    MaxParticles = 64,
+                });
             var smokeRenderer = smoke.GetComponent<ParticleSystemRenderer>();
             smokeRenderer.GetPropertyBlock(smokeTint);
             smokeTint.SetColor(UnlitColorId, data.SmokeColor);

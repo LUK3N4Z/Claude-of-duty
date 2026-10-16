@@ -7,8 +7,9 @@ namespace FPS.Locomotion
 {
     /// <summary>
     /// Stun-grenade whiteout: the view burns out to white (exposure boost, colour drained) for a hold time that scales
-    /// with exposure, then fades back. Facing the bang and standing close make it worse; a wall in between leaves only
-    /// bounce light. Deafness and ringing are the acoustic system's job.
+    /// with exposure, then fades back. A flash anywhere on screen blinds fully, off screen it fades with the angle past
+    /// the screen edge; standing close makes it worse and a wall in between leaves only bounce light. Deafness and
+    /// ringing are the acoustic system's job.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(PlayerRig))]
@@ -21,7 +22,7 @@ namespace FPS.Locomotion
         [Tooltip("Time for full blindness to fade once the hold ends (s).")]
         [SerializeField, Min(0.1f)] private float fadeTime = 3f;
 
-        private Transform eye;
+        private Camera view;
         private Volume volume;
         private VolumeProfile profile;
         private ColorAdjustments colorAdjustments;
@@ -32,7 +33,7 @@ namespace FPS.Locomotion
 
         private void Awake()
         {
-            eye = GetComponent<PlayerRig>().PlayerCamera.transform;
+            view = GetComponent<PlayerRig>().PlayerCamera;
 
             // Player layer: only the main camera's volume mask sees it (the PiP scope camera excludes it).
             var volumeObject = new GameObject("Flashbang Whiteout") { layer = GameLayers.Player };
@@ -72,7 +73,7 @@ namespace FPS.Locomotion
 
         private void OnFlashbang(in FlashbangEvent bang)
         {
-            float exposure = FlashbangEvent.Exposure(bang.Position, bang.Intensity, eye.position, eye.forward, out _);
+            float exposure = FlashbangEvent.ScreenExposure(view, bang.Position, bang.Intensity, out _); // on screen = full flash
             if (exposure <= Blindness) return;
 
             Blindness = exposure;

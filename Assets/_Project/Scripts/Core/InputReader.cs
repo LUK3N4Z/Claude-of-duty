@@ -54,11 +54,17 @@ namespace FPS.Core
         public event Action InteractPressed;
         /// <summary>Toggle the weapon's flashlight / laser.</summary>
         public event Action ToggleDevicePressed;
+        /// <summary>Lethal throwable: press pulls the pin and cooks, release throws.</summary>
+        public event Action LethalPressed;
+        public event Action LethalReleased;
+        /// <summary>Tactical throwable: press pulls the pin and cooks, release throws.</summary>
+        public event Action TacticalPressed;
+        public event Action TacticalReleased;
 
         private InputActionMap playerMap;
         private InputAction move, look, fire, aim, sprint, tacticalSprint, holdBreath, walkSlow, walkSpeedAdjust;
         private InputAction crouch, prone, leanLeft, leanRight, reload, checkMagazine, changeFireMode, switchSight, mountWeapon;
-        private InputAction selectPrimary, selectSecondary, switchWeapon, interact, toggleDevice;
+        private InputAction selectPrimary, selectSecondary, switchWeapon, interact, toggleDevice, throwLethal, throwTactical;
         private double lastReloadTapTime = double.NegativeInfinity;
 
         public Vector2 Move => move.ReadValue<Vector2>();
@@ -77,6 +83,8 @@ namespace FPS.Core
         public bool WalkSlowHeld => walkSlow.IsPressed();
         public bool LeanLeftHeld => leanLeft.IsPressed();
         public bool LeanRightHeld => leanRight.IsPressed();
+        /// <summary>Interact is held (hold-to-use objectives: plant, defuse, download).</summary>
+        public bool InteractHeld => interact.IsPressed();
         public bool IsCheckingMagazine { get; private set; }
         public bool PlayerInputEnabled => playerMap != null && playerMap.enabled;
 
@@ -138,6 +146,8 @@ namespace FPS.Core
             switchWeapon = Find("SwitchWeapon");
             interact = Find("Interact");
             toggleDevice = Find("ToggleDevice");
+            throwLethal = Find("ThrowLethal");
+            throwTactical = Find("ThrowTactical");
             playerMap.actionTriggered += OnActionTriggered;
         }
 
@@ -161,6 +171,16 @@ namespace FPS.Core
             {
                 if (context.performed) AimPressed?.Invoke();
                 else if (context.canceled) AimReleased?.Invoke();
+            }
+            else if (action == throwLethal)
+            {
+                if (context.performed) LethalPressed?.Invoke();
+                else if (context.canceled) LethalReleased?.Invoke();
+            }
+            else if (action == throwTactical)
+            {
+                if (context.performed) TacticalPressed?.Invoke();
+                else if (context.canceled) TacticalReleased?.Invoke();
             }
             else if (action == checkMagazine)
             {

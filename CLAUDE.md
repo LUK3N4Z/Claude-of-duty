@@ -22,7 +22,10 @@ ballistics, Picture-in-Picture optics, procedural inertia, photoreal HDRP.
    (re)creates the AI content — `Prefabs/AI/AI_Soldier`, grenades in `Prefabs/Equipment` + `Data/Equipment`, callout
    voices in `Data/AI` (Windows speech synthesis; silent elsewhere until clips are assigned) — places the firefight
    yard with Squad Alpha, makes the shoot house a `CQBRoom` and bakes `Scenes/LocomotionTestRange_NavMesh`.
-7. Optional: `Window > Rendering > HDRP Wizard` for any remaining platform checks.
+7. `Tools/FPS Builder/7. Build Game Mode Scenes` → `Scenes/Mode_Raid`, `Mode_SearchAndDestroy`, `Mode_Hardpoint` (one
+   arena: two-room warehouse, west compound, east container yard; each with its director, objectives, spawns and
+   NavMesh) and adds them to the build settings. Needs steps 3–4.
+8. Optional: `Window > Rendering > HDRP Wizard` for any remaining platform checks.
 
 **Importing a weapon model:** select the FBX/GLTF → `Tools/FPS Builder/6. Build Weapon From Selected Model` (or
 right-click → FPS → Build Weapon Prefab From Model). It wraps the model under a `WeaponModelRig` root (model as child
@@ -31,7 +34,7 @@ viewmodel layer, guesses sockets (named nodes first, then bounds) and magazine r
 Then open the prefab: the WeaponModelRig inspector lists validation issues and offers fix buttons; place sockets with
 the gizmos (red muzzle, magenta stock, cyan sights, green grips), add a `WeaponSight` to optics.
 
-Steps 2–6 are already applied and committed; all are idempotent, rerun after a settings reset.
+Steps 2–7 are already applied and committed; all are idempotent, rerun after a settings reset.
 Active Input Handling is `Input System Package (New)` (`activeInputHandler: 1`).
 
 **Tests** (`Assets/_Project/Tests`, PlayMode, NUnit + `InputTestFixture`): Test Runner window, or headless:
@@ -76,7 +79,7 @@ hip/ADS/canted/reload/impact/device/gunsmith-build PNGs of the test range and lo
 | `FPS.Weapons`        | `FPS.Weapons`    | Core, Audio, Ballistics, Player, HDRP runtime | Weapon data, model rig/sockets, viewmodel (inertia, ADS/PiP optics, recoil), controller, attachments |
 | `FPS.AI`             | `FPS.AI`         | Core, Audio, Ballistics, Player, Weapons, HDRP runtime | Perception, soldier body/weapon, tactical brain, squad coordination, CQB rooms |
 | `FPS.UI`             | `FPS.UI`         | Core, Ballistics, Audio, Player, Weapons, UnityEngine.UI, HDRP | Diegetic HUD, menus |
-| `FPS.Gameplay` (M9)  | `FPS.Gameplay`   | all runtime                                  | Match director, modes, equipment, save profiles |
+| `FPS.Gameplay`       | `FPS.Gameplay`   | all runtime above + UnityEngine.UI, HDRP     | Match director, game modes, objectives, spawns, match HUD |
 | `FPS.Editor`         | `FPS.EditorTools`| all + Unity.InputSystem, Unity.AI.Navigation (Editor-only) | Builders, wizards, validators |
 
 **Rule:** references only point down the table. Upward communication goes through `EventBus<T>` structs, interfaces
@@ -126,8 +129,10 @@ Bullets use `GameLayers.BallisticMask` (Default + WorldGeometry + Hitbox). No cu
 | ChangeFireMode | B | D-pad ↓ | `ChangeFireModePressed` |
 | SwitchSight | X | D-pad ↑ | `SwitchSightPressed` |
 | MountWeapon | V | R3 | `MountWeaponPressed` |
-| Interact | F | A | `InteractPressed` (`Interactor` → focused `IInteractable`) |
-| ToggleDevice | T | LB | `ToggleDevicePressed` (all lights/lasers on the held weapon) |
+| Interact | F | A | `InteractPressed` (`Interactor` → focused `IInteractable`); `InteractHeld` for hold-to-use objectives |
+| ToggleDevice | T | View | `ToggleDevicePressed` (all lights/lasers on the held weapon) |
+| ThrowLethal | G, mouse forward | RB | `LethalPressed` (pin, cook) / `LethalReleased` (throw) |
+| ThrowTactical | H, mouse back | LB | `TacticalPressed` / `TacticalReleased` |
 
 Tap/hold threshold 0.35 s. Fast reload is an *upgrade*: the first tap always starts a tactical reload.
 
@@ -212,6 +217,8 @@ Contracts for later milestones:
 - `FlashbangEvent` (EventBus) — `Position`, `Intensity`; every eye/ear computes its own `FlashbangEvent.Exposure`
   (distance, facing, occlusion → blindness; deafness passes walls at 60%).
 - `BallisticsSimulationManager.Clear()` drops all rounds in flight (round resets, test teardown).
+- `VisionObstruction` — smoke clouds as extinction spheres; `Transmittance(from, to)` integrates sight lines through
+  them (AI sight and muzzle-flash spotting use it).
 
 ## Ballistics & damage (M5)
 
@@ -315,6 +322,35 @@ Contracts for later milestones:
 - **Rooms:** `CQBRoom` (interior box, entries with +Z into the room, domination points); `CQBRoom.SliceArc` /
   `SliceAim` give the pie-slicing approach.
 
+## Equipment & game modes (M9)
+
+- **Throwables** (`TacticalEquipmentSystem`, on the player; lethal + tactical `Loadout` slots): press lowers the rifle
+  (`RealisticWeaponController.LowerForEquipment`, action `Equipment`, trigger blocked) and pulls the pin (0.35 s);
+  then the spoon flies and the fuse burns while held (cooking); release throws along the view +10° plus the player's
+  velocity. Held past the fuse it goes off in hand; disabled/killed mid-cook drops it live. Player default: 2 frags,
+  2 stun grenades; the range's Equipment Locker swaps stun ↔ smoke; ammo crates restock grenades.
+- **Smoke** (`GrenadeType.Smoke`): the canister burns into an HDRP `LocalVolumetricFog` cloud + particle billows that
+  builds over 3 s, holds 35 s, fades 6 s, and registers a `VisionObstruction` sphere (AI cannot see through it).
+  Frags also shove loose rigid bodies (concussive push). Stun grenades blind by on-screen position for the player
+  (`FlashbangEvent.ScreenExposure`) and by facing for AI.
+- **Looting:** a fallen soldier's rifle (`DroppedWeapon`, Interact) gives up its loaded magazines to matching weapons
+  (`RealisticWeaponController.TakeMagazines`, up to loadout + 2).
+- **Match** (`MatchDirector` + one `GameMode` on the same object, `MatchHUD` overlay): the player plus soldier slots per
+  team (`teamSoldierPrefabs`: `AI_Soldier_Friendly` team 0, `AI_Soldier` team 1) in squads; phases PreRound → Live →
+  RoundOver → MatchOver (`MatchPhaseEvent`); clock (modes may stop it), round wins, scores; spawns from
+  `GameMode.ChooseSpawn` → `SpawnSelector` (enemy line of sight to the spawn −60, nearest enemy distance, teammates,
+  recent use); respawns after `respawnDelay` (negative = one life); dead player loses control; soldiers get a fresh
+  body per spawn; respawn-mode corpses clear after 20 s.
+- **Modes:** `ExtractionMode` (Tactical Raid: one life, objectives are `HoldInteraction` terminals — each completed one
+  alerts the garrison — then hold out in the extraction `ObjectiveZone`), `SearchAndDestroyMode` (rounds, plant at a
+  site's plant point, `PlantedBomb` with beeps and a defuse hold, elimination/time/detonation/defuse, sides swap,
+  first to N rounds), `HardpointMode` (rotating zones, uncontested holder scores per second, respawns away from the
+  live zone).
+- **AI objectives:** `SquadCoordinator.SetObjective(Hold | Interact, point, radius, facing)` — Hold spreads members
+  round the point, Interact sends one worker (replaced if killed); brains pursue it in `AIState.Objective` when not
+  fighting, and do not chase threats beyond a 25 m leash. Modes advance plants/defuses while
+  `TacticalAIBrain.IsWorkingObjective`. Friendly-fire checks cover everyone on the team, the player included.
+
 ## Milestones
 
 - [x] **M1** Project init, `CLAUDE.md`, assemblies, `InputReader`, `EventBus`, `ObjectPoolManager`, `ProjectSetupWizard`
@@ -325,5 +361,5 @@ Contracts for later milestones:
 - [x] **M6** Acoustic propagation, muzzle VFX, diegetic HUD
 - [x] **M7** Gunsmith & attachment physics
 - [x] **M8** Tactical AI & squad CQB
-- [ ] **M9** Game modes, match director, tactical equipment
+- [x] **M9** Game modes, match director, tactical equipment
 - [ ] **M10** 3D gunsmith workbench, loadout persistence, HDRP settings menu

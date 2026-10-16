@@ -13,7 +13,7 @@ namespace FPS.AI
     /// and calls "Target suppressed!" when squad fire is cracking past the target's head. A target holed up in a
     /// <see cref="CQBRoom"/> gets a room clearance: stack on the nearest door, flashbang, then the team slices the pie
     /// through the doorway one by one and takes the points of domination. Also arbitrates grenades, callouts, cover
-    /// claims and friendly fire.
+    /// claims and standing match objectives (hold a point, or have one man plant or defuse while the rest cover).
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class SquadCoordinator : MonoBehaviour
@@ -70,6 +70,10 @@ namespace FPS.AI
         private float phaseStart, clearedAt = float.NegativeInfinity, stackSide;
         private int stackCount;
         private TacticalAIBrain flashThrower;
+        private ObjectiveKind objectiveKind;
+        private Vector3 objectivePoint, objectiveFacing;
+        private float objectiveRadius;
+        private TacticalAIBrain objectiveWorker;
 
         public IReadOnlyList<TacticalAIBrain> Members => members;
         public TacticalAIBrain Flanker { get; private set; }
@@ -86,6 +90,31 @@ namespace FPS.AI
             members.Add(brain);
             claimedCover.Add(new Vector3(float.NaN, 0f, 0f));
             brain.JoinSquad(this);
+            ApplyObjective(brain, members.Count - 1);
+        }
+
+        /// <summary>Removes a soldier whose body is being cleared (respawns, round resets).</summary>
+        public void Unregister(TacticalAIBrain brain)
+        {
+            int index = members.IndexOf(brain);
+            if (index < 0) return;
+            members.RemoveAt(index);
+            claimedCover.RemoveAt(index);
+            if (Flanker == brain) Flanker = null;
+            if (objectiveWorker == brain) objectiveWorker = null;
+            if (InStack(brain)) EndRoomClearance(false);
+        }
+
+        /// <summary>Forgets the fight: target, flank, room clearance and cover claims (a new round).</summary>
+        public void ResetTactics()
+        {
+            if (phase != RoomPhase.None) EndRoomClearance(false);
+            Flanker = null;
+            target = null;
+            infoTime = float.NegativeInfinity;
+            lastSeenBySquad = float.NegativeInfinity;
+            clearedRoom = null;
+            for (int i = 0; i < claimedCover.Count; i++) claimedCover[i] = new Vector3(float.NaN, 0f, 0f);
         }
 
         // ---- Services for members ----
@@ -129,22 +158,40 @@ namespace FPS.AI
             return count;
         }
 
-        /// <summary>A teammate stands within 0.7 m of the line of fire from <paramref name="from"/> to <paramref name="to"/>.</summary>
-        public bool IsTeammateInLine(TacticalAIBrain shooter, Vector3 from, Vector3 to)
+        /// <summary>
+        /// Gives the squad a standing objective: Hold spreads the members round <paramref name="point"/>; Interact sends
+        /// <paramref name="worker"/> (or the closest member) to work it while the rest hold around it. Members who join
+        /// later (respawns) pick it up too.
+        /// </summary>
+        public void SetObjective(ObjectiveKind kind, Vector3 point, float radius, Vector3 facing, TacticalAIBrain worker = null)
         {
-            Vector3 segment = to - from;
-            float lengthSquared = segment.sqrMagnitude;
-            for (int i = 0; i < members.Count; i++)
+            objectiveKind = kind;
+            objectivePoint = point;
+            objectiveRadius = radius;
+            objectiveFacing = facing;
+            objectiveWorker = kind == ObjectiveKind.Interact ? worker != null ? worker : Nearest(point, null, false) : null;
+            for (int i = 0; i < members.Count; i++) ApplyObjective(members[i], i);
+        }
+
+        public void ClearObjective()
+        {
+            objectiveKind = ObjectiveKind.None;
+            objectiveWorker = null;
+            for (int i = 0; i < members.Count; i++) members[i].ClearObjective();
+        }
+
+        private void ApplyObjective(TacticalAIBrain brain, int index)
+        {
+            if (objectiveKind == ObjectiveKind.None || brain.IsDead) return;
+            if (brain == objectiveWorker)
             {
-                TacticalAIBrain mate = members[i];
-                if (mate == shooter || mate.IsDead) continue;
-                Vector3 body = mate.Body.Chest.position;
-                float t = lengthSquared > 1e-6f ? Mathf.Clamp01(Vector3.Dot(body - from, segment) / lengthSquared) : 0f;
-                Vector3 closest = from + segment * t;
-                if ((closest - body).sqrMagnitude < 0.7f * 0.7f) return true;
+                brain.SetObjective(ObjectiveKind.Interact, objectivePoint, 0.8f, objectiveFacing);
+                return;
             }
 
-            return false;
+            float angle = index * 2.4f; // golden-angle spread: no two members share a spot
+            var offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * (objectiveRadius * 0.6f);
+            brain.SetObjective(ObjectiveKind.Hold, objectivePoint + offset, Mathf.Max(1f, objectiveRadius * 0.35f), objectiveFacing);
         }
 
         public void OnFlankFinished(TacticalAIBrain brain)
@@ -164,6 +211,12 @@ namespace FPS.AI
         {
             int index = members.IndexOf(brain);
             if (index >= 0) claimedCover[index] = new Vector3(float.NaN, 0f, 0f);
+            if (brain == objectiveWorker && objectiveKind == ObjectiveKind.Interact)
+            {
+                objectiveWorker = Nearest(objectivePoint, brain, false); // the next man takes over the plant or defuse
+                if (objectiveWorker != null) ApplyObjective(objectiveWorker, members.IndexOf(objectiveWorker));
+            }
+
             if (Flanker == brain) Flanker = null;
             TacticalAIBrain witness = Nearest(brain.transform.position, brain, false);
             if (witness != null) witness.Callout(CalloutType.ManDown);

@@ -24,6 +24,11 @@ MonoBehaviour:
   blastRadius: 4
   blastDamage: 140
   flashIntensity: 1
+  smokeRadius: 4.5
+  smokeBuildUp: 3
+  smokeDuration: 35
+  smokeFade: 6
+  smokeExtinction: 1.5
   detonationAudio: {fileID: 11400000, guid: e0bd695594465d6469ec87a1add06444, type: 2}
   flashLumen: 2000000
   suppressionRadius: 18

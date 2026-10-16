@@ -18,6 +18,8 @@ namespace FPS.Weapons
         BoltCycle,
         Holster,
         Draw,
+        /// <summary>Weapon lowered while the off hand works a throwable.</summary>
+        Equipment,
     }
 
     /// <summary>
@@ -97,12 +99,57 @@ namespace FPS.Weapons
         /// <summary>The reload stage in progress (None when not reloading).</summary>
         public ReloadStage ReloadTarget => CurrentAction == WeaponAction.Reload ? reloadTarget : ReloadStage.None;
         public bool BlocksAiming => CurrentAction == WeaponAction.Reload || CurrentAction == WeaponAction.MagazineCheck ||
-                                    CurrentAction == WeaponAction.Holster || CurrentAction == WeaponAction.Draw;
+                                    CurrentAction == WeaponAction.Holster || CurrentAction == WeaponAction.Draw ||
+                                    CurrentAction == WeaponAction.Equipment;
         /// <summary>Where the support hand belongs now: grip, magazine or charging handle.</summary>
         public Transform LeftHandTarget { get; private set; }
         public MagazineEstimate LastEstimate { get; private set; }
 
         public WeaponState GetState(int slot) => slot >= 0 && slot < states.Length ? states[slot] : null;
+
+        /// <summary>
+        /// Lowers the weapon so the off hand can work a throwable; a reload or magazine check is interrupted (completed
+        /// reload stages are kept). False while a weapon swap is under way or nothing is held.
+        /// </summary>
+        public bool LowerForEquipment()
+        {
+            if (ActiveState == null || CurrentAction == WeaponAction.Holster || CurrentAction == WeaponAction.Draw) return false;
+            if (CurrentAction == WeaponAction.Reload) InterruptReload();
+            CancelTriggerIntent();
+            locomotion.CancelSprint();
+            StartAction(WeaponAction.Equipment, float.PositiveInfinity);
+            return true;
+        }
+
+        /// <summary>Brings the weapon back up after a throw.</summary>
+        public void RaiseFromEquipment()
+        {
+            if (CurrentAction != WeaponAction.Equipment) return;
+            StartAction(WeaponAction.Draw, ActiveState.Data.DrawTime * 0.6f);
+        }
+
+        /// <summary>
+        /// Takes loose magazines (rounds per magazine in <paramref name="magazines"/>) for every carried weapon firing
+        /// <paramref name="caliber"/>, up to two over its loadout count. Taken entries are set to -1. Returns the count taken.
+        /// </summary>
+        public int TakeMagazines(CaliberDataSO caliber, int[] magazines)
+        {
+            int taken = 0;
+            foreach (WeaponState state in states)
+            {
+                if (state == null || state.Data.Caliber != caliber) continue;
+                int limit = state.Data.SpareMagazines + 2;
+                for (int i = 0; i < magazines.Length && state.SpareMagazines.Count < limit; i++)
+                {
+                    if (magazines[i] <= 0) continue;
+                    state.SpareMagazines.Add(Mathf.Min(magazines[i], state.Data.MagazineCapacity));
+                    magazines[i] = -1;
+                    taken++;
+                }
+            }
+
+            return taken;
+        }
 
         /// <summary>Tops every carried weapon's spare magazines back up to its loadout count. Returns rounds added.</summary>
         public int RefillAmmunition()
@@ -421,6 +468,9 @@ namespace FPS.Weapons
 
             switch (CurrentAction)
             {
+                case WeaponAction.Equipment:
+                    CancelTriggerIntent(); // a grenade in hand: the trigger finger is busy, nothing queues up
+                    return;
                 case WeaponAction.Holster:
                 case WeaponAction.Draw:
                 case WeaponAction.FireModeSwitch:
@@ -773,6 +823,11 @@ namespace FPS.Weapons
                 case WeaponAction.Draw:
                     position = loweredPosition * (1f - progress);
                     euler = loweredEuler * (1f - progress);
+                    break;
+                case WeaponAction.Equipment:
+                    float lowered = Mathf.Clamp01(actionTime / 0.2f);
+                    position = loweredPosition * lowered;
+                    euler = loweredEuler * lowered;
                     break;
             }
         }

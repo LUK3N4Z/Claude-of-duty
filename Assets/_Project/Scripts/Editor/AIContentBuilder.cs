@@ -28,6 +28,7 @@ namespace FPS.EditorTools
         private const string VoiceDataFolder = "Assets/_Project/Data/AI";
         private const string VoiceAudioFolder = "Assets/_Project/Art/Audio/Voice";
         private const string SoldierPath = PrefabFolder + "/AI_Soldier.prefab";
+        private const string FriendlySoldierPath = PrefabFolder + "/AI_Soldier_Friendly.prefab";
         private const string NavMeshPath = "Assets/_Project/Scenes/LocomotionTestRange_NavMesh.asset";
 
         private struct VoiceSpec
@@ -49,6 +50,8 @@ namespace FPS.EditorTools
             AssetDatabase.LoadAssetAtPath<AIVoiceProfileSO>($"{VoiceDataFolder}/Voice_{voiceName}.asset");
 
         internal static GameObject Soldier() => AssetDatabase.LoadAssetAtPath<GameObject>(SoldierPath);
+        /// <summary>The same soldier on the player's side (team 0, tan uniform).</summary>
+        internal static GameObject FriendlySoldier() => AssetDatabase.LoadAssetAtPath<GameObject>(FriendlySoldierPath);
 
         public static void CreateContent()
         {
@@ -56,7 +59,8 @@ namespace FPS.EditorTools
             ProjectSetupWizard.EnsureFolder(PrefabFolder);
             ProjectSetupWizard.EnsureFolder(VoiceDataFolder);
             CreateVoices();
-            CreateSoldierPrefab();
+            CreateSoldierPrefab(SoldierPath, 1, LitMaterial("SoldierUniform", new Color(0.27f, 0.29f, 0.21f), 0f, 0.3f), "Alpha");
+            CreateSoldierPrefab(FriendlySoldierPath, 0, LitMaterial("SoldierUniformFriendly", new Color(0.52f, 0.45f, 0.33f), 0f, 0.3f), "Bravo");
             AssetDatabase.SaveAssets();
             Debug.Log("[FPS Builder] AI soldier, voices and grenades ready.");
         }
@@ -165,14 +169,13 @@ namespace FPS.EditorTools
 
         // ---- Soldier ----
 
-        private static void CreateSoldierPrefab()
+        private static void CreateSoldierPrefab(string path, int team, Material uniform, string voiceName)
         {
-            Material uniform = LitMaterial("SoldierUniform", new Color(0.27f, 0.29f, 0.21f), 0f, 0.3f);
             Material gear = LitMaterial("SoldierGear", new Color(0.12f, 0.13f, 0.1f), 0f, 0.35f);
             Material skin = LitMaterial("SoldierSkin", new Color(0.55f, 0.43f, 0.34f), 0f, 0.35f);
             Material glove = LitMaterial("SoldierGlove", new Color(0.05f, 0.05f, 0.05f), 0f, 0.3f);
 
-            var root = new GameObject("AI_Soldier") { layer = GameLayers.Player };
+            var root = new GameObject(System.IO.Path.GetFileNameWithoutExtension(path)) { layer = GameLayers.Player };
             try
             {
                 Transform t = root.transform;
@@ -221,8 +224,8 @@ namespace FPS.EditorTools
 
                 AIBody body = root.AddComponent<AIBody>();
                 body.Configure(pelvis, torso, chest, head, aimPivot, legs, left, right);
-                root.AddComponent<PerceivableTarget>().SetTeam(1);
-                root.AddComponent<AIPerceptionSensor>().Configure(head, 1);
+                root.AddComponent<PerceivableTarget>().SetTeam(team);
+                root.AddComponent<AIPerceptionSensor>().Configure(head, team);
 
                 AIWeaponHandler weapon = root.AddComponent<AIWeaponHandler>();
                 weapon.Configure(AssetDatabase.LoadAssetAtPath<WeaponModelRig>(PrefabPath(CarbineName)),
@@ -232,12 +235,12 @@ namespace FPS.EditorTools
                         Attachment("Barrel_14in"), Attachment("Muzzle_FlashHider"), Attachment("Optic_RedDot"),
                         Attachment("Grip_Angled"), Attachment("Stock_Fixed"), Attachment("Rail_Light"),
                     }, 3);
-                root.AddComponent<TacticalAIBrain>().Configure(Voice("Alpha"), EquipmentContentBuilder.Grenade(EquipmentContentBuilder.FragName), 1,
+                root.AddComponent<TacticalAIBrain>().Configure(Voice(voiceName), EquipmentContentBuilder.Grenade(EquipmentContentBuilder.FragName), 1,
                     EquipmentContentBuilder.Grenade(EquipmentContentBuilder.FlashName), 1);
 
                 // Every serialized change above must reach the prefab file.
                 foreach (Component component in root.GetComponents<Component>()) EditorUtility.SetDirty(component);
-                PrefabUtility.SaveAsPrefabAsset(root, SoldierPath);
+                PrefabUtility.SaveAsPrefabAsset(root, path);
             }
             finally
             {
@@ -327,7 +330,7 @@ namespace FPS.EditorTools
             Place(soldier, squad, "Rifleman 2", new Vector3(-16.5f, 0f, 24.5f), "Bravo");
             Place(soldier, squad, "Rifleman 3", new Vector3(-8f, 0f, 27f), "Charlie");
 
-            BakeNavMesh(level);
+            BakeNavMesh(level, NavMeshPath);
         }
 
         private static void Place(GameObject prefab, Transform squad, string soldierName, Vector3 position, string voiceName)
@@ -359,15 +362,16 @@ namespace FPS.EditorTools
             return marker;
         }
 
-        private static void BakeNavMesh(Transform level)
+        /// <summary>Bakes walkable space over every collider under <paramref name="level"/> and stores it at <paramref name="assetPath"/>.</summary>
+        internal static void BakeNavMesh(Transform level, string assetPath)
         {
             if (!level.TryGetComponent(out NavMeshSurface surface)) surface = level.gameObject.AddComponent<NavMeshSurface>();
             surface.collectObjects = CollectObjects.Children;
             surface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
             surface.layerMask = GameLayers.EnvironmentMask;
             surface.BuildNavMesh();
-            AssetDatabase.DeleteAsset(NavMeshPath);
-            AssetDatabase.CreateAsset(surface.navMeshData, NavMeshPath);
+            AssetDatabase.DeleteAsset(assetPath);
+            AssetDatabase.CreateAsset(surface.navMeshData, assetPath);
         }
     }
 }

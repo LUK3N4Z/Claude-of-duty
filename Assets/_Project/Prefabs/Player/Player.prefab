@@ -1658,6 +1658,7 @@ GameObject:
   - component: {fileID: 7837236074932469024}
   - component: {fileID: 4317091135136689978}
   - component: {fileID: 1010109812828240328}
+  - component: {fileID: 2005833790374209104}
   m_Layer: 8
   m_Name: Player
   m_TagString: Untagged
@@ -2262,6 +2263,29 @@ MonoBehaviour:
   crouchConspicuity: 0.65
   proneConspicuity: 0.35
   motionConspicuity: 0.12
+--- !u!114 &2005833790374209104
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8904463417187941275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43f71ffe2641f5644b17920293b324fa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FPS.Weapons::FPS.Weapons.TacticalEquipmentSystem
+  lethal:
+    grenade: {fileID: 11400000, guid: ca3e4b5da7997554fbd0ad76cb850586, type: 2}
+    count: 2
+  tactical:
+    grenade: {fileID: 11400000, guid: a5f9d55e2b9752e4eabaa2d059c217ce, type: 2}
+    count: 2
+  pinTime: 0.35
+  releaseTime: 0.12
+  recoverTime: 0.35
+  throwElevation: 10
+  releaseOffset: {x: 0.2, y: -0.1, z: 0.35}
 --- !u!1 &8960694533623877074
 GameObject:
   m_ObjectHideFlags: 0

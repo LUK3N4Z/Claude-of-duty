@@ -25,7 +25,8 @@ namespace FPS.AI
     /// of sight, how lit it is (sun, open sky, flashlights — dark corners hide), stance and motion, distance and whether
     /// it is in focus or peripheral vision. Hearing picks up footsteps (scaled by the target's speed and stance) and
     /// gunshots (suppressed weapons are heard closer and located worse); unsuppressed muzzle flashes give the shooter
-    /// away. Near misses, hits and stun grenades feed suppression, blindness and deafness.
+    /// away. Smoke (<see cref="VisionObstruction"/>) thins or cuts sight lines. Near misses, hits and stun grenades feed
+    /// suppression, blindness and deafness.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class AIPerceptionSensor : MonoBehaviour
@@ -313,12 +314,15 @@ namespace FPS.AI
         private float VisibleFraction(PerceivableTarget target)
         {
             Vector3 from = eye.position;
-            int mask = GameLayers.EnvironmentMask;
-            int visible = 0;
-            if (!Physics.Linecast(from, target.Head.position, mask, QueryTriggerInteraction.Ignore)) visible++;
-            if (!Physics.Linecast(from, target.Chest.position, mask, QueryTriggerInteraction.Ignore)) visible++;
-            if (!Physics.Linecast(from, target.Pelvis.position, mask, QueryTriggerInteraction.Ignore)) visible++;
-            return visible / 3f;
+            return (Sight(from, target.Head.position) + Sight(from, target.Chest.position) + Sight(from, target.Pelvis.position)) / 3f;
+        }
+
+        /// <summary>How much of a point shows: 0 behind cover or deep in smoke, the smoke's transmittance otherwise.</summary>
+        private static float Sight(Vector3 from, Vector3 to)
+        {
+            if (Physics.Linecast(from, to, GameLayers.EnvironmentMask, QueryTriggerInteraction.Ignore)) return 0f;
+            float transmittance = VisionObstruction.Transmittance(from, to);
+            return transmittance > 0.15f ? transmittance : 0f;
         }
 
         /// <summary>Awareness per second from footsteps.</summary>
@@ -347,7 +351,8 @@ namespace FPS.AI
             bool occluded = Physics.Linecast(eyePosition, shot.Position, GameLayers.EnvironmentMask, QueryTriggerInteraction.Ignore);
             float audible = (profile != null ? profile.MaxAudibleDistance : 500f) * hearingScale * (1f - Deafness) * (occluded ? 0.5f : 1f);
             bool flashSeen = !occluded && shot.MuzzleFlash > 0.05f && Blindness < 0.5f && distance <= viewDistance * 1.5f &&
-                             Vector3.Angle(eye.forward, shot.Position - eyePosition) <= peripheralHalfAngle;
+                             Vector3.Angle(eye.forward, shot.Position - eyePosition) <= peripheralHalfAngle &&
+                             VisionObstruction.Transmittance(eyePosition, shot.Position) > 0.3f; // a flash glows through thin smoke
             if (distance > audible && !flashSeen) return;
 
             int slot = Track(target);

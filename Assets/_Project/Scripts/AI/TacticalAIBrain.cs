@@ -20,6 +20,17 @@ namespace FPS.AI
         Throw,
         Stunned,
         Dead,
+        /// <summary>Moving to, holding or working a match objective.</summary>
+        Objective,
+    }
+
+    public enum ObjectiveKind
+    {
+        None,
+        /// <summary>Go to the point and hold it, fighting from there.</summary>
+        Hold,
+        /// <summary>Go to the point and work it (plant, defuse) whenever no enemy is in sight.</summary>
+        Interact,
     }
 
     /// <summary>
@@ -89,8 +100,10 @@ namespace FPS.AI
         [SerializeField] private AIVoiceProfileSO voice;
         [SerializeField, Min(0f)] private float calloutCooldown = 2.5f;
 
-        [Header("Patrol")]
+        [Header("Patrol & Objectives")]
         [SerializeField] private Transform[] patrolPoints = new Transform[0];
+        [Tooltip("Threats further than this from the objective are watched, not chased (m).")]
+        [SerializeField, Min(1f)] private float objectiveLeash = 25f;
 
         private readonly Vector3[] route = new Vector3[MaxRoute];
         private readonly Vector3[] claims = new Vector3[MaxClaims];
@@ -110,6 +123,9 @@ namespace FPS.AI
         private int routeCount, routeIndex, arcCount, patrolIndex;
         private Transform breachEntry;
         private AIState resumeState;
+        private ObjectiveKind objectiveKind;
+        private Vector3 objectivePoint, objectiveFacing;
+        private float objectiveRadius;
 
         public AIState State { get; private set; }
         public SquadCoordinator Squad { get; private set; }
@@ -141,6 +157,13 @@ namespace FPS.AI
             }
         }
 
+        public ObjectiveKind Objective => objectiveKind;
+        public Vector3 ObjectivePoint => objectivePoint;
+        public bool AtObjective => objectiveKind != ObjectiveKind.None && Arrived(objectivePoint, objectiveRadius);
+        /// <summary>At an Interact objective with no enemy in sight: the match counts this as planting or defusing.</summary>
+        public bool IsWorkingObjective => State == AIState.Objective && objectiveKind == ObjectiveKind.Interact && AtObjective &&
+                                          !perception.TargetVisible && !perception.IsStunned;
+
         /// <summary>Breaching and already through the doorway (the next man may follow).</summary>
         public bool PastDoorway => State == AIState.Breach && routeIndex > arcCount;
 
@@ -154,6 +177,22 @@ namespace FPS.AI
         }
 
         public void JoinSquad(SquadCoordinator coordinator) => Squad = coordinator;
+
+        /// <summary>A standing match objective, pursued whenever there is no fight to take or order to follow.</summary>
+        public void SetObjective(ObjectiveKind kind, Vector3 point, float radius, Vector3 facing)
+        {
+            objectiveKind = kind;
+            objectivePoint = OnNavMesh(point);
+            objectiveRadius = Mathf.Max(0.5f, radius);
+            objectiveFacing = facing;
+            nextDecision = 0f;
+        }
+
+        public void ClearObjective()
+        {
+            objectiveKind = ObjectiveKind.None;
+            if (State == AIState.Objective) SetState(AIState.Idle);
+        }
 
         public bool HasGrenade(GrenadeType type) =>
             type == GrenadeType.Fragmentation ? fragGrenade != null && fragCount > 0 : flashGrenade != null && flashCount > 0;
@@ -310,16 +349,20 @@ namespace FPS.AI
             {
                 case AwarenessState.Unaware:
                 case AwarenessState.Suspicious:
-                    SetState(AIState.Idle);
+                    SetState(objectiveKind != ObjectiveKind.None ? AIState.Objective : AIState.Idle);
                     break;
                 case AwarenessState.Alerted:
-                    SetState(AIState.Investigate);
+                    SetState(BeyondLeash(perception.LastKnownPosition) ? AIState.Objective : AIState.Investigate);
                     break;
                 default:
                     DecideCombat(now);
                     break;
             }
         }
+
+        /// <summary>A threat this far from the held objective is watched from it rather than hunted.</summary>
+        private bool BeyondLeash(Vector3 point) =>
+            objectiveKind != ObjectiveKind.None && (point - objectivePoint).sqrMagnitude > objectiveLeash * objectiveLeash;
 
         private void DecideCombat(float now)
         {
@@ -340,7 +383,7 @@ namespace FPS.AI
                 return;
             }
 
-            SetState(AIState.Investigate);
+            SetState(BeyondLeash(perception.LastKnownPosition) ? AIState.Objective : AIState.Investigate);
             hasCover = false;
         }
 
@@ -471,6 +514,7 @@ namespace FPS.AI
                 case AIState.Flank: ActFlank(); break;
                 case AIState.Stack: ActStack(); break;
                 case AIState.Breach: ActBreach(); break;
+                case AIState.Objective: ActObjective(); break;
                 case AIState.Throw:
                     Stop();
                     body.LookAt(perception.LastKnownPosition);
@@ -506,6 +550,34 @@ namespace FPS.AI
             Vector3 post = patrolPoints[patrolIndex].position;
             if (Arrived(post)) patrolIndex = (patrolIndex + 1) % patrolPoints.Length;
             MoveTo(patrolPoints[patrolIndex].position, walkSpeed);
+        }
+
+        private void ActObjective()
+        {
+            body.SetLean(0f);
+            Vector3 position = transform.position;
+            bool arrived = Arrived(objectivePoint, objectiveRadius);
+            if (!arrived)
+            {
+                body.SetCrouched(false);
+                MoveTo(objectivePoint, (objectivePoint - position).sqrMagnitude > 12f * 12f ? runSpeed : walkSpeed);
+            }
+            else
+            {
+                Stop();
+                body.SetCrouched(objectiveKind == ObjectiveKind.Interact);
+            }
+
+            if (perception.TargetVisible)
+            {
+                EngageTarget(!arrived);
+                return;
+            }
+
+            weapon.CeaseFire();
+            if (perception.State == AwarenessState.Alerted || perception.State == AwarenessState.Engaged) body.AimAt(perception.LastKnownPosition);
+            else if (arrived) body.LookAt(objectivePoint + objectiveFacing * 10f + Vector3.up * 1.5f);
+            else body.ClearAim();
         }
 
         private void ActInvestigate()
@@ -695,10 +767,28 @@ namespace FPS.AI
             if (Physics.Raycast(muzzle.position, toPoint / distance, out RaycastHit hit, distance, GameLayers.EnvironmentMask, QueryTriggerInteraction.Ignore) &&
                 (hit.distance < 1.5f || !suppressive))
                 return;
-            if (Squad != null && Squad.IsTeammateInLine(this, muzzle.position, point)) return;
+            if (FriendlyInLine(muzzle.position, point)) return;
 
             weapon.Fire(rounds);
             nextBurstAt = now + rounds * (weapon.Data != null ? weapon.Data.CycleTime : 0.1f) + Random.Range(pause.x, pause.y);
+        }
+
+        /// <summary>Anyone on our team (soldier or player) stands within 0.7 m of the line of fire.</summary>
+        private bool FriendlyInLine(Vector3 from, Vector3 to)
+        {
+            Vector3 segment = to - from;
+            float lengthSquared = segment.sqrMagnitude;
+            var targets = PerceivableTarget.All;
+            for (int i = 0; i < targets.Count; i++)
+            {
+                PerceivableTarget friend = targets[i];
+                if (friend.Team != perception.Team || friend.transform == transform || !friend.IsAlive) continue;
+                Vector3 chest = friend.Chest.position;
+                float t = lengthSquared > 1e-6f ? Mathf.Clamp01(Vector3.Dot(chest - from, segment) / lengthSquared) : 0f;
+                if ((from + segment * t - chest).sqrMagnitude < 0.7f * 0.7f) return true;
+            }
+
+            return false;
         }
 
         // ---- Movement helpers ----
@@ -721,11 +811,13 @@ namespace FPS.AI
             agent.isStopped = true;
         }
 
-        private bool Arrived(Vector3 point)
+        private bool Arrived(Vector3 point) => Arrived(point, arriveDistance);
+
+        private bool Arrived(Vector3 point, float distance)
         {
             Vector3 offset = point - transform.position;
             offset.y = 0f;
-            return offset.sqrMagnitude <= arriveDistance * arriveDistance;
+            return offset.sqrMagnitude <= distance * distance;
         }
 
         private void SetState(AIState state)

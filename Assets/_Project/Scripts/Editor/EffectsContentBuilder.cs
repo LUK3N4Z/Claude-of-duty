@@ -200,6 +200,13 @@ namespace FPS.EditorTools
 
         internal static Material SmokeMaterial() => Vfx("BreechSmoke");
 
+        /// <summary>The armed charge's short electronic beep.</summary>
+        internal static AudioClip BombBeep()
+        {
+            ProjectSetupWizard.EnsureFolder($"{AudioFolder}/Explosives");
+            return AudioSynth.LoadOrCreate(Clip("Explosives", "Charge_Beep"), () => new AudioSynth(0.09f, 51).Tone(2900f, 2900f, 0.6f, 0f, 0.002f, 0.05f));
+        }
+
         /// <summary>
         /// The weapon behind a suppressor: a short, dull "thup" with the bolt clearly audible, quieter tails and a
         /// report that fades out far sooner. Shares the unsuppressed mechanism and body clips.

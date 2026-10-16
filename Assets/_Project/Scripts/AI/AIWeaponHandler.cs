@@ -45,7 +45,7 @@ namespace FPS.AI
         private int rounds, spares, burstLeft;
         private float nextShotTime, flashOffTime;
         private float reloadStart, reloadEnd;
-        private bool reloadInserted;
+        private bool reloadInserted, looted;
 
         /// <summary>Raised when a reload starts (for the "Reloading!" callout).</summary>
         public event Action ReloadStarted;
@@ -138,7 +138,12 @@ namespace FPS.AI
         private void Update()
         {
             if (flash != null && flash.enabled && Time.time >= flashOffTime) flash.enabled = false;
-            if (data == null || body.IsDead) return;
+            if (data == null) return;
+            if (body.IsDead)
+            {
+                if (!looted) LeaveMagazines();
+                return;
+            }
 
             if (IsReloading)
             {
@@ -217,6 +222,24 @@ namespace FPS.AI
             ShotsFired++;
             LastShotTime = Time.time;
             Fired?.Invoke();
+        }
+
+        /// <summary>The fallen rifle keeps its magazines: the player can strip them (Interact).</summary>
+        private void LeaveMagazines()
+        {
+            looted = true;
+            if (weapon == null) return;
+            var magazines = new int[spares + 1];
+            magazines[0] = rounds;
+            for (int i = 1; i < magazines.Length; i++) magazines[i] = data.MagazineCapacity;
+
+            var loot = new GameObject("Loot (interact)") { layer = GameLayers.Interactable };
+            loot.transform.SetParent(weapon.transform, false);
+            var trigger = loot.AddComponent<BoxCollider>();
+            trigger.isTrigger = true;
+            trigger.center = new Vector3(0f, 0f, 0.1f);
+            trigger.size = new Vector3(0.5f, 0.4f, 1f);
+            loot.AddComponent<DroppedWeapon>().Configure(data.Caliber, magazines);
         }
 
         private void RaiseAction(WeaponActionType type)

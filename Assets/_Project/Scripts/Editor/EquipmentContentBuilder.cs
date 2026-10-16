@@ -19,6 +19,11 @@ namespace FPS.EditorTools
         private const string CaliberFolder = "Assets/_Project/Data/Ballistics";
         internal const string FragName = "Grenade_M67";
         internal const string FlashName = "Grenade_M84";
+        internal const string SmokeName = "Grenade_M18";
+        internal const string ChargeName = "Charge_C4";
+        internal const string PlantedChargePath = PrefabFolder + "/PlantedCharge.prefab";
+
+        internal static FPS.Gameplay.PlantedBomb PlantedCharge() => AssetDatabase.LoadAssetAtPath<FPS.Gameplay.PlantedBomb>(PlantedChargePath);
 
         internal static GrenadeDataSO Grenade(string grenadeName) => AssetDatabase.LoadAssetAtPath<GrenadeDataSO>($"{DataFolder}/{grenadeName}.asset");
 
@@ -49,6 +54,10 @@ namespace FPS.EditorTools
 
             ThrownGrenade fragBody = Body("Grenade_M67", PrimitiveType.Sphere, new Vector3(0.064f, 0.064f, 0.064f), olive, steel, bounce);
             ThrownGrenade flashBody = Body("Grenade_M84", PrimitiveType.Cylinder, new Vector3(0.045f, 0.065f, 0.045f), black, steel, bounce);
+            Material smokeGreen = LitMaterial("GrenadeSmoke", new Color(0.25f, 0.3f, 0.22f), 0.1f, 0.3f);
+            ThrownGrenade smokeBody = Body("Grenade_M18", PrimitiveType.Cylinder, new Vector3(0.062f, 0.075f, 0.062f), smokeGreen, steel, bounce);
+            Material charge = LitMaterial("ChargeBlock", new Color(0.6f, 0.58f, 0.5f), 0f, 0.4f);
+            ThrownGrenade chargeBody = Body("Charge_C4", PrimitiveType.Cube, new Vector3(0.28f, 0.08f, 0.18f), charge, black, bounce);
 
             Configure(LoadOrCreate<GrenadeDataSO>($"{DataFolder}/{FragName}.asset"), so =>
             {
@@ -88,7 +97,75 @@ namespace FPS.EditorTools
                 Set(so, "smokeColor", new Color(0.75f, 0.75f, 0.75f, 0.6f));
             });
 
+            Configure(LoadOrCreate<GrenadeDataSO>($"{DataFolder}/{SmokeName}.asset"), so =>
+            {
+                Set(so, "displayName", "M18 Smoke Grenade");
+                SetEnum(so, "type", (int)GrenadeType.Smoke);
+                Set(so, "prefab", smokeBody);
+                Set(so, "massKg", 0.54f);
+                Set(so, "fuseTime", 1.5f);
+                Set(so, "throwSpeed", 14f);
+                Set(so, "fragmentCount", 0);
+                Set(so, "blastRadius", 0f);
+                Set(so, "blastDamage", 0f);
+                Set(so, "smokeRadius", 4.5f);
+                Set(so, "smokeBuildUp", 3f);
+                Set(so, "smokeDuration", 35f);
+                Set(so, "smokeFade", 6f);
+                Set(so, "smokeExtinction", 1.5f);
+                Set(so, "flashLumen", 0f);
+                Set(so, "suppressionRadius", 0f);
+                Set(so, "smokeMaterial", EffectsContentBuilder.SmokeMaterial());
+                Set(so, "smokeColor", new Color(0.72f, 0.72f, 0.7f, 0.85f));
+            });
+            GrenadeDataSO c4 = LoadOrCreate<GrenadeDataSO>($"{DataFolder}/{ChargeName}.asset");
+            Configure(c4, so =>
+            {
+                Set(so, "displayName", "C4 Demolition Charge");
+                SetEnum(so, "type", (int)GrenadeType.Fragmentation);
+                Set(so, "prefab", chargeBody);
+                Set(so, "massKg", 1.25f);
+                Set(so, "fuseTime", 0.1f);
+                Set(so, "fragmentCaliber", fragment);
+                Set(so, "fragmentCount", 48);
+                Set(so, "fragmentVelocity", 1500f);
+                Set(so, "blastRadius", 10f);
+                Set(so, "blastDamage", 450f);
+                Set(so, "detonationAudio", EffectsContentBuilder.ExplosionAudio("Charge_C4", 1.6f, 0.5f));
+                Set(so, "flashLumen", 8000000f);
+                Set(so, "suppressionRadius", 30f);
+                Set(so, "smokeMaterial", EffectsContentBuilder.SmokeMaterial());
+                Set(so, "smokeColor", new Color(0.35f, 0.33f, 0.3f, 0.85f));
+            });
+            PlantedChargePrefab(c4, charge, black);
+
             AssetDatabase.SaveAssets();
+        }
+
+        /// <summary>The armed charge left at a site: model, Interactable defuse collider, beep and countdown.</summary>
+        private static void PlantedChargePrefab(GrenadeDataSO c4, Material block, Material wiring)
+        {
+            var root = new GameObject("PlantedCharge") { layer = GameLayers.Interactable };
+            try
+            {
+                Part(root.transform, "Charge", PrimitiveType.Cube, new Vector3(0f, 0.05f, 0f), new Vector3(0.28f, 0.1f, 0.18f), Quaternion.identity, block);
+                Part(root.transform, "Detonator", PrimitiveType.Cube, new Vector3(0.06f, 0.12f, 0f), new Vector3(0.1f, 0.04f, 0.06f), Quaternion.identity, wiring);
+                SetLayerRecursively(root.transform, 0);
+                root.layer = GameLayers.Interactable;
+                var trigger = root.AddComponent<BoxCollider>();
+                trigger.isTrigger = true;
+                trigger.center = new Vector3(0f, 0.25f, 0f);
+                trigger.size = new Vector3(1f, 0.8f, 1f);
+                root.AddComponent<FPS.Gameplay.HoldInteraction>();
+                var speaker = root.AddComponent<AudioSource>();
+                speaker.playOnAwake = false;
+                root.AddComponent<FPS.Gameplay.PlantedBomb>().Configure(c4, EffectsContentBuilder.BombBeep());
+                PrefabUtility.SaveAsPrefabAsset(root, PlantedChargePath);
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
         }
 
         private static ThrownGrenade Body(string prefabName, PrimitiveType shape, Vector3 size, Material bodyMaterial, Material spoonMaterial,

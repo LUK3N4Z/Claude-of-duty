@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace FPS.Weapons
 {
-    /// <summary>Interactable resupply: refills the user's spare magazines for every carried weapon.</summary>
+    /// <summary>Interactable resupply: refills the user's spare magazines for every carried weapon and their grenades.</summary>
     [DisallowMultipleComponent]
     public sealed class AmmoCrate : MonoBehaviour, IInteractable
     {
@@ -20,6 +20,7 @@ namespace FPS.Weapons
         {
             if (!CanInteract(user)) return;
             user.GetComponent<RealisticWeaponController>().RefillAmmunition();
+            if (user.TryGetComponent(out TacticalEquipmentSystem equipment)) equipment.Refill();
             readyTime = Time.time + cooldown;
         }
     }

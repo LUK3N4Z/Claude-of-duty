@@ -134,7 +134,8 @@ namespace FPS.Tests
         }
 
         /// <summary>A full soldier (body, perception, rifle, brain) standing at <paramref name="position"/> facing <paramref name="yaw"/>.</summary>
-        protected TacticalAIBrain Soldier(Vector3 position, float yaw, SquadCoordinator squad = null, GrenadeDataSO frag = null, GrenadeDataSO flash = null)
+        protected TacticalAIBrain Soldier(Vector3 position, float yaw, SquadCoordinator squad = null, GrenadeDataSO frag = null, GrenadeDataSO flash = null,
+            WeaponDataSO rifle = null, bool activate = true, int team = 1)
         {
             var root = new GameObject("Soldier") { layer = GameLayers.Player };
             root.SetActive(false);
@@ -163,11 +164,12 @@ namespace FPS.Tests
             HitboxBox(head, HitZone.Head, new Vector3(0.2f, 0.24f, 0.22f));
 
             root.AddComponent<AIBody>().Configure(pelvis, torso, chest, head, aim, legs, default, default);
-            root.AddComponent<PerceivableTarget>().SetTeam(1);
-            root.AddComponent<AIPerceptionSensor>().Configure(head, 1);
-            root.AddComponent<AIWeaponHandler>().Configure(TestWeapons.CreateTemplate(created), RifleData(), new AttachmentDataSO[0], 3);
+            root.AddComponent<PerceivableTarget>().SetTeam(team);
+            root.AddComponent<AIPerceptionSensor>().Configure(head, team);
+            root.AddComponent<AIWeaponHandler>().Configure(TestWeapons.CreateTemplate(created), rifle != null ? rifle : RifleData(), new AttachmentDataSO[0], 3);
             TacticalAIBrain brain = root.AddComponent<TacticalAIBrain>();
             brain.Configure(null, frag, frag != null ? 1 : 0, flash, flash != null ? 1 : 0);
+            if (!activate) return brain; // an inactive template: copies wake up when spawned
             root.SetActive(true);
             squad?.Register(brain);
             return brain;

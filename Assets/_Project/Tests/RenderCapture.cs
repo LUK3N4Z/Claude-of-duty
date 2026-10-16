@@ -160,6 +160,57 @@ namespace FPS.Tests
             rig.PlayerCamera.targetTexture = null;
         }
 
+        [UnityTest]
+        public IEnumerator CaptureGameModes()
+        {
+            string dir = Environment.GetEnvironmentVariable("FPS_CAPTURE_DIR");
+            if (string.IsNullOrEmpty(dir)) Assert.Ignore("FPS_CAPTURE_DIR not set");
+            TestInput.IgnoreFocus();
+            InputSystem.AddDevice<Keyboard>();
+            InputSystem.AddDevice<Mouse>();
+
+            foreach (string mode in new[] { "Hardpoint", "SearchAndDestroy", "Raid" })
+            {
+                yield return EditorSceneManager.LoadSceneAsyncInPlayMode($"Assets/_Project/Scenes/Mode_{mode}.unity", new LoadSceneParameters(LoadSceneMode.Single));
+                yield return null;
+                var rig = Object.FindAnyObjectByType<PlayerRig>();
+                var health = rig.GetComponent<TacticalHealthAndArmorSystem>();
+                TestWeapons.SetField(health, "maxHealth", 100000f);
+                health.ResetState();
+                var director = Object.FindAnyObjectByType<FPS.Gameplay.MatchDirector>();
+                var rt = new RenderTexture(1280, 720, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+                rig.PlayerCamera.targetTexture = rt;
+
+                float deadline = Time.time + 6f;
+                while (director.Phase != FPS.Gameplay.MatchPhase.Live && Time.time < deadline) yield return null;
+                yield return new WaitForSeconds(mode == "Hardpoint" ? 7f : 4f);
+                Save(rt, Path.Combine(dir, $"mode_{mode}.png"));
+                Debug.Log($"[Capture] {mode}: phase={director.Phase} round={director.Round} objective='{director.Mode.Objective}' " +
+                          $"score={director.Score(0)}-{director.Score(1)} wins={director.RoundWins(0)}-{director.RoundWins(1)} alive={director.AliveCount(0)}v{director.AliveCount(1)}");
+
+                if (mode == "Hardpoint")
+                {
+                    // A smoke screen thrown along the line of sight.
+                    var equipment = rig.GetComponent<TacticalEquipmentSystem>();
+                    equipment.SetLoadout(EquipmentSlot.Tactical,
+                        AssetDatabase.LoadAssetAtPath<GrenadeDataSO>("Assets/_Project/Data/Equipment/Grenade_M18.asset"), 1);
+                    equipment.BeginThrow(EquipmentSlot.Tactical);
+                    yield return new WaitForSeconds(0.4f);
+                    equipment.ReleaseThrow(EquipmentSlot.Tactical);
+                    yield return new WaitForSeconds(5.5f);
+                    Save(rt, Path.Combine(dir, "mode_Hardpoint_smoke.png"));
+                    foreach (FPS.Gameplay.Combatant combatant in director.Combatants)
+                    {
+                        if (combatant.Brain != null)
+                            Debug.Log($"[Capture] team {combatant.Team}: {combatant.Brain.State} alive={combatant.Alive} at {combatant.Position:F1}");
+                    }
+                }
+
+                rig.PlayerCamera.targetTexture = null;
+                rt.Release();
+            }
+        }
+
         private static AttachmentDataSO Part(string partName) =>
             AssetDatabase.LoadAssetAtPath<AttachmentDataSO>($"Assets/_Project/Data/Weapons/Attachments/{partName}.asset");
 

@@ -28,14 +28,45 @@ namespace FPS.Core
         {
             Vector3 toBang = bang - eye;
             float distance = toBang.magnitude;
+            float facing = distance > 1e-3f ? Vector3.Dot(forward, toBang / distance) : 1f;
+            float facingFactor = Mathf.Lerp(0.3f, 1f, Mathf.Clamp01((facing + 0.2f) / 1.2f)); // light off the walls still dazzles
+            return Exposure(bang, intensity, eye, facingFactor, out deafness);
+        }
+
+        /// <summary>
+        /// Exposure through a camera: a flash anywhere on screen blinds fully; off screen it fades with the angle
+        /// beyond the edge of the view to bounce light behind the head.
+        /// </summary>
+        public static float ScreenExposure(Camera view, Vector3 bang, float intensity, out float deafness)
+        {
+            Transform eye = view.transform;
+            Vector3 viewport = view.WorldToViewportPoint(bang);
+            float facingFactor;
+            if (viewport.z > 0f && viewport.x >= 0f && viewport.x <= 1f && viewport.y >= 0f && viewport.y <= 1f)
+            {
+                facingFactor = 1f;
+            }
+            else
+            {
+                float halfVertical = view.fieldOfView * 0.5f;
+                float halfHorizontal = Mathf.Atan(Mathf.Tan(halfVertical * Mathf.Deg2Rad) * view.aspect) * Mathf.Rad2Deg;
+                float edge = Mathf.Max(halfVertical, halfHorizontal);
+                float beyond = Vector3.Angle(eye.forward, bang - eye.position) - edge;
+                facingFactor = Mathf.Lerp(1f, 0.3f, Mathf.Clamp01(beyond / 60f));
+            }
+
+            return Exposure(bang, intensity, eye.position, facingFactor, out deafness);
+        }
+
+        private static float Exposure(Vector3 bang, float intensity, Vector3 eye, float facingFactor, out float deafness)
+        {
+            float distance = Vector3.Distance(bang, eye);
             bool occluded = Physics.Linecast(bang + Vector3.up * 0.1f, eye, GameLayers.EnvironmentMask, QueryTriggerInteraction.Ignore);
 
             float hearing = Mathf.Clamp01(1f - (distance - FullEffectRadius) / (DeafRadius - FullEffectRadius));
             deafness = Mathf.Clamp01(intensity * hearing * (occluded ? 0.6f : 1f));
 
             float sight = Mathf.Clamp01(1f - (distance - FullEffectRadius) / (BlindRadius - FullEffectRadius));
-            float facing = distance > 1e-3f ? Vector3.Dot(forward, toBang / distance) : 1f;
-            float facingFactor = Mathf.Lerp(0.3f, 1f, Mathf.Clamp01((facing + 0.2f) / 1.2f)); // light off the walls still dazzles
             return Mathf.Clamp01(intensity * sight * facingFactor * (occluded ? 0.15f : 1f));
         }
     }

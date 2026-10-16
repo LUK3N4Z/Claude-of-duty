@@ -186,6 +186,16 @@ namespace FPS.Locomotion
         /// </summary>
         public void AddLookOffset(float pitchDegrees, float yawDegrees) => pendingLookOffset += new Vector2(pitchDegrees, yawDegrees);
 
+        /// <summary>Snaps the view (spawns, scripted placement).</summary>
+        public void SetLook(float yawDegrees, float pitchDegrees)
+        {
+            yaw = Mathf.Repeat(yawDegrees, 360f);
+            pitch = pitchDegrees;
+            pendingLookOffset = Vector2.zero;
+            transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            rig.PitchPivot.localRotation = Quaternion.Euler(pitch, 0f, 0f);
+        }
+
         /// <summary>Spends stamina (fraction 0-1) and restarts the regeneration delay.</summary>
         public void DrainStamina(float amount)
         {

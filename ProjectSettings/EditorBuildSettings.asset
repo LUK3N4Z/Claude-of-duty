@@ -4,5 +4,14 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/_Project/Scenes/Mode_Raid.unity
+    guid: 4f8609163f835854998399c5e7794bc7
+  - enabled: 1
+    path: Assets/_Project/Scenes/Mode_SearchAndDestroy.unity
+    guid: 4a2d5f6699aa5484d9a05b54cd953ed2
+  - enabled: 1
+    path: Assets/_Project/Scenes/Mode_Hardpoint.unity
+    guid: 6f88e206630fb4542abc405172f424f6
   m_configObjects: {}

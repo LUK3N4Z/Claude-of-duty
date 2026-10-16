@@ -1,0 +1,5 @@
+{
+    "name": "FPS.Gameplay",
+    "rootNamespace": "FPS.Gameplay",
+    "references": ["FPS.Core", "FPS.Audio", "FPS.Ballistics", "FPS.Player", "FPS.Weapons", "FPS.AI", "FPS.UI", "UnityEngine.UI", "Unity.RenderPipelines.HighDefinition.Runtime", "Unity.RenderPipelines.Core.Runtime"]
+}

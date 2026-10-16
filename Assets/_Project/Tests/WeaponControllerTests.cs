@@ -34,7 +34,9 @@ namespace FPS.Tests
 
         public static void SetField(object target, string field, object value)
         {
-            FieldInfo info = target.GetType().GetField(field, BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo info = null;
+            for (System.Type type = target.GetType(); type != null && info == null; type = type.BaseType)
+                info = type.GetField(field, BindingFlags.Instance | BindingFlags.NonPublic); // private fields of base classes too
             Assert.IsNotNull(info, $"{target.GetType().Name}.{field} does not exist");
             info.SetValue(target, value);
         }

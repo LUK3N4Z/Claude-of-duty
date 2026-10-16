@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53dfdec1530d6344bb2a986d02fb2693, type: 3}
+  m_Name: Charge_C4_Audio
+  m_EditorClassIdentifier: FPS.Audio::FPS.Audio.WeaponAudioProfileSO
+  pressureTransients:
+  - {fileID: 8300000, guid: c1ca414fd3493c943baefbc1a92b93e8, type: 3}
+  - {fileID: 8300000, guid: 7917d9fcc2efd7f40be4272fa81c25a5, type: 3}
+  mechanicalCycles:
+  - {fileID: 8300000, guid: cc8ab537926889346bf0e93820e7e5ca, type: 3}
+  bodyResonances: []
+  distantReports:
+  - {fileID: 8300000, guid: 7e0256a2b6d99ee40ac6cb86c5bb8a90, type: 3}
+  distantThreshold: 150
+  maxAudibleDistance: 2500
+  loudness: 1
+  indoorTail: {fileID: 8300000, guid: b21e2adf481821447845fc8719b546d6, type: 3}
+  urbanTail: {fileID: 8300000, guid: abd0606b1329f1846b727b92d23baa1d, type: 3}
+  openTail: {fileID: 8300000, guid: 25ceb02de96dc1442a74929cf64594c5, type: 3}
