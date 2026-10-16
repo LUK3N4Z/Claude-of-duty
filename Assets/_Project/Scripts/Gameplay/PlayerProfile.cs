@@ -68,6 +68,8 @@ namespace FPS.Gameplay
         public AIDifficulty aiDifficulty = AIDifficulty.Regular;
         /// <summary>Hit confirmation: off, ticks only, markers only, or both.</summary>
         public HitMarkerMode hitMarkers = HitMarkerMode.AudioAndVisual;
+        /// <summary>Arcs pointing toward whoever (or whatever blast) hurt the player.</summary>
+        public bool damageIndicator = true;
         /// <summary>Key binding changes (Input System overrides JSON); empty keeps the defaults.</summary>
         public string bindingOverrides = string.Empty;
     }

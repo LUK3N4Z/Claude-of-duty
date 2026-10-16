@@ -38,6 +38,8 @@ namespace FPS.Ballistics
         public bool Fatal;
         /// <summary>Who dealt it (shooter or thrower root), or null when unknown.</summary>
         public Transform Attacker;
+        /// <summary>Where it came from: the muzzle the round left (a fragment's blast centre) or the blast centre.</summary>
+        public Vector3 Source;
     }
 
     /// <summary>

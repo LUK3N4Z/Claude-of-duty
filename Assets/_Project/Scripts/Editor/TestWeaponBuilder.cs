@@ -215,7 +215,7 @@ namespace FPS.EditorTools
                 {
                     visual = ProceduralWeapons.Marksman(t, primary, magazineSocket, out _);
                     float lensRadius = spec.ScopeDiameter * 0.4125f;
-                    MeshRenderer lensRenderer = Disc(primary, "Ocular Lens", DiscMesh(), -0.001f, lensRadius, UnlitMaterial("Scope Lens", Color.white, null, false));
+                    MeshRenderer lensRenderer = Disc(primary, "Ocular Lens", DiscMesh(), -0.001f, lensRadius, ScopeLensMaterial());
                     var sight = primary.gameObject.AddComponent<WeaponSight>();
                     sight.Configure(spec.Magnification, spec.EyeRelief, spec.AdsZoom, lensRenderer);
                     sight.ConfigureReticle(ReticleStyle.DuplexDot, new Color(5f, 0.3f, 0.15f), 1f); // etched duplex, illuminated red dot
@@ -557,6 +557,38 @@ namespace FPS.EditorTools
 
             HDMaterial.ValidateMaterial(material);
             AssetDatabase.CreateAsset(material, path);
+            return material;
+        }
+
+        /// <summary>
+        /// The PiP lens: HDRP/Unlit emitting the scope camera's radiance (set per lens as _EmissiveColorMap) with exposure
+        /// weight 1, so the main camera exposes the scope picture like the world. Refreshed in place on every build.
+        /// </summary>
+        internal static Material ScopeLensMaterial()
+        {
+            string path = $"{ArtFolder}/Scope Lens.mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            bool create = material == null;
+            if (create) material = new Material(Shader.Find("HDRP/Unlit")) { name = "Scope Lens" };
+
+            string blankPath = $"{ArtFolder}/LensBlank.asset";
+            var blank = AssetDatabase.LoadAssetAtPath<Texture2D>(blankPath);
+            if (blank == null)
+            {
+                blank = new Texture2D(4, 4, TextureFormat.RGBA32, false) { name = "LensBlank" };
+                blank.SetPixels32(new Color32[16]);
+                blank.Apply();
+                AssetDatabase.CreateAsset(blank, blankPath);
+            }
+
+            material.SetColor("_UnlitColor", Color.black);
+            material.SetColor("_EmissiveColor", Color.white);
+            material.SetFloat("_UseEmissiveIntensity", 0f);
+            material.SetFloat("_EmissiveExposureWeight", 1f);
+            material.SetTexture("_EmissiveColorMap", blank); // keeps _EMISSIVE_COLOR_MAP on; each lens overrides the map
+            HDMaterial.ValidateMaterial(material);
+            if (create) AssetDatabase.CreateAsset(material, path);
+            else EditorUtility.SetDirty(material);
             return material;
         }
 

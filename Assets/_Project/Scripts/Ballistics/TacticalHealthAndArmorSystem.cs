@@ -62,9 +62,11 @@ namespace FPS.Ballistics
 
         /// <summary>
         /// Resolves a bullet striking <paramref name="zone"/> while travelling along <paramref name="direction"/>, fired by
-        /// <paramref name="attacker"/>. Returns true when armor stopped the round; false when it reached the body (it may still exit).
+        /// <paramref name="attacker"/> from <paramref name="source"/> (the muzzle; back along the path when unknown). Returns true
+        /// when armor stopped the round; false when it reached the body (it may still exit).
         /// </summary>
-        public bool ApplyBulletHit(HitZone zone, Vector3 point, Vector3 direction, CaliberDataSO caliber, float speed, Transform attacker = null)
+        public bool ApplyBulletHit(HitZone zone, Vector3 point, Vector3 direction, CaliberDataSO caliber, float speed, Transform attacker = null,
+            Vector3? source = null)
         {
             if (IsDead) return false;
 
@@ -101,6 +103,7 @@ namespace FPS.Ballistics
                 ArmorPenetrated = piece != null && penetrated,
                 Fatal = IsDead,
                 Attacker = attacker,
+                Source = source ?? point - direction,
             });
             Damaged?.Invoke(zone, damage);
             if (IsDead) Died?.Invoke();
@@ -108,9 +111,10 @@ namespace FPS.Ballistics
         }
 
         /// <summary>
-        /// Damage armor cannot stop (blast overpressure, falls): applied to <paramref name="zone"/> with its multiplier.
+        /// Damage armor cannot stop (blast overpressure, falls): applied to <paramref name="zone"/> with its multiplier,
+        /// coming from <paramref name="source"/> (the blast centre; back along <paramref name="direction"/> when unknown).
         /// </summary>
-        public void ApplyDamage(HitZone zone, float damage, Vector3 point, Vector3 direction, Transform attacker = null)
+        public void ApplyDamage(HitZone zone, float damage, Vector3 point, Vector3 direction, Transform attacker = null, Vector3? source = null)
         {
             if (IsDead || damage <= 0f) return;
 
@@ -126,6 +130,7 @@ namespace FPS.Ballistics
                 Direction = direction,
                 Fatal = IsDead,
                 Attacker = attacker,
+                Source = source ?? point - direction,
             });
             Damaged?.Invoke(zone, damage);
             if (IsDead) Died?.Invoke();

@@ -8,7 +8,8 @@ namespace FPS.Weapons
     /// The weapon's physical connection to the body: mass/ergonomics-driven spring handling, free-aim lead inside an
     /// elastic deadzone, movement trail and sprint/slide postures, breathing sway, and barrel collision that blends from
     /// the shouldered weapon through a compressed ready (pulled back, stock under the armpit: still fires, no sights) to
-    /// a high or low ready full tuck near walls. Rotates about the stock contact point. Owns InertiaPivot.
+    /// a high or low ready full tuck near walls, which holds the firing hand at a point in view so part of the weapon
+    /// stays in frame. Rotates about the stock contact point. Owns InertiaPivot.
     /// </summary>
     [DefaultExecutionOrder(-10)]
     [DisallowMultipleComponent]
@@ -52,8 +53,10 @@ namespace FPS.Weapons
         [SerializeField] private float tiltRange = 0.25f;
         [Tooltip("Barrels at least this long drop to a low ready; shorter ones rise to a high ready (in).")]
         [SerializeField] private float lowReadyBarrelInches = 16f;
-        [SerializeField] private Vector3 highReadyEuler = new Vector3(-55f, -10f, 15f);
-        [SerializeField] private Vector3 lowReadyEuler = new Vector3(45f, -20f, -10f);
+        [Tooltip("Full high ready: the firing hand (RightHandIKGrip) at the target, muzzle up along the right edge of the view.")]
+        [SerializeField] private ViewPose highReady = new ViewPose(new Vector3(0.22f, -0.3f, 0.22f), new Vector3(-80f, 10f, 30f));
+        [Tooltip("Full low ready: the firing hand (RightHandIKGrip) at the target, muzzle down and inboard across the lower right, the stock out past the right edge.")]
+        [SerializeField] private ViewPose lowReady = new ViewPose(new Vector3(0.2f, -0.2f, 0.2f), new Vector3(25f, -30f, 30f));
         [SerializeField] private float tuckInSpeed = 2.5f;
         [SerializeField] private float tuckOutSpeed = 0.8f;
         [Tooltip("Tilt (0-1) beyond which the muzzle is off target: firing and aiming are blocked.")]
@@ -63,6 +66,8 @@ namespace FPS.Weapons
         [Tooltip("Pose added at full compression: stock off the shoulder, tucked under the armpit (m).")]
         [SerializeField] private Vector3 compressedPosition = new Vector3(0.02f, -0.06f, -0.04f);
         [SerializeField] private Vector3 compressedEuler = new Vector3(-4f, 8f, 14f);
+        [Tooltip("Stock-to-muzzle length that takes the full compressed posture; shorter weapons (no stock to tuck) take a share (m).")]
+        [SerializeField, Min(0.05f)] private float compressedPostureLength = 0.6f;
 
         private readonly ProceduralSpringSolver spring = new ProceduralSpringSolver();
         private ViewmodelRig viewmodel;
@@ -154,7 +159,8 @@ namespace FPS.Weapons
                 new Vector3(-localVelocity.x, -localVelocity.y * 0.5f, -localVelocity.z) * movementTrail, maxTrail);
 
             bool aiming = locomotion.IsAiming || ads.AdsBlend > 0.01f;
-            bool lowCarry = locomotion.Pace == LocomotionPace.Sprint || locomotion.IsSliding; // slides carry it like a sprint
+            // Slides carry it like a sprint; over an obstacle the one-handed carry (ActionPivot) owns the posture.
+            bool lowCarry = (locomotion.Pace == LocomotionPace.Sprint || locomotion.IsSliding) && !locomotion.IsTraversing;
             sprintBlend = Mathf.MoveTowards(sprintBlend, !aiming && lowCarry ? 1f : 0f, postureBlendSpeed * dt);
             tacticalBlend = Mathf.MoveTowards(tacticalBlend, !aiming && locomotion.Pace == LocomotionPace.TacticalSprint ? 1f : 0f, postureBlendSpeed * dt);
 
@@ -163,29 +169,33 @@ namespace FPS.Weapons
                                     sprintEuler * sprintBlend + tacticalSprintEuler * tacticalBlend;
             spring.Step(dt);
 
-            UpdateTuck(weapon, pivot, dt, out Vector3 barrelDirection, out float compression, out float tilt);
+            UpdateTuck(weapon, pivot, dt, out Vector3 barrelDirection, out float compression, out float tilt, out float length);
+            float compressed = CompressedReady01 * Mathf.Clamp01(length / compressedPostureLength);
 
             Vector2 sway = breathing.WeaponSwayEuler;
-            Vector3 tuckEuler = (data.BarrelLengthInches >= lowReadyBarrelInches ? lowReadyEuler : highReadyEuler) * tilt;
-            Quaternion rotation = Quaternion.Euler(spring.Rotation + new Vector3(sway.x, sway.y, 0f) + tuckEuler + compressedEuler * CompressedReady01);
-            Vector3 translation = spring.Position - barrelDirection * compression + compressedPosition * CompressedReady01;
+            ViewPose ready = data.BarrelLengthInches >= lowReadyBarrelInches ? lowReady : highReady;
+            Quaternion rotation = Quaternion.Euler(spring.Rotation + new Vector3(sway.x, sway.y, 0f) + ready.euler * tilt + compressedEuler * compressed);
+            Vector3 translation = spring.Position - barrelDirection * compression + compressedPosition * compressed;
 
             Vector3 stock = weapon.StockPivotSocket != null ? pivot.InverseTransformPoint(weapon.StockPivotSocket.position) : Vector3.zero;
+            if (tilt > 0f && weapon.RightHandIKGrip != null) // the hand reaches its ready point by half tilt, keeping the weapon in frame
+                translation += ViewPose.Placement(pivot, weapon.RightHandIKGrip, stock, rotation, translation, ready.target) * Mathf.Min(1f, tilt * 2f);
             pivot.SetLocalPositionAndRotation(stock - rotation * stock + translation, rotation);
         }
 
         private void UpdateTuck(WeaponModelRig weapon, Transform pivot, float dt, out Vector3 barrelDirection,
-            out float compression, out float tilt)
+            out float compression, out float tilt, out float length)
         {
             barrelDirection = Vector3.forward;
             float penetration = 0f;
+            length = 0f;
 
             if (weapon.MuzzleSocket != null && weapon.StockPivotSocket != null)
             {
                 // Probe the untucked pose: points expressed under InertiaPivot, re-placed in its parent's space.
                 Vector3 stock = pivot.InverseTransformPoint(weapon.StockPivotSocket.position);
                 Vector3 barrel = pivot.InverseTransformPoint(weapon.MuzzleSocket.position) - stock;
-                float length = barrel.magnitude;
+                length = barrel.magnitude;
                 if (length > 0.05f)
                 {
                     barrelDirection = barrel / length;

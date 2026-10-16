@@ -13,6 +13,9 @@ namespace FPS.EditorTools
     internal static class ProceduralProps
     {
         private const string PrefabFolder = "Assets/_Project/Prefabs/Props";
+        private const int RackCradles = 4;
+        /// <summary>Weapons with shorter barrels hang from the rack's top bar instead of standing in a cradle (in).</summary>
+        private const float HangingBarrelInches = 8f;
 
         public static void Equipment(string id, Transform root, int layer)
         {
@@ -92,6 +95,7 @@ namespace FPS.EditorTools
         /// <summary>
         /// A weapon rack against a wall (+Z faces the room): solid collider, rack model, and an interaction volume whose
         /// <see cref="FPS.Gameplay.WeaponRack"/> cycles loadout <paramref name="slot"/> through <paramref name="weaponNames"/>.
+        /// Each weapon gets a peg: long guns stand in the butt cradles from the right, short ones hang from the top bar.
         /// </summary>
         public static FPS.Gameplay.WeaponRack PlaceWeaponRack(Transform parent, string rackName, Vector3 position, Quaternion rotation, int slot, params string[] weaponNames)
         {
@@ -110,12 +114,24 @@ namespace FPS.EditorTools
             trigger.size = new Vector3(1.3f, 1.6f, 0.7f);
 
             var options = new FPS.Gameplay.WeaponRack.Option[weaponNames.Length];
+            int spacing = weaponNames.Length <= 2 ? 2 : 1; // cradles 0.28 m apart: two weapons skip one
             for (int i = 0; i < weaponNames.Length; i++)
             {
+                var data = AssetDatabase.LoadAssetAtPath<FPS.Weapons.WeaponDataSO>(TestWeaponBuilder.DataPath(weaponNames[i]));
+                int cradle = Mathf.Max(0, RackCradles - 1 - spacing * (weaponNames.Length - 1 - i));
+                var peg = new GameObject($"Peg {weaponNames[i]}").transform;
+                peg.SetParent(rack.transform, false);
+                float x = RackCradleX(cradle);
+                if (data != null && data.BarrelLengthInches < HangingBarrelInches)
+                    peg.SetLocalPositionAndRotation(new Vector3(x, 0.66f, 0f), Quaternion.Euler(0f, 0f, 180f)); // hangs from the top bar
+                else
+                    peg.SetLocalPositionAndRotation(new Vector3(x, -0.68f, 0.05f), Quaternion.Euler(-4f, 0f, 0f)); // butt cradle, leaning back
+
                 options[i] = new FPS.Gameplay.WeaponRack.Option
                 {
                     model = AssetDatabase.LoadAssetAtPath<FPS.Weapons.WeaponModelRig>(TestWeaponBuilder.PrefabPath(weaponNames[i])),
-                    data = AssetDatabase.LoadAssetAtPath<FPS.Weapons.WeaponDataSO>(TestWeaponBuilder.DataPath(weaponNames[i])),
+                    data = data,
+                    peg = peg,
                 };
             }
 
@@ -303,6 +319,8 @@ namespace FPS.EditorTools
             red.Box(new Vector3(0.6f, -0.25f, -0.1f), new Vector3(0.4f, 0.14f, 0.28f), 0.01f);
         }
 
+        private static float RackCradleX(int cradle) => -0.42f + cradle * 0.28f;
+
         private static void WeaponRack(ModelAssembly model)
         {
             MeshKit steel = model.Static(SurfaceFinish.BenchSteel);
@@ -310,9 +328,9 @@ namespace FPS.EditorTools
             foreach (float x in new[] { -0.58f, 0.58f }) steel.Box(new Vector3(x, 0f, -0.15f), new Vector3(0.04f, 1.6f, 0.06f), 0.006f);
             steel.Box(new Vector3(0f, 0.7f, -0.15f), new Vector3(1.2f, 0.04f, 0.06f), 0.006f);
             MeshKit pad = model.Static(SurfaceFinish.Rubber);
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < RackCradles; i++)
             {
-                float x = -0.42f + i * 0.28f;
+                float x = RackCradleX(i);
                 pad.Box(new Vector3(x, -0.72f, 0.05f), new Vector3(0.08f, 0.08f, 0.12f), 0.01f); // butt cradles
                 pad.Box(new Vector3(x, 0.55f, -0.08f), new Vector3(0.06f, 0.05f, 0.08f), 0.01f); // barrel cradles
             }

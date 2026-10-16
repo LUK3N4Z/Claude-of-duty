@@ -15,6 +15,8 @@ namespace FPS.Weapons
     /// sensitivity, and runs dual-render Picture-in-Picture for magnified optics: a secondary camera renders the
     /// magnified view, a lens shader pass adds glass refraction, rim chromatic aberration, the parallax eye-relief
     /// shadow and the etched reticle with its illuminated (blooming) centre, while the main view blurs the periphery.
+    /// The scope camera renders scene radiance (no exposure, grading or tonemapping of its own) and the lens shows it as
+    /// exposure-weighted emission, so the main camera exposes and grades the scope picture exactly like the world.
     /// With night vision down and a laser fitted it switches to canted active aiming: the weapon rolls 45° under the
     /// goggles and aims by the infrared laser instead of the optic. Owns AdsPivot.
     /// </summary>
@@ -23,7 +25,7 @@ namespace FPS.Weapons
     [RequireComponent(typeof(RealisticWeaponInertia))]
     public sealed class ProceduralADSAndOpticsController : MonoBehaviour
     {
-        private static readonly int UnlitColorMapId = Shader.PropertyToID("_UnlitColorMap");
+        private static readonly int EmissiveColorMapId = Shader.PropertyToID("_EmissiveColorMap");
         private static readonly int ShadowCenterId = Shader.PropertyToID("_ShadowCenter");
         private static readonly int ShadowRadiusId = Shader.PropertyToID("_ShadowRadius");
         private static readonly int ShadowSoftnessId = Shader.PropertyToID("_ShadowSoftness");
@@ -470,7 +472,7 @@ namespace FPS.Weapons
         private void SetLensTexture(Renderer lens, Texture texture)
         {
             lens.GetPropertyBlock(lensBlock);
-            lensBlock.SetTexture(UnlitColorMapId, texture);
+            lensBlock.SetTexture(EmissiveColorMapId, texture); // the lens material emits it with exposure weight 1
             lens.SetPropertyBlock(lensBlock);
         }
 
@@ -487,9 +489,25 @@ namespace FPS.Weapons
 
             var data = cameraObject.AddComponent<HDAdditionalCameraData>();
             data.volumeLayerMask = ~(1 << GameLayers.Player);
-            data.antialiasing = HDAdditionalCameraData.AntialiasingMode.SubpixelMorphologicalAntiAliasing;
+            data.antialiasing = HDAdditionalCameraData.AntialiasingMode.None; // the target is supersampled onto a small lens
+            // Scene radiance out: the main camera exposes, grades, tonemaps and blooms the lens once, with the world.
+            data.customRenderingSettings = true;
+            foreach (FrameSettingsField field in RadianceOnlyFields)
+            {
+                data.renderingPathCustomFrameSettingsOverrideMask.mask[(uint)field] = true;
+                data.renderingPathCustomFrameSettings.SetEnabled(field, false);
+            }
+
             CreateScopeTexture();
         }
+
+        /// <summary>Scope camera effects the main camera applies to the lens instead (the vignette stays: lens-less fallback).</summary>
+        public static readonly FrameSettingsField[] RadianceOnlyFields =
+        {
+            FrameSettingsField.ExposureControl, FrameSettingsField.Tonemapping, FrameSettingsField.ColorGrading,
+            FrameSettingsField.Bloom, FrameSettingsField.FilmGrain, FrameSettingsField.Dithering,
+            FrameSettingsField.ChromaticAberration, FrameSettingsField.MotionBlur, FrameSettingsField.DepthOfField,
+        };
 
         private void CreateScopeTexture()
         {
@@ -532,8 +550,6 @@ namespace FPS.Weapons
             scopeShadow.smoothness.Override(scopeShadowSmoothness);
             scopeShadow.intensity.Override(1f);
             scopeShadow.center.Override(new Vector2(0.5f, 0.5f));
-            scopeProfile.Add<Tonemapping>().mode.Override(TonemappingMode.None); // the main camera tonemaps the lens once
-            scopeProfile.Add<MotionBlur>().intensity.Override(0f);
 
             impulseVolume = CreateGlobalVolume("Shot Impulse", GameLayers.Player, out impulseProfile); // main camera only
             ChromaticAberration pulse = impulseProfile.Add<ChromaticAberration>();

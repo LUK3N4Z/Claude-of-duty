@@ -210,7 +210,7 @@ namespace FPS.Weapons
                 Victims[victims++] = hitbox.Owner;
                 Vector3 offset = contact - point;
                 float distance = offset.magnitude;
-                hitbox.Owner.ApplyDamage(HitZone.Thorax, data.BlastDamageAt(distance), contact, distance > 1e-3f ? offset / distance : Vector3.up, Thrower);
+                hitbox.Owner.ApplyDamage(HitZone.Thorax, data.BlastDamageAt(distance), contact, distance > 1e-3f ? offset / distance : Vector3.up, Thrower, point);
             }
 
             for (int i = 0; i < victims; i++) Victims[i] = null;

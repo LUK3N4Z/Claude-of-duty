@@ -2,14 +2,19 @@ using System.Collections;
 using FPS.Ballistics;
 using FPS.Core;
 using FPS.Gameplay;
+using FPS.Locomotion;
 using FPS.UI;
+using FPS.Weapons;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
 namespace FPS.Tests
 {
-    /// <summary>M16 hit confirmation: hits credited to their shooter through the ballistics, classified and confirmed by marker and tick.</summary>
+    /// <summary>
+    /// M16 hit confirmation: hits credited to their shooter through the ballistics, classified and confirmed by marker and
+    /// tick; incoming damage pointed out by direction arcs.
+    /// </summary>
     public class CombatFeedbackTests : AITestWorld
     {
         private HitMarkerFeedback feedback;
@@ -111,6 +116,87 @@ namespace FPS.Tests
             menu.Settings.hitMarkers = HitMarkerMode.AudioAndVisual;
             menu.Apply(menu.Settings);
             Assert.AreEqual(HitMarkerMode.AudioAndVisual, feedback.Mode, "the setting drives it");
+        }
+
+        [Test]
+        public void DamageDirection_BearingIsClockwiseFromTheBodyYaw_AndFadesOutOverASecondAndAHalf()
+        {
+            Vector3 eye = new Vector3(0f, 1.6f, 0f);
+            Assert.AreEqual(0f, DamageDirectionIndicator.Bearing(eye, Vector3.forward, new Vector3(0f, 9f, 20f)), 1e-3f, "ahead, height ignored");
+            Assert.AreEqual(90f, DamageDirectionIndicator.Bearing(eye, Vector3.forward, new Vector3(8f, 0f, 0f)), 1e-3f, "right");
+            Assert.AreEqual(-90f, DamageDirectionIndicator.Bearing(eye, Vector3.forward, new Vector3(-8f, 0f, 0f)), 1e-3f, "left");
+            Assert.AreEqual(180f, Mathf.Abs(DamageDirectionIndicator.Bearing(eye, Vector3.forward, new Vector3(0f, 0f, -8f))), 1e-3f, "behind");
+            Assert.AreEqual(-45f, DamageDirectionIndicator.Bearing(eye, Vector3.right, new Vector3(5f, 0f, 5f)), 1e-3f, "turned right: ahead-left");
+            Assert.AreEqual(0f, DamageDirectionIndicator.Bearing(eye, Vector3.forward, new Vector3(0f, 0.1f, 0f)), "underfoot: no bearing");
+
+            Assert.AreEqual(1f, DamageDirectionIndicator.Fade(0f));
+            Assert.AreEqual(1f, DamageDirectionIndicator.Fade(0.15f), "holds a moment");
+            float previous = 1f;
+            for (float age = 0.25f; age < DamageDirectionIndicator.Duration; age += 0.25f)
+            {
+                float alpha = DamageDirectionIndicator.Fade(age);
+                Assert.Less(alpha, previous, $"fading at {age} s");
+                previous = alpha;
+            }
+
+            Assert.AreEqual(0f, DamageDirectionIndicator.Fade(DamageDirectionIndicator.Duration));
+            Assert.AreEqual(0f, DamageDirectionIndicator.Fade(5f));
+        }
+
+        [UnityTest]
+        public IEnumerator DamageDirection_PointsAtTheShooter_AGrenadeAtItsBlast_AndTheSettingTurnsItOff()
+        {
+            var indicator = player.AddComponent<DamageDirectionIndicator>();
+            var locomotion = player.GetComponent<RealisticLocomotionController>();
+            var health = player.GetComponent<TacticalHealthAndArmorSystem>();
+            Transform thorax = null;
+            foreach (Hitbox hitbox in player.GetComponentsInChildren<Hitbox>())
+            {
+                if (hitbox.Zone == HitZone.Thorax) thorax = hitbox.transform;
+            }
+
+            yield return null;
+            var rifleman = new GameObject("Rifleman").transform;
+            created.Add(rifleman.gameObject);
+            rifleman.position = thorax.position + Vector3.right * 8f;
+            Fire(rifleman.position, thorax.position, rifleman, null);
+            yield return new WaitForSeconds(0.1f);
+            Assert.AreEqual(1, indicator.VisibleCount, "hit from the right");
+            Assert.AreEqual(90f, indicator.LastBearing, 1f);
+            Assert.Greater(indicator.LastAlpha, 0.4f);
+
+            locomotion.SetLook(90f, 0f);
+            yield return null;
+            yield return null;
+            Assert.AreEqual(0f, indicator.LastBearing, 1f, "turned to face him: the arc swings ahead");
+            yield return new WaitForSeconds(DamageDirectionIndicator.Duration);
+            Assert.AreEqual(0, indicator.VisibleCount, "faded out");
+
+            locomotion.SetLook(0f, 0f);
+            var thrower = new GameObject("Thrower").transform;
+            created.Add(thrower.gameObject);
+            thrower.position = new Vector3(12f, 0f, 0f);
+            GrenadeDataSO frag = GrenadeData(GrenadeType.Fragmentation, 0.1f);
+            ThrownGrenade grenade = ObjectPoolManager.Instance.Spawn(frag.Prefab, new Vector3(-2.5f, 0.1f, 0f), Quaternion.identity);
+            grenade.Throw(frag, thrower, Vector3.zero);
+            yield return new WaitForSeconds(0.4f);
+            Assert.IsTrue(grenade.HasDetonated);
+            Assert.AreEqual(1, indicator.VisibleCount, "blast and fragments: one thrower, one arc");
+            Assert.AreEqual(-90f, indicator.LastBearing, 5f, "toward the blast on the left, not the thrower on the right");
+
+            indicator.Shown = false;
+            Assert.AreEqual(0, indicator.VisibleCount, "off clears it");
+            health.ApplyDamage(HitZone.Thorax, 5f, thorax.position, Vector3.left, thrower);
+            Assert.AreEqual(0, indicator.VisibleCount, "and ignores hits");
+
+            var menu = player.AddComponent<HDRPSettingsMenu>();
+            yield return null;
+            menu.Settings.damageIndicator = true;
+            menu.Apply(menu.Settings);
+            Assert.IsTrue(indicator.Shown, "the setting drives it");
+            health.ApplyDamage(HitZone.Thorax, 5f, thorax.position, Vector3.left, thrower, thrower.position);
+            Assert.AreEqual(1, indicator.VisibleCount);
+            Assert.AreEqual(90f, indicator.LastBearing, 1f);
         }
 
         private AudioClip Clip(string clipName)

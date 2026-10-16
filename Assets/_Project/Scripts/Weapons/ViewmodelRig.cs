@@ -94,6 +94,7 @@ namespace FPS.Weapons
             if (!root.TryGetComponent(out RealisticWeaponController _)) root.AddComponent<RealisticWeaponController>();
             if (!root.TryGetComponent(out MuzzleAndSmokeVFXController _)) root.AddComponent<MuzzleAndSmokeVFXController>();
             if (!root.TryGetComponent(out GearFoley _)) root.AddComponent<GearFoley>();
+            if (!root.TryGetComponent(out DeathCamera _)) root.AddComponent<DeathCamera>();
 
             root.SetActive(wasActive);
             return rig;

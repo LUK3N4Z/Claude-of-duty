@@ -3,6 +3,7 @@ using FPS.AI;
 using FPS.Ballistics;
 using FPS.Core;
 using FPS.Gameplay;
+using FPS.Locomotion;
 using FPS.Weapons;
 using NUnit.Framework;
 using UnityEngine;
@@ -189,6 +190,56 @@ namespace FPS.Tests
             Assert.AreEqual(MatchPhase.MatchOver, director.Phase);
             Assert.AreEqual(1, director.Winner, "KIA: mission failed");
             Assert.IsFalse(player.GetComponent<RealisticWeaponController>().enabled, "the dead do not shoot");
+        }
+
+        [UnityTest]
+        public IEnumerator PlayerDeath_ViewFallsToTheFloor_AndARespawnRestoresIt()
+        {
+            SpawnAt(Vector3.zero, 0, true);
+            ObjectiveZone zone = ZoneAt("Far", new Vector3(0f, 0f, 40f), 3f);
+            MatchDirector director = Director(new[] { 0, 0 }, null, go =>
+            {
+                var mode = go.AddComponent<HardpointMode>();
+                mode.Configure(new[] { zone });
+                TestWeapons.SetField(mode, "respawnDelay", 1.5f);
+            });
+            yield return WaitFor(() => director.Phase == MatchPhase.Live, 3f);
+
+            Camera view = player.GetComponent<PlayerRig>().PlayerCamera;
+            Transform viewmodelRoot = player.GetComponent<ViewmodelRig>().ViewmodelRoot;
+            var death = player.GetComponent<DeathCamera>();
+            float eyeHeight = view.transform.position.y;
+            float fieldOfView = view.fieldOfView;
+            Assert.Greater(eyeHeight, 1.2f, "standing");
+
+            player.GetComponent<TacticalHealthAndArmorSystem>().ApplyDamage(HitZone.Head, 1e7f, view.transform.position, Vector3.back);
+            Assert.IsTrue(death.IsActive, "the fall starts with the death");
+            Assert.IsFalse(viewmodelRoot.gameObject.activeSelf, "weapon and arms hidden");
+            yield return new WaitForSeconds(0.3f);
+            float partway = view.transform.position.y;
+            Assert.Less(partway, eyeHeight, "going down");
+            Assert.Greater(partway, 0.5f, "not in one frame");
+
+            yield return new WaitForSeconds(0.7f);
+            Assert.AreEqual(1f, death.Progress);
+            Assert.AreEqual(0.22f, view.transform.position.y, 0.05f, "on the floor");
+            float roll = Mathf.Abs(Mathf.DeltaAngle(0f, view.transform.eulerAngles.z));
+            Assert.That(roll, Is.InRange(15f, 45f), "rolled onto a side");
+            Assert.AreEqual(fieldOfView, view.fieldOfView, 0.01f);
+            Vector3 lying = view.transform.position;
+            yield return new WaitForSeconds(0.2f);
+            Assert.Less(Vector3.Distance(lying, view.transform.position), 1e-3f, "and stays down");
+            Assert.IsFalse(player.GetComponent<RealisticWeaponController>().enabled);
+
+            yield return WaitFor(() => !death.IsActive, 2f);
+            Assert.IsFalse(player.GetComponent<TacticalHealthAndArmorSystem>().IsDead, "respawned");
+            Assert.AreEqual(Vector3.zero, view.transform.localPosition);
+            Assert.Less(Quaternion.Angle(Quaternion.identity, view.transform.localRotation), 0.01f, "view back on the rig");
+            Assert.IsTrue(viewmodelRoot.gameObject.activeSelf, "weapon back");
+            Assert.IsTrue(player.GetComponent<ProceduralADSAndOpticsController>().enabled);
+            Assert.IsTrue(player.GetComponent<RealisticWeaponController>().enabled, "control back");
+            yield return null;
+            Assert.AreEqual(eyeHeight, view.transform.position.y, 0.1f, "standing at the spawn");
         }
 
         [UnityTest]

@@ -76,8 +76,42 @@ namespace FPS.Tests
             Press(mouse.rightButton);
             yield return new WaitForSeconds(1.5f);
             Save(rt, Path.Combine(dir, "marksman_ads.png"));
+            var marksmanAds = rig.GetComponent<ProceduralADSAndOpticsController>();
+            Vector3 eyeInSight = marksmanAds.ActiveAligner.InverseTransformPoint(rig.PlayerCamera.transform.position);
+            Debug.Log($"[Capture] scope shadow radius={marksmanAds.LensMaterial.GetFloat("_ShadowRadius"):F2} centre={marksmanAds.LensMaterial.GetVector("_ShadowCenter")} eye in sight space={eyeInSight * 1000f} mm");
+
+            // The bolt stroke comes off the scope.
+            weapons.PullTrigger();
+            yield return null;
+            weapons.ReleaseTrigger();
+            float boltDeadline = Time.time + 3f;
+            while (weapons.CurrentAction != WeaponAction.BoltCycle && Time.time < boltDeadline) yield return null;
+            yield return new WaitForSeconds(weapons.ActiveState.Data.ManualCycleTime * 0.5f);
+            Save(rt, Path.Combine(dir, "marksman_bolt.png"));
+            Debug.Log($"[Capture] bolt stroke: action={weapons.CurrentAction} adsBlend={rig.GetComponent<ProceduralADSAndOpticsController>().AdsBlend:F2}");
 
             Release(mouse.rightButton);
+            weapons.SelectSlot(0);
+            yield return new WaitForSeconds(1.2f);
+
+            // Magazine check, then high and low ready tucks against a wall 0.3 m ahead.
+            weapons.SetMagazineCheck(true);
+            yield return new WaitForSeconds(0.7f);
+            Save(rt, Path.Combine(dir, "mag_check.png"));
+            weapons.SetMagazineCheck(false);
+            yield return new WaitForSeconds(0.5f);
+            GameObject tuckWall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            tuckWall.layer = FPS.Core.GameLayers.WorldGeometry;
+            tuckWall.transform.position = rig.transform.position + new Vector3(0f, 1.5f, 0.35f);
+            tuckWall.transform.localScale = new Vector3(3f, 3f, 0.1f);
+            Physics.SyncTransforms();
+            yield return new WaitForSeconds(0.8f);
+            Save(rt, Path.Combine(dir, "tuck_high.png"));
+            weapons.SelectSlot(1);
+            yield return new WaitForSeconds(1.5f);
+            Save(rt, Path.Combine(dir, "tuck_low.png"));
+            Debug.Log($"[Capture] tuck: tucked={rig.GetComponent<RealisticWeaponInertia>().IsTucked}");
+            Object.Destroy(tuckWall);
             weapons.SelectSlot(0);
             yield return new WaitForSeconds(1.2f);
             cc.enabled = false;
@@ -155,6 +189,20 @@ namespace FPS.Tests
             PressAndRelease(keyboard.fKey);
             yield return new WaitForSeconds(1.2f);
             Save(rt, Path.Combine(dir, "door_open.png"));
+
+            // The weapon racks: what the player does not carry stands on the pegs.
+            Teleport(rig, cc, new Vector3(4.6f, 0f, -0.9f));
+            locomotion.SetLook(155f, 8f);
+            yield return new WaitForSeconds(0.6f);
+            Save(rt, Path.Combine(dir, "racks.png"));
+            foreach (FPS.Gameplay.WeaponRack rack in Object.FindObjectsByType<FPS.Gameplay.WeaponRack>())
+            {
+                for (int i = 0; i < 2; i++)
+                {
+                    GameObject shown = rack.Display(i);
+                    Debug.Log($"[Capture] {rack.transform.parent.name} option {i}: {(shown == null ? "none" : $"{shown.name} active={shown.activeInHierarchy} at {shown.transform.position:F2}")}");
+                }
+            }
             locomotion.SetLook(0f, 0f);
 
             // Live gunsmith swaps: a short suppressed CQB build, then a long compensated one.
@@ -313,6 +361,14 @@ namespace FPS.Tests
             rig.PlayerCamera.targetTexture = rt; // retargeting restarts eye adaptation: give it time to settle
             yield return new WaitForSeconds(2.5f);
             Save(rt, Path.Combine(dir, "armory_workshop.png"));
+            var armoryCc = rig.GetComponent<CharacterController>();
+            Vector3 spawn = rig.transform.position;
+            Teleport(rig, armoryCc, new Vector3(-3.9f, 0f, 0f));
+            rig.GetComponent<RealisticLocomotionController>().SetLook(-90f, 12f);
+            yield return new WaitForSeconds(0.8f);
+            Save(rt, Path.Combine(dir, "armory_racks.png"));
+            Teleport(rig, armoryCc, spawn);
+            rig.GetComponent<RealisticLocomotionController>().SetLook(0f, 0f);
 
             var bench = Object.FindAnyObjectByType<FPS.Gameplay.GunsmithWorkbenchController>();
             bench.BenchCamera.targetTexture = rt;

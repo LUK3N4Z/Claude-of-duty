@@ -62,7 +62,7 @@ namespace FPS.EditorTools
             {
                 // Eyepiece at the mount (the sight aligner); the lens fills the measured eyepiece.
                 float lensRadius = Mathf.Max(0.008f, Mathf.Min(shape.RearHalfExtents.x, shape.RearHalfExtents.y) * (shape.Imported ? 0.8f : 1f));
-                MeshRenderer lens = Disc(root, "Ocular Lens", disc, shape.Rear.z - 0.001f, lensRadius, UnlitMaterial("Scope Lens", Color.white, null, false));
+                MeshRenderer lens = Disc(root, "Ocular Lens", disc, shape.Rear.z - 0.001f, lensRadius, ScopeLensMaterial());
                 var sight = root.gameObject.AddComponent<WeaponSight>();
                 sight.Configure(4f, 0.07f, 1.25f, lens);
                 sight.ConfigureReticle(ReticleStyle.Chevron, new Color(5f, 0.45f, 0.12f), 0.9f); // fibre-lit red chevron

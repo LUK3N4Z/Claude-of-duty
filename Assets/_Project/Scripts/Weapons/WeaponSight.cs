@@ -34,7 +34,7 @@ namespace FPS.Weapons
 
         [Header("Reticle (drawn by the PiP lens shader)")]
         [SerializeField] private ReticleStyle reticle = ReticleStyle.None;
-        [Tooltip("Illumination of the reticle centre (HDR: values above 1 bloom).")]
+        [Tooltip("Illumination of the reticle centre in exposed units against a mid-grey scene; the lens scales it with the light in view (HDR: values above 1 bloom).")]
         [SerializeField, ColorUsage(false, true)] private Color reticleGlow = new Color(4f, 0.25f, 0.12f);
         [Tooltip("Reticle extent relative to the lens (1 = the duplex posts reach the rim).")]
         [SerializeField, Range(0.2f, 2f)] private float reticleScale = 1f;

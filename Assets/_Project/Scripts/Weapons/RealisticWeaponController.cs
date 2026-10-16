@@ -58,15 +58,15 @@ namespace FPS.Weapons
         [SerializeField] private Vector3 magazineInEuler = new Vector3(-4f, 12f, 36f);
         [SerializeField] private Vector3 chargePosition = new Vector3(0.01f, 0f, -0.02f);
         [SerializeField] private Vector3 chargeEuler = new Vector3(-4f, -8f, -12f);
-        [SerializeField] private Vector3 magazineCheckPosition = new Vector3(0f, 0.02f, 0.02f);
-        [SerializeField] private Vector3 magazineCheckEuler = new Vector3(18f, 0f, 45f);
+        [Tooltip("Magazine check: where the magazine (MagazineSocket) is brought in view, and the roll that shows it.")]
+        [SerializeField] private ViewPose magazineCheck = new ViewPose(new Vector3(0.12f, -0.12f, 0.38f), new Vector3(-15f, -10f, -35f));
         [SerializeField] private Vector3 fireModeEuler = new Vector3(0f, 0f, 8f);
         [SerializeField] private Vector3 manualCycleEuler = new Vector3(-6f, 4f, 18f);
         [SerializeField] private Vector3 loweredPosition = new Vector3(0f, -0.25f, -0.1f);
         [SerializeField] private Vector3 loweredEuler = new Vector3(60f, -15f, 10f);
-        [Tooltip("One-handed side carry over a vault or mantle: the support hand is on the obstacle.")]
-        [SerializeField] private Vector3 carryPosition = new Vector3(0.1f, -0.16f, -0.12f);
-        [SerializeField] private Vector3 carryEuler = new Vector3(30f, -30f, 65f);
+        [Tooltip("One-handed side carry over a vault or mantle (the support hand is on the obstacle): where the firing hand " +
+                 "(RightHandIKGrip) is held, low at the right of the view.")]
+        [SerializeField] private ViewPose carry = new ViewPose(new Vector3(0.22f, -0.17f, 0.22f), new Vector3(35f, 0f, 25f));
 
         [Header("Inspection")]
         [SerializeField, Min(0.5f)] private float inspectDuration = 3.5f;
@@ -115,9 +115,10 @@ namespace FPS.Weapons
         public WeaponAction CurrentAction { get; private set; }
         /// <summary>The reload stage in progress (None when not reloading).</summary>
         public ReloadStage ReloadTarget => CurrentAction == WeaponAction.Reload ? reloadTarget : ReloadStage.None;
+        /// <summary>The sights come off the eye: manipulations, swaps, throws, and a bolt stroke (the hand would cross the view).</summary>
         public bool BlocksAiming => CurrentAction == WeaponAction.Reload || CurrentAction == WeaponAction.MagazineCheck ||
                                     CurrentAction == WeaponAction.Holster || CurrentAction == WeaponAction.Draw ||
-                                    CurrentAction == WeaponAction.Equipment;
+                                    CurrentAction == WeaponAction.Equipment || CurrentAction == WeaponAction.BoltCycle;
         /// <summary>Where the support hand belongs now: grip, magazine or charging handle.</summary>
         public Transform LeftHandTarget { get; private set; }
         public MagazineEstimate LastEstimate { get; private set; }
@@ -532,15 +533,25 @@ namespace FPS.Weapons
             WeaponModelRig weapon = viewmodel.Weapon;
             if (dt <= 0f || weapon == null) return;
 
+            Transform pivot = viewmodel.ActionPivot;
+            Vector3 stock = weapon.StockPivotSocket != null ? pivot.InverseTransformPoint(weapon.StockPivotSocket.position) : Vector3.zero;
             PoseTarget(out Vector3 position, out Vector3 euler);
-            float carry = traversal != null ? traversal.CarryBlend : 0f; // over a vault or mantle the support hand is busy
-            pose.PositionTarget = position + carryPosition * carry;
-            pose.RotationTarget = euler + carryEuler * carry;
+            if (CurrentAction == WeaponAction.MagazineCheck && weapon.MagazineSocket != null)
+                position += ViewPose.Placement(pivot, weapon.MagazineSocket, stock, Quaternion.Euler(euler), position, magazineCheck.target);
+
+            float carried = traversal != null ? traversal.CarryBlend : 0f; // over a vault or mantle the support hand is busy
+            if (carried > 0f)
+            {
+                euler += carry.euler * carried;
+                if (weapon.RightHandIKGrip != null)
+                    position += ViewPose.Placement(pivot, weapon.RightHandIKGrip, stock, Quaternion.Euler(euler), position, carry.target) * carried;
+            }
+
+            pose.PositionTarget = position;
+            pose.RotationTarget = euler;
             pose.Step(dt);
 
-            Transform pivot = viewmodel.ActionPivot;
             Quaternion rotation = Quaternion.Euler(pose.Rotation);
-            Vector3 stock = weapon.StockPivotSocket != null ? pivot.InverseTransformPoint(weapon.StockPivotSocket.position) : Vector3.zero;
             pivot.SetLocalPositionAndRotation(stock - rotation * stock + pose.Position, rotation);
             DriveMechanism(dt);
         }
@@ -935,8 +946,7 @@ namespace FPS.Weapons
 
                     break;
                 case WeaponAction.MagazineCheck:
-                    position = magazineCheckPosition;
-                    euler = magazineCheckEuler;
+                    euler = magazineCheck.euler; // LateUpdate places the magazine
                     break;
                 case WeaponAction.FireModeSwitch:
                     euler = fireModeEuler;

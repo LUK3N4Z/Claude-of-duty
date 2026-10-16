@@ -17,6 +17,7 @@ namespace FPS.Ballistics
     {
         private struct Projectile
         {
+            public Vector3 Origin;
             public Vector3 Position;
             public Vector3 Velocity;
             public CaliberDataSO Caliber;
@@ -104,6 +105,7 @@ namespace FPS.Ballistics
 
             projectiles[count++] = new Projectile
             {
+                Origin = shot.Origin,
                 Position = shot.Origin,
                 Velocity = shot.Direction.normalized * shot.MuzzleVelocity,
                 Caliber = shot.Caliber,
@@ -224,7 +226,7 @@ namespace FPS.Ballistics
             if (collider.TryGetComponent(out Hitbox hitbox))
             {
                 surface = hitbox.Surface != null ? hitbox.Surface : fleshSurface;
-                if (hitbox.Owner != null && hitbox.Owner.ApplyBulletHit(hitbox.Zone, hit.point, direction, p.Caliber, speed, p.Attacker))
+                if (hitbox.Owner != null && hitbox.Owner.ApplyBulletHit(hitbox.Zone, hit.point, direction, p.Caliber, speed, p.Attacker, p.Origin))
                 {
                     RaiseImpact(hit, velocity, ImpactOutcome.Stopped, surface, p.Caliber);
                     resume = hit.point;

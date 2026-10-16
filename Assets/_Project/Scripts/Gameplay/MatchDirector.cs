@@ -12,7 +12,8 @@ namespace FPS.Gameplay
     /// Runs a match for the <see cref="GameMode"/> on the same object: the player plus soldier slots per team (built
     /// into squads), phases (pre-round countdown, live, round over, match over), the clock, round wins and scores,
     /// placement through the mode's spawn choice, respawns after the mode's delay, and corpse clean-up. A dead player
-    /// loses control until respawned; soldiers are replaced with fresh bodies on every spawn.
+    /// loses control and falls (<see cref="DeathCamera"/>) until respawned; soldiers are replaced with fresh bodies on
+    /// every spawn.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class MatchDirector : MonoBehaviour
@@ -214,6 +215,7 @@ namespace FPS.Gameplay
                 combatant.Health.ResetState();
                 if (playerRig.TryGetComponent(out RealisticWeaponController weapons)) weapons.RefillAmmunition();
                 if (playerRig.TryGetComponent(out TacticalEquipmentSystem equipment)) equipment.Refill();
+                if (playerRig.TryGetComponent(out DeathCamera deathCamera)) deathCamera.Restore();
                 SetPlayerControl(true);
             }
             else
@@ -286,7 +288,12 @@ namespace FPS.Gameplay
         {
             combatant.DiedAt = Time.time;
             combatant.RespawnAt = Mode.RespawnDelay >= 0f ? Time.time + Mode.RespawnDelay : float.PositiveInfinity;
-            if (combatant.IsPlayer) SetPlayerControl(false);
+            if (combatant.IsPlayer)
+            {
+                SetPlayerControl(false);
+                if (playerRig != null && playerRig.TryGetComponent(out DeathCamera deathCamera)) deathCamera.Fall();
+            }
+
             if (Phase == MatchPhase.Live) Mode.OnCombatantDied(combatant);
         }
 

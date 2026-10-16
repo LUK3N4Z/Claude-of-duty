@@ -65,6 +65,7 @@ namespace FPS.Gameplay
         private RealisticLocomotionController locomotion;
         private NightVisionGoggles goggles;
         private HitMarkerFeedback hitMarkers;
+        private DamageDirectionIndicator damageIndicator;
         private HDAdditionalCameraData cameraData;
         private DynamicRangeProcessor dynamics;
         private VolumeProfile volumeProfile;
@@ -218,6 +219,7 @@ namespace FPS.Gameplay
 
             if (goggles != null) goggles.Phosphor = settings.nightVisionPhosphor;
             if (hitMarkers != null) hitMarkers.Mode = settings.hitMarkers;
+            if (damageIndicator != null) damageIndicator.Shown = settings.damageIndicator;
             CombatDifficulty.Current = settings.aiDifficulty;
             if (input != null && settings.bindingOverrides != appliedBindings)
             {
@@ -237,6 +239,7 @@ namespace FPS.Gameplay
             TryGetComponent(out locomotion);
             TryGetComponent(out goggles);
             TryGetComponent(out hitMarkers);
+            TryGetComponent(out damageIndicator);
             Camera view = rig.PlayerCamera;
             if (!view.TryGetComponent(out cameraData)) cameraData = view.gameObject.AddComponent<HDAdditionalCameraData>();
             if (!view.TryGetComponent(out dynamics)) dynamics = view.gameObject.AddComponent<DynamicRangeProcessor>();
@@ -341,6 +344,8 @@ namespace FPS.Gameplay
                 () => Settings.aiDifficulty = (AIDifficulty)Wrap((int)Settings.aiDifficulty + 1, 4), () => Settings.aiDifficulty.ToString());
             Stepper(gameplay, 2, "Hit markers", () => Settings.hitMarkers = (HitMarkerMode)Wrap((int)Settings.hitMarkers - 1, 4),
                 () => Settings.hitMarkers = (HitMarkerMode)Wrap((int)Settings.hitMarkers + 1, 4), () => HitMarkerNames[(int)Settings.hitMarkers]);
+            Stepper(gameplay, 3, "Damage direction", () => Settings.damageIndicator = !Settings.damageIndicator,
+                () => Settings.damageIndicator = !Settings.damageIndicator, () => Settings.damageIndicator ? "On" : "Off");
 
             UIFactory.Button(body, "Resume", new Vector2(0.5f, 0f), new Vector2(-300f, 45f), new Vector2(240f, 46f), Close);
             returnButton = UIFactory.Button(body, "Return to Armory", new Vector2(0.5f, 0f), new Vector2(0f, 45f), new Vector2(240f, 46f), ReturnToArmory);

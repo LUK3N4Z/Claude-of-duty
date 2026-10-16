@@ -219,6 +219,7 @@ namespace FPS.EditorTools
             hitMarkers.Configure(GunshotAudioBuilder.HitTick(HitMarkerKind.Flesh), GunshotAudioBuilder.HitTick(HitMarkerKind.Armor),
                 GunshotAudioBuilder.HitTick(HitMarkerKind.Kill), GunshotAudioBuilder.HitTick(HitMarkerKind.Headshot));
             EditorUtility.SetDirty(hitMarkers);
+            if (!root.TryGetComponent(out DamageDirectionIndicator _)) root.AddComponent<DamageDirectionIndicator>();
             TestWeaponBuilder.Configure(goggles, so => TestWeaponBuilder.Set(so, "gain", 1f));
             TestWeaponBuilder.Configure(root.GetComponent<ProceduralADSAndOpticsController>(),
                 so => TestWeaponBuilder.Set(so, "lensShader", AssetDatabase.LoadAssetAtPath<Shader>(ScopeLensShaderPath)));

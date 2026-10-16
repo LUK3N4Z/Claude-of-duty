@@ -162,7 +162,7 @@ Player            [CharacterController, PlayerRig, Locomotion (yaw), StanceAndLe
       └ PitchPivot    Locomotion: look pitch
         └ HeadMotion  HeadbobAndBreathing: bob, landing, slide/dive posture, camera share of sway
           ├ CameraOffset      PhysicalRecoilEngine: damped camera concussion
-          │ └ PlayerCamera    ADS controller writes fieldOfView
+          │ └ PlayerCamera    ADS controller writes fieldOfView; DeathCamera its pose (identity while alive)
           └ ViewmodelRoot     (ViewmodelRig, M3; layer FirstPersonViewmodel)
             └ InertiaPivot    RealisticWeaponInertia: handling spring, free-aim lead, trail, postures, sway, barrel tuck
               └ RecoilPivot   PhysicalRecoilEngine: per-shot kick about the stock contact point
@@ -192,12 +192,16 @@ Contracts for later milestones:
 - **Weapon models:** `WeaponModelRig` on the model root holds the sockets (`EnsureSockets()` binds children by name
   and creates missing ones). Weapon +Z forward, +Y up. `WeaponSight` on a sight socket (or an optic child) is the
   aligner: +Z line of sight, +Y reticle up, origin at the aperture/eyepiece; magnification > 1 with a lens renderer
-  enables PiP. The lens material is `HDRP/Unlit`; the controller feeds `_UnlitColorMap` through a property block.
+  enables PiP. The lens material (`TestWeaponBuilder.ScopeLensMaterial`) is `HDRP/Unlit` emitting `_EmissiveColorMap`
+  (fed through a property block) with exposure weight 1 and a black `_UnlitColor`.
 - **ADS** is solved, not animated: `ProceduralADSAndOpticsController.SolveSightAlignment` puts the aligner `eyeRelief`
   ahead of the eye. `SwitchSight` rolls onto the canted slot. Tucked barrels block ADS.
 - **PiP:** one scope camera per player renders to an `R16G16B16A16_SFloat` target, FOV = lens angular size ÷
-  magnification. Volume filtering by layer: main camera excludes `FirstPersonViewmodel` (scope-only volume: vignette
-  eye-relief shadow, tonemapping None, no motion blur); scope camera excludes `Player` (main-only peripheral DOF).
+  magnification. It renders scene radiance: custom frame settings switch off its exposure, grading, tonemapping, bloom,
+  grain, dithering, chromatic aberration, motion blur and DOF (`RadianceOnlyFields`), no AA (supersampled onto the
+  lens); the lens emits it exposure-weighted, so the main camera exposes, grades and tonemaps the scope picture once,
+  like the world. Volume filtering by layer: main camera excludes `FirstPersonViewmodel` (scope-only volume: the
+  lens-less vignette eye-relief shadow); scope camera excludes `Player` (main-only peripheral DOF).
 - **Recoil:** `PhysicalRecoilEngine.Kick()` once per round (M4 firing calls it). Springs come from `RecoilProfileSO`.
 - **Springs:** `FPS.Core.ProceduralSpringSolver` — analytical damped oscillator, sub-stepped target interpolation.
 
@@ -208,11 +212,12 @@ Contracts for later milestones:
   length, G1/G7 BC, penetration, damage). Builders and tests set private fields by name — rename fields with care.
 - **State:** `WeaponState` per carried weapon survives holstering. Closed bolt / bolt action start at capacity + 1;
   open bolt never has +1 (`RoundChambered` means "bolt cocked"). Closed bolt with hold-open locks back on the last
-  round; bolt actions auto-cycle after the trigger is released.
+  round; bolt actions auto-cycle after the trigger is released, and the stroke comes off the sights (`BlocksAiming`).
 - **Reloads** are staged: `MagazineRemoved → MagazineInserted → BoltCycled` (charge only if nothing is chambered;
   bolt release is 0.6× when locked back). Sprint, dive, weapon swap or firing the chambered round interrupt; the next
   reload press resumes after the last completed stage. Tap R = tactical (partial magazine back in the pouch), second
-  tap during removal = speed (pooled physical magazine dropped), hold R = magazine check (`MagazineEstimate`).
+  tap during removal = speed (pooled physical magazine dropped), hold R = magazine check (`MagazineEstimate`; the
+  `magazineCheck` `ViewPose` brings the `MagazineSocket` into view).
 - **Firing:** `RealisticWeaponController` raises `ShotFiredEvent` from `MuzzleSocket` along the bore with MoA
   dispersion and barrel-adjusted velocity, then `PhysicalRecoilEngine.Kick()`. Fire cancels sprint (sprint-to-fire
   delay); tucked barrels, dives and prone transitions block it. Every mechanical action raises `WeaponActionEvent`.
@@ -256,7 +261,9 @@ Contracts for later milestones:
 - Every bullet-surface interaction raises `ProjectileImpactEvent` (decals and impact audio arrive in M6).
 - **Attribution:** `ShotFiredEvent.Attacker` (defaults to `Shooter`; grenade fragments have no shooter but credit the
   thrower) rides with the projectile into `ApplyBulletHit(..., attacker)`; blasts pass the thrower to `ApplyDamage`;
-  `DamageEvent.Attacker` carries it to whoever listens (hit markers).
+  `DamageEvent.Attacker` carries it to whoever listens (hit markers). `DamageEvent.Source` is where the hit came from:
+  the round's muzzle origin (a fragment's blast centre) or the blast centre (`ApplyBulletHit`/`ApplyDamage` `source`,
+  back along the hit direction when not given).
 
 ## Audio, VFX & HUD (M6)
 
@@ -417,7 +424,10 @@ Contracts for later milestones:
 - **Soldiers:** hitboxes are invisible primitive colliders (Hitbox layer); operator visuals are separate, collider-free
   children of the same bones. Friendly: coyote/tan, hostile: ranger green/olive.
 - **Weapon racks:** `WeaponRack` (FPS.Gameplay, IInteractable) swaps a loadout slot to the next rack weapon and
-  saves the loadout; Armory west wall and the test range carry a primary and a secondary rack.
+  saves the loadout; Armory west wall and the test range carry a primary and a secondary rack. Each option's `peg`
+  shows a world-layer copy of its default build (butt on the peg, muzzle along +Y, right side toward +Z; built in
+  `Start` like the AI's rifles); the one the player carries is hidden. `PlaceWeaponRack` stands long guns in the butt
+  cradles and hangs short ones (< 8 in barrel) from the top bar.
 
 ## Photoreal look & combat VFX (M12)
 
@@ -450,7 +460,9 @@ Contracts for later milestones:
   on, no optic or zoom).
 - **Scope lens:** the PiP output goes through `Hidden/FPS/ScopeLens` (`ProceduralADSAndOpticsController.lensShader`):
   barrel distortion, rim chromatic aberration, eye-relief shadow disc, field stop, etched duplex and an HDR lit centre
-  (`WeaponSight.ConfigureReticle`: `DuplexDot` = 1, `Chevron` = 2). Without the shader the vignette shadow is used.
+  (`WeaponSight.ConfigureReticle`: `DuplexDot` = 1, `Chevron` = 2; the glow is in exposed units against a mid-grey
+  scene and follows the radiance in view, like a rheostat). Input and output are radiance, clamped to 60 000 cd/m²
+  (sun disk). Without the shader the vignette shadow is used.
 
 ## Acoustics & gunshot synthesis (M13)
 
@@ -494,14 +506,21 @@ Contracts for later milestones:
   deep with ground behind = **vault**, otherwise up to 2.1 m with something to stand on = **mantle** (crouch at the end
   if standing does not fit). The path rises before it advances. It moves nothing: `RealisticLocomotionController`
   (the root's only writer) places the capsule from `Step(dt)` each frame (`IsTraversing`); `HeadbobAndBreathingSystem`
-  adds `CameraPitch`/`CameraRoll`, `RealisticWeaponController` the one-handed side carry (`CarryBlend`, fire blocked),
+  adds `CameraPitch`/`CameraRoll`, `RealisticWeaponController` the one-handed side carry (`CarryBlend`, fire blocked;
+  the `carry` `ViewPose` holds the firing hand low at the right edge of the view, replacing the sprint posture),
   `FirstPersonArmsIK` plants the support hand on `HandPoint`.
 - **Jump:** 3 m/s take-off when nothing is climbable (stands up first from a crouch). **Slide cancel:** crouch or
   jump mid-slide ends it in a crouch (`LastSlideCancelTime`); the weapon is ready 0.15 s later
   (`slideCancelReadyTime`) instead of after `SprintToFireTime` (slides carry it low like a sprint).
 - **Compressed ready** (`RealisticWeaponInertia`): barrel penetration first slides the weapon back into a compressed
-  ready (`CompressedReady01`, stock under the arm: still fires, ADS blocked) up to `maxCompression`, then tilts to the
-  high/low ready; `IsTucked` (tilt ≥ `tuckedTilt` 0.25) blocks firing and aiming.
+  ready (`CompressedReady01`, stock under the arm: still fires, ADS blocked; weapons shorter than
+  `compressedPostureLength` take a share of the posture) up to `maxCompression`, then tilts to the high/low ready;
+  `IsTucked` (tilt ≥ `tuckedTilt` 0.25) blocks firing and aiming.
+- **View poses** (`ViewPose`: socket `target` in eye space + `euler` about the stock; `ViewPose.Placement` gives the
+  shift): postures that must stay on screen whatever the weapon's geometry. The high/low ready hold `RightHandIKGrip`
+  (reached by half tilt): high = muzzle up along the right edge, low = muzzle down and inboard across the lower right
+  with the stock out past the edge; the vault carry holds it low right, the magazine check holds `MagazineSocket` below
+  and right of the centre.
 - **Inspect** (I): `WeaponAction.Inspect`, 3.5 s keyframed pose on ActionPivot (`InspectPose`: left side and
   markings, then the ejection port); aiming, sprinting, climbing, reloading, a magazine check or firing cancel it.
 - **Camera kick** (`ProceduralADSAndOpticsController`, the FOV writer): an own unsuppressed shot (`MuzzleFlash` > 0.05)
@@ -553,6 +572,15 @@ Contracts for later milestones:
   `Art/Audio/Overrides/HitMarker/`).
 - **Setting:** `GameSettings.hitMarkers` (`HitMarkerMode`: Off, AudioOnly, VisualOnly, AudioAndVisual; default both),
   Gameplay tab of the options menu.
+- **Damage direction** (`DamageDirectionIndicator`, FPS.UI, on the player): every `DamageEvent` on the player shows a
+  thin dark-red arc round the screen centre turned toward `DamageEvent.Source` (`Bearing`: clockwise from the body yaw,
+  re-solved each frame as the player turns), full for 0.2 s then fading out by 1.5 s (`Fade`), strength by damage; one
+  arc per attacker (a grenade's blast and fragments share the thrower's), four at most. `GameSettings.damageIndicator`
+  (Gameplay tab, "Damage direction").
+- **Death camera** (`DeathCamera`, FPS.Weapons, added by `ViewmodelRig.Build`): `MatchDirector` calls `Fall()` when the
+  player dies — viewmodel root hidden, ADS controller disabled (base FOV, scope off), the camera drops to 0.22 m above
+  the floor under the eye over 0.8 s (gravity ease) rolling ±28° onto a side, then holds in the world — and `Restore()`
+  on the respawn, before control returns. Outside a match the player's death changes nothing.
 
 ## Milestones
 

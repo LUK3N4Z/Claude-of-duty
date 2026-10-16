@@ -160,7 +160,7 @@ namespace FPS.Locomotion
         private float stepPhase;
         private Vector2 pendingLookOffset;
 
-        public Vector3 Velocity => planarVelocity + Vector3.up * verticalSpeed;
+        public Vector3 Velocity => planarVelocity + Vector3.up * (grounded ? 0f : verticalSpeed); // not the stick-to-ground push
         public float PlanarSpeed => new Vector2(planarVelocity.x, planarVelocity.z).magnitude;
         public LocomotionPace Pace { get; private set; }
         public bool IsGrounded => grounded;
