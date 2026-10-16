@@ -3,6 +3,19 @@ using UnityEngine;
 
 namespace FPS.Weapons
 {
+    public enum WeaponSocket
+    {
+        Muzzle,
+        ChamberEjection,
+        Magazine,
+        ChargingHandle,
+        StockPivot,
+        PrimarySight,
+        CantedSight,
+        LeftHandIKGrip,
+        RightHandIKGrip,
+    }
+
     /// <summary>
     /// Socket map placed on the root of an imported weapon model. Systems read only these transforms, never mesh
     /// paths, so any FBX/GLTF works once its sockets are placed. Convention: weapon forward is +Z, up is +Y.
@@ -63,6 +76,26 @@ namespace FPS.Weapons
             sight = socket != null ? socket.GetComponentInChildren<WeaponSight>(true) : null;
             return sight != null ? sight.transform : socket;
         }
+
+        /// <summary>Redirects a socket, e.g. to a fitted suppressor's muzzle or a foregrip's hand pose.</summary>
+        public void SetSocket(WeaponSocket socket, Transform target)
+        {
+            switch (socket)
+            {
+                case WeaponSocket.Muzzle: muzzleSocket = target; break;
+                case WeaponSocket.ChamberEjection: chamberEjectionSocket = target; break;
+                case WeaponSocket.Magazine: magazineSocket = target; break;
+                case WeaponSocket.ChargingHandle: chargingHandleSocket = target; break;
+                case WeaponSocket.StockPivot: stockPivotSocket = target; break;
+                case WeaponSocket.PrimarySight: primarySightSocket = target; break;
+                case WeaponSocket.CantedSight: cantedSightSocket = target; break;
+                case WeaponSocket.LeftHandIKGrip: leftHandIKGrip = target; break;
+                default: rightHandIKGrip = target; break;
+            }
+        }
+
+        /// <summary>First descendant named <paramref name="nodeName"/>, searched depth-first; null when absent.</summary>
+        public Transform FindNode(string nodeName) => FindDeep(transform, nodeName);
 
         /// <summary>Shows or hides the inserted magazine meshes.</summary>
         public void SetMagazineVisible(bool visible)
@@ -128,7 +161,7 @@ namespace FPS.Weapons
             return socket;
         }
 
-        private static Transform FindDeep(Transform root, string childName)
+        internal static Transform FindDeep(Transform root, string childName)
         {
             for (int i = 0; i < root.childCount; i++)
             {

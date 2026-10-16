@@ -142,6 +142,48 @@ namespace FPS.EditorTools
             });
         }
 
+        /// <summary>
+        /// The weapon behind a suppressor: a short, dull "thup" with the bolt clearly audible, quieter tails and a
+        /// report that fades out far sooner. Shares the unsuppressed mechanism and body clips.
+        /// </summary>
+        internal static WeaponAudioProfileSO SuppressedAudio(string weapon)
+        {
+            WeaponAudioProfileSO open = WeaponAudio(weapon);
+            string Path(string layer, int variant) => Clip("Weapons", $"{weapon}_Suppressed{layer}_{variant}");
+            int seed = weapon.Length * 211;
+            var transients = new AudioClip[3];
+            for (int i = 0; i < transients.Length; i++)
+            {
+                int s = seed + i;
+                transients[i] = AudioSynth.LoadOrCreate(Path("Transient", i), () => new AudioSynth(0.25f, s)
+                    .Noise(0.6f, 0f, 0.001f, 0.025f).LowPass(1800f).Tone(120f, 70f, 0.7f, 0f, 0.002f, 0.05f, 0.03f)
+                    .Noise(0.12f, 0.002f, 0.004f, 0.04f).HighPass(60f));
+            }
+
+            AudioClip distant = AudioSynth.LoadOrCreate(Path("Distant", 0), () => new AudioSynth(0.6f, seed + 30)
+                .Noise(0.6f, 0f, 0.008f, 0.12f).LowPass(500f).LowPass(500f));
+            AudioClip indoor = AudioSynth.LoadOrCreate(Path("TailIndoor", 0), () => new AudioSynth(0.4f, seed + 40)
+                .Noise(0.35f, 0f, 0.005f, 0.08f).LowPass(2500f).Echo(0.013f, 0.5f).Echo(0.029f, 0.35f));
+            AudioClip outdoor = AudioSynth.LoadOrCreate(Path("TailOutdoor", 0), () => new AudioSynth(0.8f, seed + 50)
+                .Noise(0.25f, 0f, 0.01f, 0.2f).LowPass(900f).Echo(0.18f, 0.35f));
+
+            WeaponAudioProfileSO profile = TestWeaponBuilder.LoadOrCreate<WeaponAudioProfileSO>($"{AudioDataFolder}/{weapon}_Suppressed_Audio.asset");
+            TestWeaponBuilder.Configure(profile, so =>
+            {
+                SetClips(TestWeaponBuilder.Property(so, "pressureTransients"), transients);
+                SetClips(TestWeaponBuilder.Property(so, "mechanicalCycles"), open.MechanicalCycle); // one clip each on the base profile
+                SetClips(TestWeaponBuilder.Property(so, "bodyResonances"), open.BodyResonance);
+                SetClips(TestWeaponBuilder.Property(so, "distantReports"), distant);
+                TestWeaponBuilder.Set(so, "distantThreshold", 40f);
+                TestWeaponBuilder.Set(so, "maxAudibleDistance", 300f);
+                TestWeaponBuilder.Set(so, "indoorTail", indoor);
+                TestWeaponBuilder.Set(so, "urbanTail", outdoor);
+                TestWeaponBuilder.Set(so, "openTail", outdoor);
+                TestWeaponBuilder.Set(so, "loudness", 0.35f);
+            });
+            return profile;
+        }
+
         private static void Surface(string surfaceName, Color decalColor, Color dustColor, Texture2D hole, Func<AudioSynth, AudioSynth> impact)
         {
             var clips = new AudioClip[2];
@@ -205,11 +247,11 @@ namespace FPS.EditorTools
 
         private static Texture2D Texture(string textureName, bool linear, Func<float, float, Color> pixel, int size)
         {
+            // Regenerated every run so the asset always matches the generator.
             string path = $"{VfxFolder}/{textureName}.asset";
             var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
-            if (texture != null) return texture;
-
-            texture = new Texture2D(size, size, TextureFormat.RGBA32, true, linear) { name = textureName, wrapMode = TextureWrapMode.Clamp };
+            bool exists = texture != null;
+            if (!exists) texture = new Texture2D(size, size, TextureFormat.RGBA32, true, linear) { name = textureName, wrapMode = TextureWrapMode.Clamp };
             var pixels = new Color[size * size];
             for (int y = 0; y < size; y++)
             {
@@ -218,7 +260,8 @@ namespace FPS.EditorTools
 
             texture.SetPixels(pixels);
             texture.Apply(true);
-            AssetDatabase.CreateAsset(texture, path);
+            if (exists) EditorUtility.SetDirty(texture);
+            else AssetDatabase.CreateAsset(texture, path);
             return texture;
         }
 
@@ -248,8 +291,14 @@ namespace FPS.EditorTools
         }
 
         /// <summary>Smooth noise distortion vectors around zero (0.5 encoded) for heat haze.</summary>
-        private static Color DistortionPixel(float u, float v) =>
-            new Color(Mathf.PerlinNoise(u * 6f, v * 6f), Mathf.PerlinNoise(u * 6f + 31.7f, v * 6f + 17.3f), 1f, 1f);
+        /// <summary>Noise offsets (RG, 0.5 = none) and blur (B) that fade out toward the rim, so no quad edge ever shows.</summary>
+        private static Color DistortionPixel(float u, float v)
+        {
+            float rim = Mathf.Clamp01(1f - Mathf.Sqrt((u - 0.5f) * (u - 0.5f) + (v - 0.5f) * (v - 0.5f)) * 2f);
+            float fade = rim * rim * (3f - 2f * rim);
+            return new Color(0.5f + (Mathf.PerlinNoise(u * 6f, v * 6f) - 0.5f) * fade,
+                0.5f + (Mathf.PerlinNoise(u * 6f + 31.7f, v * 6f + 17.3f) - 0.5f) * fade, fade, 1f);
+        }
 
         private static void SetClips(SerializedProperty list, params AudioClip[] clips)
         {

@@ -104,9 +104,16 @@ namespace FPS.Weapons
             if (shot.Shooter != transform) return;
 
             FollowSockets();
-            flash.enabled = true;
-            flashFrame = Time.frameCount;
-            gas.Emit(gasParticlesPerShot);
+            float flashScale = viewmodel.Data != null ? viewmodel.Data.MuzzleFlashMultiplier : 1f;
+            if (flashScale > 0.05f)
+            {
+                flash.intensity = flashLumen * flashScale;
+                flash.enabled = true;
+                flashFrame = Time.frameCount;
+            }
+
+            int gasCount = Mathf.RoundToInt(gasParticlesPerShot * Mathf.Max(flashScale, 0.25f)); // suppressors still vent a little gas
+            if (gasCount > 0) gas.Emit(gasCount);
             Heat = Mathf.Min(1f, Heat + heatPerShot);
             lastShotTime = Time.time;
         }

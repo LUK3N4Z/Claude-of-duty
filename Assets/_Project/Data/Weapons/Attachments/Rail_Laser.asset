@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4600e99f0644a064b8306af93c719f25, type: 3}
+  m_Name: Rail_Laser
+  m_EditorClassIdentifier: FPS.Weapons::FPS.Weapons.AttachmentDataSO
+  displayName: Visible Laser
+  slot: 5
+  prefab: {fileID: 2159122197561107157, guid: 8602202aa8465954f87e7bd8ad970777, type: 3}
+  massKg: 0.09
+  centerOfMass: {x: 0.01, y: 0, z: 0}
+  ergonomicsDelta: -1
+  barrelLengthInches: 0
+  recoilVertical: 1
+  recoilHorizontal: 1
+  recoilBack: 1
+  flashMultiplier: 1
+  velocityMultiplier: 1
+  audioOverride: {fileID: 0}
+  adsTimeMultiplier: 1

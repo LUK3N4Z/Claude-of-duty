@@ -27,7 +27,8 @@ namespace FPS.Weapons
     /// </summary>
     public sealed class WeaponState
     {
-        public readonly WeaponDataSO Data;
+        /// <summary>The build's effective data (a GunsmithAssembler clone when attachments are fitted).</summary>
+        public WeaponDataSO Data { get; internal set; }
         /// <summary>Rounds in each spare magazine carried for this weapon.</summary>
         public readonly List<int> SpareMagazines = new List<int>(8);
 

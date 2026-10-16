@@ -4,6 +4,7 @@ using System.Collections;
 using System.IO;
 using FPS.Locomotion;
 using FPS.Weapons;
+using UnityEditor;
 using NUnit.Framework;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -82,7 +83,61 @@ namespace FPS.Tests
             }
 
             Save(rt, Path.Combine(dir, "impacts.png"));
+
+            // Rail devices in the dim shoot house, facing its north wall.
+            LogBuild("default", weapons);
+            Teleport(rig, cc, new Vector3(-26f, 0f, 4f));
+            weapons.ToggleDevices();
+            yield return new WaitForSeconds(1f);
+            Save(rt, Path.Combine(dir, "devices.png"));
+            weapons.ToggleDevices();
+
+            // Live gunsmith swaps: a short suppressed CQB build, then a long compensated one.
+            Teleport(rig, cc, new Vector3(20f, 0f, 2f));
+            weapons.SetAttachment(0, AttachmentSlot.Barrel, Part("Barrel_10in"));
+            weapons.SetAttachment(0, AttachmentSlot.Muzzle, Part("Muzzle_Suppressor"));
+            weapons.SetAttachment(0, AttachmentSlot.Optic, Part("Optic_RedDot"));
+            weapons.SetAttachment(0, AttachmentSlot.Underbarrel, Part("Grip_Vertical"));
+            weapons.SetAttachment(0, AttachmentSlot.Stock, Part("Stock_Collapsed"));
+            LogBuild("cqb", weapons);
+            yield return new WaitForSeconds(1f);
+            Save(rt, Path.Combine(dir, "cqb_hip.png"));
+            Press(mouse.rightButton);
+            yield return new WaitForSeconds(1.5f);
+            Save(rt, Path.Combine(dir, "reddot_ads.png"));
+            Release(mouse.rightButton);
+
+            weapons.SetAttachment(0, AttachmentSlot.Barrel, Part("Barrel_20in"));
+            weapons.SetAttachment(0, AttachmentSlot.Muzzle, Part("Muzzle_Compensator"));
+            weapons.SetAttachment(0, AttachmentSlot.Optic, Part("Optic_Scope4x"));
+            weapons.SetAttachment(0, AttachmentSlot.Underbarrel, Part("Grip_Angled"));
+            weapons.SetAttachment(0, AttachmentSlot.Stock, Part("Stock_Fixed"));
+            LogBuild("long", weapons);
+            yield return new WaitForSeconds(1.2f);
+            Save(rt, Path.Combine(dir, "long_hip.png"));
+            weapons.PullTrigger();
+            weapons.ReleaseTrigger();
+            yield return null;
+            Save(rt, Path.Combine(dir, "comp_shot.png"));
             rig.PlayerCamera.targetTexture = null;
+        }
+
+        private static AttachmentDataSO Part(string partName) =>
+            AssetDatabase.LoadAssetAtPath<AttachmentDataSO>($"Assets/_Project/Data/Weapons/Attachments/{partName}.asset");
+
+        private static void LogBuild(string label, RealisticWeaponController weapons)
+        {
+            WeaponDataSO d = weapons.ActiveState.Data;
+            Debug.Log($"[Capture] {label}: mass={d.MassKg:F2} ergo={d.Ergonomics:F0} barrel={d.BarrelLengthInches} inertia={d.MomentOfInertia:F3} " +
+                      $"com={d.CenterOfMass:F3} ads={d.AdsTime:F3} v0={d.Caliber.MuzzleVelocity(d.BarrelLengthInches) * d.MuzzleVelocityMultiplier:F0} " +
+                      $"flash={d.MuzzleFlashMultiplier:F2} recoil=({d.RecoilVerticalMultiplier:F2},{d.RecoilHorizontalMultiplier:F2},{d.RecoilBackMultiplier:F2})");
+        }
+
+        private static void Teleport(PlayerRig rig, CharacterController cc, Vector3 position)
+        {
+            cc.enabled = false;
+            rig.transform.SetPositionAndRotation(position, Quaternion.identity);
+            cc.enabled = true;
         }
 
         private static void Save(RenderTexture rt, string path)

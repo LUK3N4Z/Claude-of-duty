@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using FPS.Core;
 using FPS.Locomotion;
 using UnityEngine;
@@ -38,8 +39,11 @@ namespace FPS.Weapons
         public Transform ActionPivot => actionPivot;
         public Transform AdsPivot => adsPivot;
 
-        /// <summary>Spawns <paramref name="prefab"/> as the held weapon, replacing the current one.</summary>
-        public WeaponModelRig Equip(WeaponModelRig prefab, WeaponDataSO data)
+        /// <summary>
+        /// Spawns <paramref name="prefab"/> as the held weapon, replacing the current one, and fits
+        /// <paramref name="parts"/> (whose stats <paramref name="data"/> must already include, see GunsmithAssembler).
+        /// </summary>
+        public WeaponModelRig Equip(WeaponModelRig prefab, WeaponDataSO data, IReadOnlyList<AttachmentDataSO> parts = null)
         {
             if (prefab == null) throw new ArgumentNullException(nameof(prefab));
             if (data == null) throw new ArgumentNullException(nameof(data));
@@ -48,6 +52,7 @@ namespace FPS.Weapons
             Weapon = Instantiate(prefab, adsPivot, false);
             Weapon.name = prefab.name;
             Weapon.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+            GunsmithAssembler.AttachParts(Weapon, data, parts);
             SetLayerRecursively(Weapon.transform, GameLayers.FirstPersonViewmodel);
             Data = data;
             locomotion.SetWeaponHandling(data.MassKg, data.Ergonomics);

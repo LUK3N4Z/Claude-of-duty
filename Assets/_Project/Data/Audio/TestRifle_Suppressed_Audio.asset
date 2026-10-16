@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53dfdec1530d6344bb2a986d02fb2693, type: 3}
+  m_Name: TestRifle_Suppressed_Audio
+  m_EditorClassIdentifier: FPS.Audio::FPS.Audio.WeaponAudioProfileSO
+  pressureTransients:
+  - {fileID: 8300000, guid: d0c47354a3086ef448a7f1e210faf80e, type: 3}
+  - {fileID: 8300000, guid: 593ad3fdf65398b41a5876d84279b88e, type: 3}
+  - {fileID: 8300000, guid: 9e131ecb739297e4b8c913666631ce5e, type: 3}
+  mechanicalCycles:
+  - {fileID: 8300000, guid: e50faa3dd396e594195c06f8f119976a, type: 3}
+  bodyResonances:
+  - {fileID: 8300000, guid: 39a2756ddd24a7c48a817ba1caec90c1, type: 3}
+  distantReports:
+  - {fileID: 8300000, guid: 904459353bcf3714a9af7a5574b3210a, type: 3}
+  distantThreshold: 40
+  maxAudibleDistance: 300
+  loudness: 0.35
+  indoorTail: {fileID: 8300000, guid: c89a1fab4fa62ee45845167d72ac98c0, type: 3}
+  urbanTail: {fileID: 8300000, guid: bd1d13f3b20efc14eb99f8b39398b487, type: 3}
+  openTail: {fileID: 8300000, guid: bd1d13f3b20efc14eb99f8b39398b487, type: 3}

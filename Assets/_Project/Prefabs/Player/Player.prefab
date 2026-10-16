@@ -1609,8 +1609,10 @@ MonoBehaviour:
   loadout:
   - model: {fileID: 6777321880289407487, guid: b2528bbd0923e4247927cc23bae446db, type: 3}
     data: {fileID: 11400000, guid: f2a5f64a19176824d83450d25aa95f6d, type: 2}
+    attachments: []
   - model: {fileID: 7474368256386697039, guid: 3801b3d77f58e784c8688ce0155523b6, type: 3}
     data: {fileID: 11400000, guid: 40251d029beb98344b61d95cddb4cba5, type: 2}
+    attachments: []
   poseSpring:
     frequency: 6
     dampingRatio: 0.8

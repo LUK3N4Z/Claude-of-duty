@@ -89,6 +89,24 @@ namespace FPS.Weapons
         [Header("Audio")]
         [SerializeField] private WeaponAudioProfileSO audioProfile;
 
+        [Header("Mass Distribution")]
+        [Tooltip("Centre of mass of the bare weapon in weapon space (m).")]
+        [SerializeField] private Vector3 centerOfMass = new Vector3(0f, -0.02f, 0.05f);
+
+        [Header("Attachments")]
+        [Tooltip("The build fitted when a loadout names no attachments.")]
+        [SerializeField] private AttachmentDataSO[] defaultAttachments = new AttachmentDataSO[0];
+
+        // Build results: written only on runtime clones by GunsmithAssembler; assets keep the neutral values.
+        [NonSerialized] private float recoilVerticalMultiplier = 1f;
+        [NonSerialized] private float recoilHorizontalMultiplier = 1f;
+        [NonSerialized] private float recoilBackMultiplier = 1f;
+        [NonSerialized] private float muzzleVelocityMultiplier = 1f;
+        [NonSerialized] private float muzzleFlashMultiplier = 1f;
+        [NonSerialized] private float adsTimeMultiplier = 1f;
+        [NonSerialized] private float momentOfInertia = -1f;
+        [NonSerialized] private Vector3 buildCenterOfMass;
+
         public string DisplayName => displayName;
         public float MassKg => massKg;
         public float Ergonomics => ergonomics;
@@ -106,8 +124,8 @@ namespace FPS.Weapons
         public int SpareMagazines => spareMagazines;
         public Rigidbody DroppedMagazinePrefab => droppedMagazinePrefab;
 
-        /// <summary>Effective hip-to-ADS time (s) after ergonomics.</summary>
-        public float AdsTime => aimDownSightsTime * Mathf.Lerp(1.3f, 0.75f, ergonomics / 100f);
+        /// <summary>Effective hip-to-ADS time (s) after ergonomics and attachments.</summary>
+        public float AdsTime => aimDownSightsTime * Mathf.Lerp(1.3f, 0.75f, ergonomics / 100f) * adsTimeMultiplier;
         /// <summary>Multiplier on every manipulation time: good ergonomics are faster.</summary>
         public float ManipulationScale => Mathf.Lerp(1.15f, 0.85f, ergonomics / 100f);
         public float SprintToFireTime => sprintToFireTime;
@@ -125,6 +143,46 @@ namespace FPS.Weapons
         public Vector3 HipEuler => hipEuler;
         public RecoilProfileSO Recoil => recoil;
         public WeaponAudioProfileSO AudioProfile => audioProfile;
+        /// <summary>Centre of mass of the bare weapon (receiver without attachments).</summary>
+        public Vector3 BaseCenterOfMass => centerOfMass;
+        /// <summary>Centre of mass of the build once its parts are fitted; the bare weapon's before that.</summary>
+        public Vector3 CenterOfMass => momentOfInertia > 0f ? buildCenterOfMass : centerOfMass;
+        public AttachmentDataSO[] DefaultAttachments => defaultAttachments;
+        public float RecoilVerticalMultiplier => recoilVerticalMultiplier;
+        public float RecoilHorizontalMultiplier => recoilHorizontalMultiplier;
+        public float RecoilBackMultiplier => recoilBackMultiplier;
+        public float MuzzleVelocityMultiplier => muzzleVelocityMultiplier;
+        /// <summary>Visible muzzle flash scale: 0 suppressed, 1 bare muzzle.</summary>
+        public float MuzzleFlashMultiplier => muzzleFlashMultiplier;
+        /// <summary>Radius of gyration about the shoulder of a typical rifle (m): the bare-weapon inertia estimate.</summary>
+        public const float TypicalGyrationRadius = 0.45f;
+
+        /// <summary>
+        /// Rotational inertia about the stock contact point (kg·m²): measured from the fitted parts, or estimated with
+        /// <see cref="TypicalGyrationRadius"/> for a bare weapon. Long barrels and suppressors raise it and slow handling.
+        /// </summary>
+        public float MomentOfInertia => momentOfInertia > 0f ? momentOfInertia : massKg * TypicalGyrationRadius * TypicalGyrationRadius;
+
+        internal void ApplyBuild(float mass, float ergonomicsValue, float barrelInches, float vertical, float horizontal, float back,
+            float velocity, float flash, float adsTime, WeaponAudioProfileSO audio)
+        {
+            massKg = mass;
+            ergonomics = Mathf.Clamp(ergonomicsValue, 0f, 100f);
+            barrelLengthInches = barrelInches;
+            recoilVerticalMultiplier = vertical;
+            recoilHorizontalMultiplier = horizontal;
+            recoilBackMultiplier = back;
+            muzzleVelocityMultiplier = velocity;
+            muzzleFlashMultiplier = flash;
+            adsTimeMultiplier = adsTime;
+            audioProfile = audio;
+        }
+
+        internal void ApplyMassDistribution(Vector3 center, float inertia)
+        {
+            buildCenterOfMass = center;
+            momentOfInertia = inertia;
+        }
 
         public FireMode GetFireMode(int index)
         {

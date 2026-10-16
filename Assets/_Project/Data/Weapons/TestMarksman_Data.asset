@@ -41,3 +41,5 @@ MonoBehaviour:
   hipEuler: {x: 1.5, y: -2, z: -4}
   recoil: {fileID: 11400000, guid: 2e0877e3e7bde184f9f4a07604044a9f, type: 2}
   audioProfile: {fileID: 11400000, guid: ca1cda961e3691748b99fee155526268, type: 2}
+  centerOfMass: {x: 0, y: -0.02, z: 0.05}
+  defaultAttachments: []

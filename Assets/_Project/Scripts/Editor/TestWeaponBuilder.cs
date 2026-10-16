@@ -37,6 +37,8 @@ namespace FPS.EditorTools
             public bool CantedIrons;
             public Vector3 MagazineSize;
             public float MagazineAngle;
+            /// <summary>Receiver only: barrel, muzzle, optic, grip, stock and rail devices come from attachments.</summary>
+            public bool Modular;
         }
 
         internal static string PrefabPath(string weaponName) => $"{PrefabFolder}/{weaponName}.prefab";
@@ -70,15 +72,20 @@ namespace FPS.EditorTools
             {
                 Name = CarbineName, BarrelExposed = 0.18f, StockLength = 0.24f, ScopeLength = 0.16f, ScopeDiameter = 0.04f,
                 Magnification = 4f, EyeRelief = 0.07f, AdsZoom = 1.25f, CantedIrons = true,
-                MagazineSize = new Vector3(0.025f, 0.12f, 0.06f), MagazineAngle = 8f,
+                MagazineSize = new Vector3(0.025f, 0.12f, 0.06f), MagazineAngle = 8f, Modular = true,
             };
+            AttachmentDataSO[] carbineBuild = AttachmentContentBuilder.CreateParts(metal, polymer, EffectsContentBuilder.SuppressedAudio(CarbineName));
             WeaponModelRig carbineModel = BuildRifle(carbine, metal, polymer);
             Rigidbody carbineMagazine = DroppedMagazine($"{CarbineName}_DroppedMagazine", carbine.MagazineSize, 0.45f, polymer);
             RecoilProfileSO carbineRecoil = LoadOrCreate<RecoilProfileSO>($"{DataFolder}/{CarbineName}_Recoil.asset");
             Configure(LoadOrCreate<WeaponDataSO>(DataPath(CarbineName)), so =>
             {
                 Set(so, "displayName", "Test Carbine 5.56");
-                Set(so, "massKg", 3.4f);
+                Set(so, "massKg", 1.6f); // bare receiver; the default build brings it to about 3.5 kg
+                Set(so, "centerOfMass", new Vector3(0f, -0.02f, 0.02f));
+                SerializedProperty defaults = Property(so, "defaultAttachments");
+                defaults.arraySize = carbineBuild.Length;
+                for (int i = 0; i < carbineBuild.Length; i++) defaults.GetArrayElementAtIndex(i).objectReferenceValue = carbineBuild[i];
                 Set(so, "ergonomics", 55f);
                 Set(so, "barrelLengthInches", 14.5f);
                 Set(so, "caliber", nato556);
@@ -174,29 +181,46 @@ namespace FPS.EditorTools
             try
             {
                 Transform t = root.transform;
-                const float handguardEnd = 0.43f;
-                float stockEnd = -0.15f - spec.StockLength;
-                float muzzle = handguardEnd + spec.BarrelExposed;
+                float handguardEnd = spec.Modular ? 0.3f : 0.43f;
+                float stockEnd = spec.Modular ? -0.15f : -0.15f - spec.StockLength;
+                float muzzle = spec.Modular ? handguardEnd : handguardEnd + spec.BarrelExposed;
 
                 Part(t, "Receiver", PrimitiveType.Cube, new Vector3(0f, 0f, 0f), new Vector3(0.05f, 0.08f, 0.3f), Quaternion.identity, metal);
-                Part(t, "Handguard", PrimitiveType.Cube, new Vector3(0f, 0.005f, 0.29f), new Vector3(0.045f, 0.055f, 0.28f), Quaternion.identity, polymer);
-                Part(t, "Barrel", PrimitiveType.Cylinder, new Vector3(0f, 0f, handguardEnd + spec.BarrelExposed * 0.5f),
-                    new Vector3(0.02f, spec.BarrelExposed * 0.5f, 0.02f), Quaternion.Euler(90f, 0f, 0f), metal);
-                Part(t, "Stock", PrimitiveType.Cube, new Vector3(0f, -0.015f, -0.15f - spec.StockLength * 0.5f),
-                    new Vector3(0.04f, 0.09f, spec.StockLength), Quaternion.identity, polymer);
+                Part(t, "Handguard", PrimitiveType.Cube, new Vector3(0f, 0.005f, (0.15f + handguardEnd) * 0.5f),
+                    new Vector3(0.045f, 0.055f, handguardEnd - 0.15f), Quaternion.identity, polymer);
+                if (!spec.Modular)
+                {
+                    Part(t, "Barrel", PrimitiveType.Cylinder, new Vector3(0f, 0f, handguardEnd + spec.BarrelExposed * 0.5f),
+                        new Vector3(0.02f, spec.BarrelExposed * 0.5f, 0.02f), Quaternion.Euler(90f, 0f, 0f), metal);
+                    Part(t, "Stock", PrimitiveType.Cube, new Vector3(0f, -0.015f, -0.15f - spec.StockLength * 0.5f),
+                        new Vector3(0.04f, 0.09f, spec.StockLength), Quaternion.identity, polymer);
+                }
+
                 Part(t, "Grip", PrimitiveType.Cube, new Vector3(0f, -0.075f, -0.07f), new Vector3(0.03f, 0.09f, 0.035f), Quaternion.Euler(15f, 0f, 0f), polymer);
                 Transform magazine = Part(t, "Magazine", PrimitiveType.Cube, new Vector3(0f, -0.04f - spec.MagazineSize.y * 0.5f, 0.06f),
                     spec.MagazineSize, Quaternion.Euler(spec.MagazineAngle, 0f, 0f), polymer);
 
                 // Scope: eyepiece fixed at z = -0.06, 7.5 cm above the bore; longer scopes extend forward.
-                Part(t, "Scope Mount", PrimitiveType.Cube, new Vector3(0f, 0.05f, 0.02f), new Vector3(0.02f, 0.03f, 0.06f), Quaternion.identity, metal);
-                Part(t, "Scope Body", PrimitiveType.Cylinder, new Vector3(0f, 0.075f, -0.06f + spec.ScopeLength * 0.5f),
-                    new Vector3(spec.ScopeDiameter, spec.ScopeLength * 0.5f, spec.ScopeDiameter), Quaternion.Euler(90f, 0f, 0f), metal);
                 Transform primary = Socket(t, WeaponModelRig.PrimarySightSocketName, new Vector3(0f, 0.075f, -0.06f), Quaternion.identity);
-                float lensRadius = spec.ScopeDiameter * 0.4125f;
-                MeshRenderer lensRenderer = Disc(primary, "Ocular Lens", disc, -0.001f, lensRadius, lens);
-                Disc(primary, "Reticle", disc, -0.0015f, lensRadius, reticle);
-                primary.gameObject.AddComponent<WeaponSight>().Configure(spec.Magnification, spec.EyeRelief, spec.AdsZoom, lensRenderer);
+                if (spec.Modular)
+                {
+                    Socket(primary, AttachmentDataSO.MountName(AttachmentSlot.Optic), Vector3.zero, Quaternion.identity);
+                    Socket(t, AttachmentDataSO.MountName(AttachmentSlot.Barrel), new Vector3(0f, 0f, 0.05f), Quaternion.identity);
+                    Socket(t, AttachmentDataSO.MountName(AttachmentSlot.Stock), new Vector3(0f, -0.015f, -0.15f), Quaternion.identity);
+                    Socket(t, AttachmentDataSO.MountName(AttachmentSlot.Underbarrel), new Vector3(0f, -0.028f, 0.27f), Quaternion.identity);
+                    Socket(t, AttachmentDataSO.MountName(AttachmentSlot.Laser), new Vector3(0.026f, 0.005f, 0.26f), Quaternion.identity);
+                    Socket(t, AttachmentDataSO.MountName(AttachmentSlot.Light), new Vector3(-0.028f, 0.005f, 0.26f), Quaternion.identity);
+                }
+                else
+                {
+                    Part(t, "Scope Mount", PrimitiveType.Cube, new Vector3(0f, 0.05f, 0.02f), new Vector3(0.02f, 0.03f, 0.06f), Quaternion.identity, metal);
+                    Part(t, "Scope Body", PrimitiveType.Cylinder, new Vector3(0f, 0.075f, -0.06f + spec.ScopeLength * 0.5f),
+                        new Vector3(spec.ScopeDiameter, spec.ScopeLength * 0.5f, spec.ScopeDiameter), Quaternion.Euler(90f, 0f, 0f), metal);
+                    float lensRadius = spec.ScopeDiameter * 0.4125f;
+                    MeshRenderer lensRenderer = Disc(primary, "Ocular Lens", disc, -0.001f, lensRadius, lens);
+                    Disc(primary, "Reticle", disc, -0.0015f, lensRadius, reticle);
+                    primary.gameObject.AddComponent<WeaponSight>().Configure(spec.Magnification, spec.EyeRelief, spec.AdsZoom, lensRenderer);
+                }
 
                 if (spec.CantedIrons)
                 {
@@ -208,8 +232,9 @@ namespace FPS.EditorTools
                     Part(canted, "Aperture Left", PrimitiveType.Cube, new Vector3(-0.006f, 0f, 0.005f), new Vector3(0.003f, 0.016f, 0.004f), Quaternion.identity, metal);
                     Part(canted, "Aperture Right", PrimitiveType.Cube, new Vector3(0.006f, 0f, 0.005f), new Vector3(0.003f, 0.016f, 0.004f), Quaternion.identity, metal);
                     Part(canted, "Rear Base", PrimitiveType.Cube, new Vector3(0f, -0.012f, 0.005f), new Vector3(0.016f, 0.006f, 0.01f), Quaternion.identity, metal);
-                    Part(canted, "Front Post", PrimitiveType.Cube, new Vector3(0f, -0.004f, 0.48f), new Vector3(0.0025f, 0.008f, 0.003f), Quaternion.identity, metal);
-                    Part(canted, "Front Base", PrimitiveType.Cube, new Vector3(0f, -0.012f, 0.48f), new Vector3(0.012f, 0.01f, 0.006f), Quaternion.identity, metal);
+                    float post = spec.Modular ? 0.38f : 0.48f; // on the handguard's front rail
+                    Part(canted, "Front Post", PrimitiveType.Cube, new Vector3(0f, -0.004f, post), new Vector3(0.0025f, 0.008f, 0.003f), Quaternion.identity, metal);
+                    Part(canted, "Front Base", PrimitiveType.Cube, new Vector3(0f, -0.012f, post), new Vector3(0.012f, 0.01f, 0.006f), Quaternion.identity, metal);
                     canted.gameObject.AddComponent<WeaponSight>().Configure(1f, 0.09f, 1.1f, null);
                 }
 
@@ -218,7 +243,7 @@ namespace FPS.EditorTools
                 Socket(t, WeaponModelRig.ChamberEjectionSocketName, new Vector3(0.026f, 0.01f, 0f), Quaternion.Euler(0f, 90f, 0f));
                 Socket(t, WeaponModelRig.MagazineSocketName, magazine.localPosition, magazine.localRotation);
                 Socket(t, WeaponModelRig.ChargingHandleSocketName, new Vector3(0f, 0.03f, -0.15f), Quaternion.identity);
-                Socket(t, WeaponModelRig.LeftHandIKGripName, new Vector3(0f, -0.035f, 0.3f), Quaternion.identity);
+                Socket(t, WeaponModelRig.LeftHandIKGripName, new Vector3(0f, -0.035f, spec.Modular ? 0.25f : 0.3f), Quaternion.identity);
                 Socket(t, WeaponModelRig.RightHandIKGripName, new Vector3(0f, -0.075f, -0.07f), Quaternion.Euler(15f, 0f, 0f));
                 var rig = root.AddComponent<WeaponModelRig>();
                 rig.EnsureSockets();
@@ -281,7 +306,7 @@ namespace FPS.EditorTools
             return caliber;
         }
 
-        private static Transform Part(Transform parent, string partName, PrimitiveType shape, Vector3 position, Vector3 size,
+        internal static Transform Part(Transform parent, string partName, PrimitiveType shape, Vector3 position, Vector3 size,
             Quaternion rotation, Material material)
         {
             GameObject part = GameObject.CreatePrimitive(shape);
@@ -294,7 +319,7 @@ namespace FPS.EditorTools
             return part.transform;
         }
 
-        private static Transform Socket(Transform parent, string socketName, Vector3 position, Quaternion rotation)
+        internal static Transform Socket(Transform parent, string socketName, Vector3 position, Quaternion rotation)
         {
             var socket = new GameObject(socketName).transform;
             socket.SetParent(parent, false);
@@ -302,7 +327,7 @@ namespace FPS.EditorTools
             return socket;
         }
 
-        private static MeshRenderer Disc(Transform parent, string discName, Mesh mesh, float depth, float radius, Material material)
+        internal static MeshRenderer Disc(Transform parent, string discName, Mesh mesh, float depth, float radius, Material material)
         {
             var disc = new GameObject(discName);
             disc.transform.SetParent(parent, false);
@@ -315,7 +340,7 @@ namespace FPS.EditorTools
             return meshRenderer;
         }
 
-        private static Material UnlitMaterial(string materialName, Color color, Texture texture, bool alphaClip)
+        internal static Material UnlitMaterial(string materialName, Color color, Texture texture, bool alphaClip)
         {
             string path = $"{ArtFolder}/{materialName}.mat";
             var material = AssetDatabase.LoadAssetAtPath<Material>(path);
@@ -336,7 +361,7 @@ namespace FPS.EditorTools
         }
 
         /// <summary>Unit-diameter disc in the XY plane facing -Z (toward the eye); UVs map the full 0-1 square.</summary>
-        private static Mesh DiscMesh()
+        internal static Mesh DiscMesh()
         {
             string path = $"{ArtFolder}/LensDisc.asset";
             var mesh = AssetDatabase.LoadAssetAtPath<Mesh>(path);
@@ -369,7 +394,7 @@ namespace FPS.EditorTools
         }
 
         /// <summary>Duplex crosshair: thick outer posts, fine centre lines, centre dot; transparent elsewhere.</summary>
-        private static Texture2D ReticleTexture()
+        internal static Texture2D ReticleTexture()
         {
             string path = $"{ArtFolder}/ReticleDuplex.asset";
             var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);

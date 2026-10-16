@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4600e99f0644a064b8306af93c719f25, type: 3}
+  m_Name: Barrel_10in
+  m_EditorClassIdentifier: FPS.Weapons::FPS.Weapons.AttachmentDataSO
+  displayName: 10.5" CQB Barrel
+  slot: 0
+  prefab: {fileID: 9097685821390234614, guid: dd72290f2f4bd0947b470191c763ffb6, type: 3}
+  massKg: 0.45
+  centerOfMass: {x: 0, y: 0, z: 0.13335}
+  ergonomicsDelta: 6
+  barrelLengthInches: 10.5
+  recoilVertical: 1
+  recoilHorizontal: 1
+  recoilBack: 1
+  flashMultiplier: 1.5
+  velocityMultiplier: 1
+  audioOverride: {fileID: 0}
+  adsTimeMultiplier: 0.94

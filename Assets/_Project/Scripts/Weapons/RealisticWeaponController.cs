@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using FPS.Audio;
 using FPS.Ballistics;
 using FPS.Core;
@@ -35,6 +36,8 @@ namespace FPS.Weapons
         {
             public WeaponModelRig model;
             public WeaponDataSO data;
+            [Tooltip("Fitted attachments; empty uses the weapon's default build.")]
+            public AttachmentDataSO[] attachments;
         }
 
         public const string LoadoutFieldName = nameof(loadout);
@@ -79,6 +82,7 @@ namespace FPS.Weapons
         private InputReader input;
 
         private WeaponState[] states;
+        private List<AttachmentDataSO>[] builds;
         private int activeSlot = -1;
         private int pendingSlot = -1;
         private float actionTime, actionDuration;
@@ -124,16 +128,55 @@ namespace FPS.Weapons
             return added;
         }
 
-        /// <summary>Puts a weapon into a slot with a fresh, loaded state. The active slot (or an empty hand) equips it now.</summary>
-        public void SetLoadout(int slot, WeaponModelRig model, WeaponDataSO data)
+        /// <summary>
+        /// Puts a weapon into a slot with a fresh, loaded state and the given attachments (null or empty: the weapon's
+        /// default build). The active slot (or an empty hand) equips it now.
+        /// </summary>
+        public void SetLoadout(int slot, WeaponModelRig model, WeaponDataSO data, IReadOnlyList<AttachmentDataSO> attachments = null)
         {
             if (slot < 0 || slot >= loadout.Length) throw new ArgumentOutOfRangeException(nameof(slot));
             if (model == null) throw new ArgumentNullException(nameof(model));
             if (data == null) throw new ArgumentNullException(nameof(data));
 
             loadout[slot] = new LoadoutSlot { model = model, data = data };
-            states[slot] = new WeaponState(data);
+            if (states[slot] != null) Destroy(states[slot].Data);
+            builds[slot] = new List<AttachmentDataSO>(attachments != null && attachments.Count > 0 ? attachments : data.DefaultAttachments);
+            states[slot] = new WeaponState(GunsmithAssembler.Assemble(data, builds[slot]));
             if (activeSlot == slot || activeSlot < 0) BeginEquip(slot);
+        }
+
+        /// <summary>The attachments fitted to a slot's weapon.</summary>
+        public IReadOnlyList<AttachmentDataSO> GetAttachments(int slot) => builds[slot];
+
+        /// <summary>
+        /// Fits <paramref name="part"/> in <paramref name="type"/> (null removes it) and recalculates the build live; the
+        /// held weapon is refitted in place, keeping its rounds, chamber and reload progress.
+        /// </summary>
+        public void SetAttachment(int slot, AttachmentSlot type, AttachmentDataSO part)
+        {
+            if (states[slot] == null) throw new InvalidOperationException($"Loadout slot {slot} is empty.");
+            if (part != null && part.Slot != type) throw new ArgumentException($"{part.DisplayName} fits {part.Slot}, not {type}.", nameof(part));
+
+            List<AttachmentDataSO> build = builds[slot];
+            build.RemoveAll(fitted => fitted == null || fitted.Slot == type);
+            if (part != null) build.Add(part);
+
+            WeaponDataSO previous = states[slot].Data;
+            states[slot].Data = GunsmithAssembler.Assemble(loadout[slot].data, build);
+            if (slot == activeSlot)
+            {
+                InterruptReload();
+                viewmodel.Equip(loadout[slot].model, states[slot].Data, build).SetMagazineVisible(states[slot].HasMagazine);
+            }
+
+            Destroy(previous);
+        }
+
+        /// <summary>Toggles every flashlight and laser on the held weapon.</summary>
+        public void ToggleDevices()
+        {
+            if (viewmodel.Weapon == null) return;
+            foreach (TacticalDevice device in viewmodel.Weapon.GetComponentsInChildren<TacticalDevice>()) device.Toggle();
         }
 
         /// <summary>Holsters the current weapon and draws another: 0 primary, 1 secondary, -1 the next filled slot.</summary>
@@ -257,9 +300,13 @@ namespace FPS.Weapons
             pose.RotationTuning = poseSpring;
 
             states = new WeaponState[loadout.Length];
+            builds = new List<AttachmentDataSO>[loadout.Length];
             for (int i = 0; i < loadout.Length; i++)
             {
-                if (loadout[i].model != null && loadout[i].data != null) states[i] = new WeaponState(loadout[i].data);
+                if (loadout[i].model == null || loadout[i].data == null) continue;
+                AttachmentDataSO[] requested = loadout[i].attachments;
+                builds[i] = new List<AttachmentDataSO>(requested != null && requested.Length > 0 ? requested : loadout[i].data.DefaultAttachments);
+                states[i] = new WeaponState(GunsmithAssembler.Assemble(loadout[i].data, builds[i]));
             }
         }
 
@@ -273,6 +320,7 @@ namespace FPS.Weapons
             input.CheckMagazineChanged += SetMagazineCheck;
             input.ChangeFireModePressed += CycleFireMode;
             input.WeaponSlotRequested += SelectSlot;
+            input.ToggleDevicePressed += ToggleDevices;
         }
 
         private void OnDisable()
@@ -285,6 +333,16 @@ namespace FPS.Weapons
             input.CheckMagazineChanged -= SetMagazineCheck;
             input.ChangeFireModePressed -= CycleFireMode;
             input.WeaponSlotRequested -= SelectSlot;
+            input.ToggleDevicePressed -= ToggleDevices;
+        }
+
+        private void OnDestroy()
+        {
+            if (states == null) return;
+            foreach (WeaponState state in states)
+            {
+                if (state != null) Destroy(state.Data); // build clones only; assets are never stored in states
+            }
         }
 
         private void Start()
@@ -454,7 +512,7 @@ namespace FPS.Weapons
             {
                 Origin = muzzle.position,
                 Direction = ApplyDispersion(muzzle.forward, muzzle.right, muzzle.up, state.Data.MoaAccuracy, Random.insideUnitCircle),
-                MuzzleVelocity = caliber != null ? caliber.MuzzleVelocity(state.Data.BarrelLengthInches) : 0f,
+                MuzzleVelocity = caliber != null ? caliber.MuzzleVelocity(state.Data.BarrelLengthInches) * state.Data.MuzzleVelocityMultiplier : 0f,
                 Caliber = caliber,
                 Shooter = transform,
             });
@@ -620,7 +678,7 @@ namespace FPS.Weapons
         {
             activeSlot = slot;
             WeaponState state = states[slot];
-            WeaponModelRig weapon = viewmodel.Equip(loadout[slot].model, state.Data);
+            WeaponModelRig weapon = viewmodel.Equip(loadout[slot].model, state.Data, builds[slot]);
             weapon.SetMagazineVisible(state.HasMagazine);
             if (state.Data.Caliber != null && state.Data.Caliber.CasingPrefab != null)
                 ObjectPoolManager.Instance.Prewarm(state.Data.Caliber.CasingPrefab, 24, 96);

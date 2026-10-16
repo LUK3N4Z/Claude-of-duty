@@ -81,6 +81,7 @@ namespace FPS.EditorTools
             }
 
             Transform level = new GameObject("Level").transform;
+            AtmosphereVolume(level);
             Block(level, "Floor", new Vector3(0f, -0.5f, 0f), new Vector3(80f, 1f, 80f), Quaternion.identity);
 
             // Slide physics: friction wins on 15°, gravity wins on 35°. Falling off the top end tests landing.
@@ -119,8 +120,17 @@ namespace FPS.EditorTools
             Block(room, "Wall E", new Vector3(3f, 1.5f, 0f), new Vector3(0.3f, 3f, 6f), Quaternion.identity);
             Block(room, "Wall W", new Vector3(-3f, 1.5f, 0f), new Vector3(0.3f, 3f, 6f), Quaternion.identity);
             Block(room, "Roof", new Vector3(0f, 3.15f, 0f), new Vector3(6.3f, 0.3f, 6.3f), Quaternion.identity);
-            Block(level, "Canyon Wall West (urban acoustics)", new Vector3(-34f, 6f, 20f), new Vector3(0.5f, 12f, 30f), Quaternion.identity);
-            Block(level, "Canyon Wall East (urban acoustics)", new Vector3(-26f, 6f, 20f), new Vector3(0.5f, 12f, 30f), Quaternion.identity);
+            var dustObject = new GameObject("Dust (local volumetric fog)");
+            dustObject.transform.SetParent(room, false);
+            dustObject.transform.localPosition = new Vector3(0f, 1.5f, 0f);
+            var dust = dustObject.AddComponent<UnityEngine.Rendering.HighDefinition.LocalVolumetricFog>();
+            UnityEngine.Rendering.HighDefinition.LocalVolumetricFogArtistParameters dustParameters = dust.parameters;
+            dustParameters.size = new Vector3(5.7f, 3f, 5.7f);
+            dustParameters.meanFreePath = 12f; // airborne dust: light shafts and torch beams show
+            dustParameters.albedo = new Color(0.85f, 0.8f, 0.72f);
+            dust.parameters = dustParameters;
+            Block(level, "Canyon Wall West (urban acoustics)", new Vector3(-34f, 6f, 26f), new Vector3(0.5f, 12f, 30f), Quaternion.identity);
+            Block(level, "Canyon Wall East (urban acoustics)", new Vector3(-26f, 6f, 26f), new Vector3(0.5f, 12f, 30f), Quaternion.identity);
 
             BoxCollider crate = Block(level, "Ammo Crate", new Vector3(2f, 0.3f, -3f), new Vector3(0.8f, 0.6f, 0.5f), Quaternion.identity);
             var resupply = new GameObject("Resupply (interact)") { layer = GameLayers.Interactable };
@@ -134,6 +144,39 @@ namespace FPS.EditorTools
             ProjectSetupWizard.EnsureFolder(FolderOf(TestScenePath));
             EditorSceneManager.SaveScene(scene, TestScenePath);
             Debug.Log($"[FPS Builder] {TestScenePath} built.");
+        }
+
+        /// <summary>Light volumetric fog so flashlight and muzzle-flash cones read in the air.</summary>
+        private static void AtmosphereVolume(Transform level)
+        {
+            const string profilePath = "Assets/_Project/Settings/Rendering/TestRangeAtmosphere.asset";
+            var profile = AssetDatabase.LoadAssetAtPath<UnityEngine.Rendering.VolumeProfile>(profilePath);
+            if (profile == null)
+            {
+                ProjectSetupWizard.EnsureFolder(FolderOf(profilePath));
+                profile = ScriptableObject.CreateInstance<UnityEngine.Rendering.VolumeProfile>();
+                AssetDatabase.CreateAsset(profile, profilePath);
+            }
+
+            if (!profile.TryGet(out UnityEngine.Rendering.HighDefinition.Fog fog))
+            {
+                fog = profile.Add<UnityEngine.Rendering.HighDefinition.Fog>();
+                AssetDatabase.AddObjectToAsset(fog, profile);
+            }
+
+            // Thin outdoors so the 300 m targets stay readable; the shoot house adds its own dust.
+            fog.enabled.Override(true);
+            fog.enableVolumetricFog.Override(true);
+            fog.meanFreePath.Override(250f);
+            fog.albedo.Override(new Color(0.8f, 0.82f, 0.85f));
+            EditorUtility.SetDirty(fog);
+            AssetDatabase.SaveAssets();
+
+            var volumeObject = new GameObject("Atmosphere (volumetric fog)");
+            volumeObject.transform.SetParent(level, false);
+            var volume = volumeObject.AddComponent<UnityEngine.Rendering.Volume>();
+            volume.isGlobal = true;
+            volume.sharedProfile = profile;
         }
 
         private static void BuildPlayer(GameObject root, InputReader input)

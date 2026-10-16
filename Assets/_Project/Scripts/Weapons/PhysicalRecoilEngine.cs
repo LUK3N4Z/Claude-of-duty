@@ -47,14 +47,16 @@ namespace FPS.Weapons
                           stance.RecoilMultiplier *
                           profile.ReferenceMassKg / data.MassKg; // same impulse, heavier gun, less velocity
             float verticalFactor = Random.Range(1f - profile.VerticalSpread, 1f + profile.VerticalSpread);
-            float vertical = profile.VerticalKick * verticalFactor * scale;
-            float horizontal = (profile.HorizontalBias + Random.Range(-profile.HorizontalSpread, profile.HorizontalSpread)) * scale;
+            float vertical = profile.VerticalKick * verticalFactor * scale * data.RecoilVerticalMultiplier;
+            float horizontal = (profile.HorizontalBias + Random.Range(-profile.HorizontalSpread, profile.HorizontalSpread)) * scale *
+                               data.RecoilHorizontalMultiplier;
             float roll = Random.Range(-profile.RollKick, profile.RollKick) * scale;
+            float back = profile.BackKick * scale * data.RecoilBackMultiplier;
 
-            weaponSpring.AddImpulse(new Vector3(0f, profile.UpKick * scale, -profile.BackKick * scale), new Vector3(-vertical, horizontal, roll));
+            weaponSpring.AddImpulse(new Vector3(0f, profile.UpKick * scale, -back), new Vector3(-vertical, horizontal, roll));
             cameraSpring.AddImpulse(new Vector3(0f, 0f, -profile.CameraPush * scale), new Vector3(-profile.CameraKick * scale, 0f, 0f));
 
-            float climb = profile.ViewClimb * verticalFactor * scale;
+            float climb = profile.ViewClimb * verticalFactor * scale * data.RecoilVerticalMultiplier;
             locomotion.AddLookOffset(-climb, climb * profile.ViewHorizontalFactor * horizontal / Mathf.Max(1f, vertical));
 
             boltCarrierDue = now + profile.BoltCarrierDelay;

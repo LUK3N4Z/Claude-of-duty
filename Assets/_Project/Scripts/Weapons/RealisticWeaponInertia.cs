@@ -127,8 +127,9 @@ namespace FPS.Weapons
                 return;
             }
 
-            // Heavy, unwieldy weapons respond slower and overshoot more: that is the felt torque.
-            float handling = Mathf.Lerp(0.65f, 1.2f, data.Ergonomics / 100f) / Mathf.Sqrt(data.MassKg / referenceMassKg);
+            // Rotational inertia about the shoulder sets the felt torque: long barrels and suppressors swing slower.
+            float referenceInertia = referenceMassKg * WeaponDataSO.TypicalGyrationRadius * WeaponDataSO.TypicalGyrationRadius;
+            float handling = Mathf.Lerp(0.65f, 1.2f, data.Ergonomics / 100f) / Mathf.Sqrt(data.MomentOfInertia / referenceInertia);
             spring.PositionTuning = new ProceduralSpringSolver.Tuning(positionSpring.frequency * handling, positionSpring.dampingRatio);
             spring.RotationTuning = new ProceduralSpringSolver.Tuning(rotationSpring.frequency * handling, rotationSpring.dampingRatio);
 

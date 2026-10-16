@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4600e99f0644a064b8306af93c719f25, type: 3}
+  m_Name: Grip_Angled
+  m_EditorClassIdentifier: FPS.Weapons::FPS.Weapons.AttachmentDataSO
+  displayName: Angled Foregrip
+  slot: 3
+  prefab: {fileID: 552809117011659408, guid: 900d14b908ef7054681d6758579f9b58, type: 3}
+  massKg: 0.08
+  centerOfMass: {x: 0, y: -0.016, z: 0}
+  ergonomicsDelta: 6
+  barrelLengthInches: 0
+  recoilVertical: 0.92
+  recoilHorizontal: 1
+  recoilBack: 1
+  flashMultiplier: 1
+  velocityMultiplier: 1
+  audioOverride: {fileID: 0}
+  adsTimeMultiplier: 0.95

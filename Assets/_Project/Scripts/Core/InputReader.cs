@@ -52,11 +52,13 @@ namespace FPS.Core
         public event Action<int> WeaponSlotRequested;
         /// <summary>Use the focused interactable.</summary>
         public event Action InteractPressed;
+        /// <summary>Toggle the weapon's flashlight / laser.</summary>
+        public event Action ToggleDevicePressed;
 
         private InputActionMap playerMap;
         private InputAction move, look, fire, aim, sprint, tacticalSprint, holdBreath, walkSlow, walkSpeedAdjust;
         private InputAction crouch, prone, leanLeft, leanRight, reload, checkMagazine, changeFireMode, switchSight, mountWeapon;
-        private InputAction selectPrimary, selectSecondary, switchWeapon, interact;
+        private InputAction selectPrimary, selectSecondary, switchWeapon, interact, toggleDevice;
         private double lastReloadTapTime = double.NegativeInfinity;
 
         public Vector2 Move => move.ReadValue<Vector2>();
@@ -135,6 +137,7 @@ namespace FPS.Core
             selectSecondary = Find("SelectSecondary");
             switchWeapon = Find("SwitchWeapon");
             interact = Find("Interact");
+            toggleDevice = Find("ToggleDevice");
             playerMap.actionTriggered += OnActionTriggered;
         }
 
@@ -179,6 +182,7 @@ namespace FPS.Core
                 else if (action == selectSecondary) WeaponSlotRequested?.Invoke(1);
                 else if (action == switchWeapon) WeaponSlotRequested?.Invoke(-1);
                 else if (action == interact) InteractPressed?.Invoke();
+                else if (action == toggleDevice) ToggleDevicePressed?.Invoke();
                 else if (action == walkSpeedAdjust)
                 {
                     float scroll = context.ReadValue<float>();

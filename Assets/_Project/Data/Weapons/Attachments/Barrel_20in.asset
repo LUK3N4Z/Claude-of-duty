@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4600e99f0644a064b8306af93c719f25, type: 3}
+  m_Name: Barrel_20in
+  m_EditorClassIdentifier: FPS.Weapons::FPS.Weapons.AttachmentDataSO
+  displayName: 20" Marksman Barrel
+  slot: 0
+  prefab: {fileID: 7779352515314128448, guid: 98097f8c357478c42b5d271e33f53fac, type: 3}
+  massKg: 0.85
+  centerOfMass: {x: 0, y: 0, z: 0.254}
+  ergonomicsDelta: -8
+  barrelLengthInches: 20
+  recoilVertical: 1
+  recoilHorizontal: 1
+  recoilBack: 1
+  flashMultiplier: 0.8
+  velocityMultiplier: 1
+  audioOverride: {fileID: 0}
+  adsTimeMultiplier: 1.08

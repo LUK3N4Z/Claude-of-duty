@@ -12,12 +12,13 @@ ballistics, Picture-in-Picture optics, procedural inertia, photoreal HDRP.
    (`Settings/Rendering/HDRenderPipelineAsset.asset`), layers, collision matrix.
 3. `Tools/FPS Builder/2. Create Core Assets` (creates `Data/Core/InputReader.asset` wired to the input actions).
 4. `Tools/FPS Builder/3. Create Test Weapons` → calibers in `Data/Ballistics` (5.56, 7.62, 9x19, .300 WM),
-   `Prefabs/Weapons/TestRifle` (5.56 closed-bolt carbine, 4x PiP scope, 45° canted irons) and `TestMarksman`
-   (.300 WM bolt action, 8x scope), their data, recoil profiles and droppable magazines; re-builds the player prefab.
+   `Prefabs/Weapons/TestRifle` (modular 5.56 closed-bolt receiver with attachment mounts and 45° canted irons) and
+   `TestMarksman` (.300 WM bolt action, fixed 8x scope), their data, recoil profiles and droppable magazines, the
+   gunsmith parts in `Prefabs/Weapons/Attachments` + `Data/Weapons/Attachments`; re-builds the player prefab.
 5. `Tools/FPS Builder/4. Create Player Prefab` → `Prefabs/Player/Player.prefab`: rig, viewmodel, IK arms, loadout
    (carbine primary, marksman secondary). Completes an existing prefab in place.
 6. `Tools/FPS Builder/5. Build Test Range` → `Scenes/LocomotionTestRange.unity` (ramps, ice, ledges, corner, crouch and
-   crawl tunnels, narrow corridor, targets at 25/50/100/200 m).
+   crawl tunnels, narrow corridor, targets at 25/50/100/200 m, dusty shoot house, canyon, thin volumetric fog).
 7. Optional: `Window > Rendering > HDRP Wizard` for any remaining platform checks.
 
 **Importing a weapon model:** select the FBX/GLTF → `Tools/FPS Builder/6. Build Weapon From Selected Model` (or
@@ -34,7 +35,7 @@ Active Input Handling is `Input System Package (New)` (`activeInputHandler: 1`).
 `Unity.exe -batchmode -nographics -projectPath . -runTests -testPlatform PlayMode -testResults results.xml`.
 New non-trivial logic ships with a test there.
 Visual check: set `FPS_CAPTURE_DIR` and run `-testFilter FPS.Tests.RenderCapture` **without** `-nographics`; it renders
-hip/ADS/canted PNGs of the test range (ignored otherwise).
+hip/ADS/canted/reload/impact/device/gunsmith-build PNGs of the test range and logs build stats (ignored otherwise).
 
 ## Coding standards
 
@@ -123,6 +124,7 @@ Bullets use `GameLayers.BallisticMask` (Default + WorldGeometry + Hitbox). No cu
 | SwitchSight | X | D-pad ↑ | `SwitchSightPressed` |
 | MountWeapon | V | R3 | `MountWeaponPressed` |
 | Interact | F | A | `InteractPressed` (`Interactor` → focused `IInteractable`) |
+| ToggleDevice | T | LB | `ToggleDevicePressed` (all lights/lasers on the held weapon) |
 
 Tap/hold threshold 0.35 s. Fast reload is an *upgrade*: the first tap always starts a tactical reload.
 
@@ -245,6 +247,28 @@ Contracts for later milestones:
 - **Placeholder sound design:** all clips are synthesized by `AudioSynth` (editor) into `Art/Audio`; replace clips in
   the profiles/surfaces with recorded audio without code changes.
 
+## Gunsmith & attachments (M7)
+
+- **Parts:** `AttachmentDataSO` (slot, prefab, mass, part-space centre of mass, ergonomics delta, barrel inches, recoil
+  vertical/horizontal/back multipliers, flash and velocity multipliers, audio override, ADS-time multiplier). Slots:
+  Barrel, Muzzle, Optic, Underbarrel, Stock, Laser, Light; each attaches at a `{Slot}Mount` transform found anywhere
+  under the weapon (`AttachmentDataSO.MountName`), so a part can carry the next mount (barrels carry `MuzzleMount`,
+  the optic mount sits under `PrimarySightSocket`). A part may carry `MuzzleSocket`, `LeftHandIKGrip` or
+  `StockPivotSocket` children (they replace the receiver's via `WeaponModelRig.SetSocket`) and a `WeaponSight`.
+- **Stats:** `GunsmithAssembler.Assemble` returns a runtime **clone** of the weapon data with the build applied (assets
+  are never modified; the controller destroys replaced clones). `AttachParts` instantiates parts barrel-first, then
+  measures the real centre of mass and the moment of inertia about the stock (receiver gyration 0.08 m + parts as point
+  masses). `WeaponDataSO.massKg`/`centerOfMass` describe the bare receiver; `BaseCenterOfMass` stays stable on refits.
+- **Effects:** inertia springs scale with 1/sqrt(inertia / (3.4 kg × 0.45² m)), recoil with the multipliers, muzzle
+  velocity with barrel inches × velocity multiplier, muzzle flash and gas with the flash multiplier (0 = suppressed),
+  ADS time with the multiplier; a suppressor's `audioOverride` replaces the weapon's audio profile.
+- **Loadouts:** `LoadoutSlot.attachments` (empty = `WeaponDataSO.defaultAttachments`); `SetAttachment(slot, type, part)`
+  refits live, keeping rounds, chamber and reload progress. `GetAttachments(slot)` lists the build.
+- **Devices:** `TacticalDevice` (Flashlight: HDRP spot in candela with `affectsVolumetric`; Laser: `LineRenderer` +
+  world-layer dot raycast against `BallisticMask`). Fitted part templates may be inactive; fitted copies are activated.
+- **Test parts:** barrels 10.5/14.5/20", flash hider, compensator, suppressor (synthesized suppressed profile), 4x
+  scope, red dot, vertical/angled grips, fixed/collapsed stocks, laser, light. Default carbine build ≈ 3.5 kg.
+
 ## Milestones
 
 - [x] **M1** Project init, `CLAUDE.md`, assemblies, `InputReader`, `EventBus`, `ObjectPoolManager`, `ProjectSetupWizard`
@@ -253,7 +277,7 @@ Contracts for later milestones:
 - [x] **M4** Weapon/caliber data, model rig & sockets, chamber tracking, staged reloads
 - [x] **M5** Ballistics sim, penetration/ricochet, shell casings, health & armor
 - [x] **M6** Acoustic propagation, muzzle VFX, diegetic HUD
-- [ ] **M7** Gunsmith & attachment physics
+- [x] **M7** Gunsmith & attachment physics
 - [ ] **M8** Tactical AI & squad CQB
 - [ ] **M9** Game modes, match director, tactical equipment
 - [ ] **M10** 3D gunsmith workbench, loadout persistence, HDRP settings menu
