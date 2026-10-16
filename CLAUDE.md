@@ -31,7 +31,9 @@ ballistics, Picture-in-Picture optics, procedural inertia, photoreal HDRP.
    the gunsmith workbench, the deployment table, ammo and equipment, opening onto a 30 m indoor range; also
    `Data/Armory/ArmoryCatalog`, HDRP dynamic resolution (TAAU, DLSS, FSR2) in the pipeline asset, and every deployable
    scene (modes and the test range) in the build settings. Needs steps 5 and 7 for the map schematics.
-9. Optional: `Window > Rendering > HDRP Wizard` for any remaining platform checks.
+9. `Tools/FPS Builder/9. Build Windows Player` → `..\Claude of duty Build\ClaudeOfDuty.exe` (next to the repository,
+   never inside it) from the build settings scenes; in batch mode it exits non-zero on failure.
+10. Optional: `Window > Rendering > HDRP Wizard` for any remaining platform checks.
 
 **Importing a weapon model:** select the FBX/GLTF → `Tools/FPS Builder/6. Build Weapon From Selected Model` (or
 right-click → FPS → Build Weapon Prefab From Model). It wraps the model under a `WeaponModelRig` root (model as child
@@ -252,6 +254,9 @@ Contracts for later milestones:
 - **Casings:** `CaliberDataSO.casingPrefab` (`PhysicalShellCasing`, pooled, Debris layer) ejected from the
   `ChamberEjectionSocket` on each shot (on the bolt stroke for bolt actions).
 - Every bullet-surface interaction raises `ProjectileImpactEvent` (decals and impact audio arrive in M6).
+- **Attribution:** `ShotFiredEvent.Attacker` (defaults to `Shooter`; grenade fragments have no shooter but credit the
+  thrower) rides with the projectile into `ApplyBulletHit(..., attacker)`; blasts pass the thrower to `ApplyDamage`;
+  `DamageEvent.Attacker` carries it to whoever listens (hit markers).
 
 ## Audio, VFX & HUD (M6)
 
@@ -531,6 +536,17 @@ Contracts for later milestones:
   too (Reload + magazine check, Crouch + Prone, Sprint + tactical sprint + hold breath). Overrides JSON lives in
   `GameSettings.bindingOverrides` (profile.json) and is applied with the settings.
 
+## Hit confirmation (M16)
+
+- **Hit markers** (`HitMarkerFeedback`, FPS.UI, on the player): for every `DamageEvent` whose `Attacker` is this player
+  (never hits on yourself) it classifies the hit (`Classify`: fatal head = Headshot, fatal = Kill, armor that stopped it
+  = Armor, else Flesh), pops a small X at the screen centre (white flesh, pale blue armor, red kill, larger red head
+  shot; 0.22 s, kills 0.45 s) and plays a 2D tick: flesh a soft mid tick, armor a brittle ceramic crack, kill a deep
+  double tick, head shot the kill with a bright ring (`GunshotAudioBuilder.HitTick`, overridable under
+  `Art/Audio/Overrides/HitMarker/`).
+- **Setting:** `GameSettings.hitMarkers` (`HitMarkerMode`: Off, AudioOnly, VisualOnly, AudioAndVisual; default both),
+  Gameplay tab of the options menu.
+
 ## Milestones
 
 - [x] **M1** Project init, `CLAUDE.md`, assemblies, `InputReader`, `EventBus`, `ObjectPoolManager`, `ProjectSetupWizard`
@@ -548,4 +564,4 @@ Contracts for later milestones:
 - [x] **M13** Physical gunshot synthesis, environment tails, Doppler cracks, gear foley
 - [x] **M14** Mantling and vaulting, slide cancel, compressed ready, physical doors, inspect, camera kick
 - [x] **M15** Deployment station, scene flow, loading screen, complete settings and key rebinding
-- [ ] **M16** Hit confirmation and diegetic combat polish
+- [x] **M16** Hit confirmation and diegetic combat polish

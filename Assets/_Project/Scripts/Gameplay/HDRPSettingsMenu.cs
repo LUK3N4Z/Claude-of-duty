@@ -4,6 +4,7 @@ using FPS.AI;
 using FPS.Audio;
 using FPS.Core;
 using FPS.Locomotion;
+using FPS.UI;
 using FPS.Weapons;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -17,7 +18,8 @@ namespace FPS.Gameplay
     /// The options menu (Menu: Escape / Start), in four tabs. Video: field of view, PiP scope resolution, motion blur,
     /// upscaling (TAAU everywhere, FSR2/DLSS where the platform reports them) and render scale. Audio: master, effects and
     /// voice volume, master-bus dynamic range. Controls: look and ADS sensitivity and key rebinding (press the key; Escape
-    /// cancels; keys shared by tap/hold pairs move together). Gameplay: night-vision phosphor and AI difficulty. Changes
+    /// cancels; keys shared by tap/hold pairs move together). Gameplay: night-vision phosphor, AI difficulty and hit
+    /// markers (off, ticks, markers or both). Changes
     /// apply live and are saved with the profile. Return to Armory and Quit to Desktop leave the operation. While open the
     /// player is paused; Menu at a workbench or the deployment table leaves the station instead.
     /// </summary>
@@ -29,6 +31,7 @@ namespace FPS.Gameplay
         private static readonly int[] RenderScales = { 50, 59, 67, 77, 87, 100 };
         private static readonly string[] AudioNames = { "War Tapes", "Studio Reference", "Night Mode" };
         private static readonly string[] TabNames = { "Video", "Audio", "Controls", "Gameplay" };
+        private static readonly string[] HitMarkerNames = { "Off", "Ticks only", "Markers only", "Ticks and markers" };
         private static readonly BindingRow[] Bindings =
         {
             new BindingRow("Move forward", "Move", "up"), new BindingRow("Move back", "Move", "down"),
@@ -61,6 +64,7 @@ namespace FPS.Gameplay
         private ProceduralADSAndOpticsController ads;
         private RealisticLocomotionController locomotion;
         private NightVisionGoggles goggles;
+        private HitMarkerFeedback hitMarkers;
         private HDAdditionalCameraData cameraData;
         private DynamicRangeProcessor dynamics;
         private VolumeProfile volumeProfile;
@@ -213,6 +217,7 @@ namespace FPS.Gameplay
             }
 
             if (goggles != null) goggles.Phosphor = settings.nightVisionPhosphor;
+            if (hitMarkers != null) hitMarkers.Mode = settings.hitMarkers;
             CombatDifficulty.Current = settings.aiDifficulty;
             if (input != null && settings.bindingOverrides != appliedBindings)
             {
@@ -231,6 +236,7 @@ namespace FPS.Gameplay
             TryGetComponent(out ads);
             TryGetComponent(out locomotion);
             TryGetComponent(out goggles);
+            TryGetComponent(out hitMarkers);
             Camera view = rig.PlayerCamera;
             if (!view.TryGetComponent(out cameraData)) cameraData = view.gameObject.AddComponent<HDAdditionalCameraData>();
             if (!view.TryGetComponent(out dynamics)) dynamics = view.gameObject.AddComponent<DynamicRangeProcessor>();
@@ -333,6 +339,8 @@ namespace FPS.Gameplay
                 () => Settings.nightVisionPhosphor = (PhosphorColor)Wrap((int)Settings.nightVisionPhosphor + 1, 2), () => Settings.nightVisionPhosphor.ToString());
             Stepper(gameplay, 1, "AI difficulty", () => Settings.aiDifficulty = (AIDifficulty)Wrap((int)Settings.aiDifficulty - 1, 4),
                 () => Settings.aiDifficulty = (AIDifficulty)Wrap((int)Settings.aiDifficulty + 1, 4), () => Settings.aiDifficulty.ToString());
+            Stepper(gameplay, 2, "Hit markers", () => Settings.hitMarkers = (HitMarkerMode)Wrap((int)Settings.hitMarkers - 1, 4),
+                () => Settings.hitMarkers = (HitMarkerMode)Wrap((int)Settings.hitMarkers + 1, 4), () => HitMarkerNames[(int)Settings.hitMarkers]);
 
             UIFactory.Button(body, "Resume", new Vector2(0.5f, 0f), new Vector2(-300f, 45f), new Vector2(240f, 46f), Close);
             returnButton = UIFactory.Button(body, "Return to Armory", new Vector2(0.5f, 0f), new Vector2(0f, 45f), new Vector2(240f, 46f), ReturnToArmory);

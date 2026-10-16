@@ -16,5 +16,7 @@ namespace FPS.Ballistics
         public CaliberDataSO Caliber;
         /// <summary>Root of whoever fired, so the shooter's own hitboxes can be ignored.</summary>
         public Transform Shooter;
+        /// <summary>Who is credited with the hits (hit markers); defaults to <see cref="Shooter"/> (grenade fragments credit the thrower).</summary>
+        public Transform Attacker;
     }
 }

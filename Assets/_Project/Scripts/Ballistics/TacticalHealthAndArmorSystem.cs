@@ -61,10 +61,10 @@ namespace FPS.Ballistics
         public float ArmorDurability(int index) => armor[index].durability;
 
         /// <summary>
-        /// Resolves a bullet striking <paramref name="zone"/> while travelling along <paramref name="direction"/>.
-        /// Returns true when armor stopped the round; false when it reached the body (it may still exit).
+        /// Resolves a bullet striking <paramref name="zone"/> while travelling along <paramref name="direction"/>, fired by
+        /// <paramref name="attacker"/>. Returns true when armor stopped the round; false when it reached the body (it may still exit).
         /// </summary>
-        public bool ApplyBulletHit(HitZone zone, Vector3 point, Vector3 direction, CaliberDataSO caliber, float speed)
+        public bool ApplyBulletHit(HitZone zone, Vector3 point, Vector3 direction, CaliberDataSO caliber, float speed, Transform attacker = null)
         {
             if (IsDead) return false;
 
@@ -100,6 +100,7 @@ namespace FPS.Ballistics
                 Armor = piece,
                 ArmorPenetrated = piece != null && penetrated,
                 Fatal = IsDead,
+                Attacker = attacker,
             });
             Damaged?.Invoke(zone, damage);
             if (IsDead) Died?.Invoke();
@@ -109,7 +110,7 @@ namespace FPS.Ballistics
         /// <summary>
         /// Damage armor cannot stop (blast overpressure, falls): applied to <paramref name="zone"/> with its multiplier.
         /// </summary>
-        public void ApplyDamage(HitZone zone, float damage, Vector3 point, Vector3 direction)
+        public void ApplyDamage(HitZone zone, float damage, Vector3 point, Vector3 direction, Transform attacker = null)
         {
             if (IsDead || damage <= 0f) return;
 
@@ -124,6 +125,7 @@ namespace FPS.Ballistics
                 Point = point,
                 Direction = direction,
                 Fatal = IsDead,
+                Attacker = attacker,
             });
             Damaged?.Invoke(zone, damage);
             if (IsDead) Died?.Invoke();

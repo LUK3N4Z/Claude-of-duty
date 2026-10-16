@@ -189,6 +189,7 @@ namespace FPS.Weapons
                     MuzzleVelocity = data.FragmentVelocity * Random.Range(0.75f, 1.05f),
                     Caliber = caliber,
                     Shooter = null, // fragments do not care who pulled the pin
+                    Attacker = Thrower, // but the hits are the thrower's
                 });
             }
         }
@@ -209,7 +210,7 @@ namespace FPS.Weapons
                 Victims[victims++] = hitbox.Owner;
                 Vector3 offset = contact - point;
                 float distance = offset.magnitude;
-                hitbox.Owner.ApplyDamage(HitZone.Thorax, data.BlastDamageAt(distance), contact, distance > 1e-3f ? offset / distance : Vector3.up);
+                hitbox.Owner.ApplyDamage(HitZone.Thorax, data.BlastDamageAt(distance), contact, distance > 1e-3f ? offset / distance : Vector3.up, Thrower);
             }
 
             for (int i = 0; i < victims; i++) Victims[i] = null;

@@ -21,6 +21,7 @@ namespace FPS.Ballistics
             public Vector3 Velocity;
             public CaliberDataSO Caliber;
             public Transform Shooter;
+            public Transform Attacker;
             public float Age;
             public int Interactions;
             public int NotifiedListeners;
@@ -107,6 +108,7 @@ namespace FPS.Ballistics
                 Velocity = shot.Direction.normalized * shot.MuzzleVelocity,
                 Caliber = shot.Caliber,
                 Shooter = shot.Shooter,
+                Attacker = shot.Attacker != null ? shot.Attacker : shot.Shooter,
             };
         }
 
@@ -222,7 +224,7 @@ namespace FPS.Ballistics
             if (collider.TryGetComponent(out Hitbox hitbox))
             {
                 surface = hitbox.Surface != null ? hitbox.Surface : fleshSurface;
-                if (hitbox.Owner != null && hitbox.Owner.ApplyBulletHit(hitbox.Zone, hit.point, direction, p.Caliber, speed))
+                if (hitbox.Owner != null && hitbox.Owner.ApplyBulletHit(hitbox.Zone, hit.point, direction, p.Caliber, speed, p.Attacker))
                 {
                     RaiseImpact(hit, velocity, ImpactOutcome.Stopped, surface, p.Caliber);
                     resume = hit.point;

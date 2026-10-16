@@ -36,6 +36,8 @@ namespace FPS.Ballistics
         /// <summary>The bullet defeated <see cref="Armor"/> (false when it was stopped or no armor covered the zone).</summary>
         public bool ArmorPenetrated;
         public bool Fatal;
+        /// <summary>Who dealt it (shooter or thrower root), or null when unknown.</summary>
+        public Transform Attacker;
     }
 
     /// <summary>

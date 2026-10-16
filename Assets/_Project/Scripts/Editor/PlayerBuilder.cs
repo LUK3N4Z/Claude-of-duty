@@ -1,5 +1,6 @@
 using FPS.Core;
 using FPS.Locomotion;
+using FPS.UI;
 using FPS.Weapons;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -211,6 +212,10 @@ namespace FPS.EditorTools
 
             // Night vision goggles (N) and the PiP lens pass (refraction, aberration, parallax shadow, lit reticle).
             if (!root.TryGetComponent(out NightVisionGoggles goggles)) goggles = root.AddComponent<NightVisionGoggles>();
+            if (!root.TryGetComponent(out HitMarkerFeedback hitMarkers)) hitMarkers = root.AddComponent<HitMarkerFeedback>();
+            hitMarkers.Configure(GunshotAudioBuilder.HitTick(HitMarkerKind.Flesh), GunshotAudioBuilder.HitTick(HitMarkerKind.Armor),
+                GunshotAudioBuilder.HitTick(HitMarkerKind.Kill), GunshotAudioBuilder.HitTick(HitMarkerKind.Headshot));
+            EditorUtility.SetDirty(hitMarkers);
             TestWeaponBuilder.Configure(goggles, so => TestWeaponBuilder.Set(so, "gain", 1f));
             TestWeaponBuilder.Configure(root.GetComponent<ProceduralADSAndOpticsController>(),
                 so => TestWeaponBuilder.Set(so, "lensShader", AssetDatabase.LoadAssetAtPath<Shader>(ScopeLensShaderPath)));

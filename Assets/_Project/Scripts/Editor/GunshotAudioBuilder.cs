@@ -191,6 +191,31 @@ namespace FPS.EditorTools
                 .Partials(new[] { 3500f, 6100f }, 0.35f, 0.05f, 0.02f, pitch);
         });
 
+        /// <summary>
+        /// Hit confirmation ticks: flesh a soft mid tick, armor a brittle ceramic crack with a second fracture, a kill a
+        /// deep double tick, a head shot the kill with a bright ring over it. Short and dry, they sit under the gunfire.
+        /// </summary>
+        public static AudioClip HitTick(FPS.UI.HitMarkerKind kind)
+        {
+            switch (kind)
+            {
+                case FPS.UI.HitMarkerKind.Armor:
+                    return Layer("Foley", "HitMarker", "Armor", 1, i => new AudioSynth(0.12f, 92).Noise(1f, 0f, 0.0001f, 0.008f).HighPass(1800f)
+                        .Partials(new[] { 3900f, 5600f, 7900f }, 0.5f, 0f, 0.03f).Click(0.6f, 0.012f, 4500f))[0];
+                case FPS.UI.HitMarkerKind.Kill:
+                    return Layer("Foley", "HitMarker", "Kill", 1, i => KillTick(93))[0];
+                case FPS.UI.HitMarkerKind.Headshot:
+                    return Layer("Foley", "HitMarker", "Headshot", 1, i => KillTick(94).Partials(new[] { 2600f, 4100f }, 0.4f, 0.02f, 0.12f))[0];
+                default:
+                    return Layer("Foley", "HitMarker", "Flesh", 1, i => new AudioSynth(0.08f, 91).Click(0.6f, 0f, 2600f)
+                        .Noise(0.15f, 0f, 0.0002f, 0.004f).LowPass(5000f))[0];
+            }
+        }
+
+        private static AudioSynth KillTick(int seed) => new AudioSynth(0.25f, seed)
+            .Click(0.7f, 0f, 1400f).Tone(320f, 240f, 0.6f, 0f, 0.001f, 0.05f)
+            .Click(0.6f, 0.07f, 1700f).Tone(280f, 210f, 0.5f, 0.07f, 0.001f, 0.06f).LowPass(6000f);
+
         // ---- Layers ----
 
         /// <summary>

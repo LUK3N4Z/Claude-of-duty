@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using FPS.AI;
 using FPS.Audio;
 using FPS.Locomotion;
+using FPS.UI;
 
 namespace FPS.Gameplay
 {
@@ -65,6 +66,8 @@ namespace FPS.Gameplay
         public float voiceVolume = 1f;
         public PhosphorColor nightVisionPhosphor = PhosphorColor.White;
         public AIDifficulty aiDifficulty = AIDifficulty.Regular;
+        /// <summary>Hit confirmation: off, ticks only, markers only, or both.</summary>
+        public HitMarkerMode hitMarkers = HitMarkerMode.AudioAndVisual;
         /// <summary>Key binding changes (Input System overrides JSON); empty keeps the defaults.</summary>
         public string bindingOverrides = string.Empty;
     }
