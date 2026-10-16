@@ -24,6 +24,7 @@ namespace FPS.EditorTools
         private const string CatalogPath = "Assets/_Project/Data/Armory/ArmoryCatalog.asset";
         private const string HDRPAssetPath = "Assets/_Project/Settings/Rendering/HDRenderPipelineAsset.asset";
         internal const string ArmoryScene = "Assets/_Project/Scenes/Armory.unity";
+        private const string ScenesFolder = "Assets/_Project/Scenes";
 
         /// <summary>Creates or refreshes the catalog: both test weapons, every attachment, the hand grenades.</summary>
         internal static ArmoryCatalogSO Catalog()
@@ -101,6 +102,7 @@ namespace FPS.EditorTools
             PlayerBuilder.AtmosphereVolume(level);
             Workshop(level);
             Workbench(level, catalog);
+            DeploymentTable(level);
             IndoorRange(level);
             WorldLook.Interior(level, "Workshop", new Vector3(0f, 1.5f, 0f), new Vector3(12f, 3f, 10f));
             WorldLook.Interior(level, "Indoor Range", new Vector3(21.5f, 1.5f, 0f), new Vector3(31f, 3f, 6f));
@@ -113,6 +115,12 @@ namespace FPS.EditorTools
             var scenes = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
             scenes.RemoveAll(entry => entry.path == ArmoryScene);
             scenes.Insert(0, new EditorBuildSettingsScene(ArmoryScene, true)); // the hub opens the game
+            foreach (DeploymentStation.Operation operation in Operations())
+            {
+                string path = $"{ScenesFolder}/{operation.scene}.unity";
+                if (!scenes.Exists(entry => entry.path == path)) scenes.Add(new EditorBuildSettingsScene(path, true)); // every deployable scene ships
+            }
+
             EditorBuildSettings.scenes = scenes.ToArray();
             Debug.Log($"[FPS Builder] {ArmoryScene} built.");
         }
@@ -172,6 +180,80 @@ namespace FPS.EditorTools
             trigger.size = new Vector3(2.6f, 0.9f, 0.5f);
             station.AddComponent<GunsmithWorkbenchController>().Configure(catalog, benchCamera, turntable,
                 UnlitMaterial("Workbench Node", new Color(0.2f, 0.85f, 1f), null, false), UnlitMaterial("Workbench Node Selected", new Color(1f, 0.6f, 0.1f), null, false));
+        }
+
+        /// <summary>The operations on the deployment table, with their map schematics (rendered by the scene builders).</summary>
+        private static DeploymentStation.Operation[] Operations() => new[]
+        {
+            Operation("Tactical Raid", "Mode_Raid",
+                "One life. Download the intel at both terminals in the warehouse and the compound; every terminal you finish alerts the garrison. Then hold the extraction zone until the helicopter arrives."),
+            Operation("Search & Destroy", "Mode_SearchAndDestroy",
+                "Rounds, no respawns. Attackers plant the charge at a site; defenders stop them or defuse it. Sides swap at half time."),
+            Operation("Hardpoint", "Mode_Hardpoint",
+                "Respawns. Hold the active zone with nobody else in it to score; the zone moves every minute."),
+            Operation("Locomotion Test Range", "LocomotionTestRange",
+                "No objectives. Ramps, ice, ledges and tunnels, the traversal course, targets out to 200 m, the shoot house and Squad Alpha's firefight yard."),
+        };
+
+        private static DeploymentStation.Operation Operation(string title, string scene, string briefing) => new DeploymentStation.Operation
+        {
+            title = title,
+            scene = scene,
+            briefing = briefing,
+            preview = AssetDatabase.LoadAssetAtPath<Texture2D>(MapPreviewBuilder.PathFor(scene)),
+        };
+
+        /// <summary>The deployment table by the south wall: a hologram of the selected map, the station camera over it.</summary>
+        private static void DeploymentTable(Transform level)
+        {
+            var center = new Vector3(-0.5f, 0f, -3.6f);
+            GameModeSceneBuilder.Block(level, "Deployment Table", center + new Vector3(0f, 0.45f, 0f), new Vector3(2.2f, 0.9f, 1.2f), "Metal");
+            ProceduralProps.Dress(level.Find("Deployment Table"), "Prop_Workbench");
+
+            GameObject hologram = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            hologram.name = "Deployment Hologram";
+            Object.DestroyImmediate(hologram.GetComponent<Collider>());
+            hologram.transform.SetParent(level, false);
+            hologram.transform.SetPositionAndRotation(center + new Vector3(0f, 0.97f, 0f), Quaternion.Euler(90f, 0f, 0f));
+            hologram.transform.localScale = new Vector3(1.05f, 1.05f, 1f);
+            hologram.GetComponent<MeshRenderer>().sharedMaterial = HologramMaterial();
+            Lamp(level, "Deployment Lamp", center + new Vector3(0f, 2.4f, 0.5f), 600f);
+
+            var cameraObject = new GameObject("Deployment Camera");
+            cameraObject.transform.SetParent(level, false);
+            cameraObject.transform.position = center + new Vector3(0f, 2.1f, 1.3f);
+            cameraObject.transform.rotation = Quaternion.LookRotation(center + new Vector3(0f, 0.95f, 0f) - cameraObject.transform.position);
+            var view = cameraObject.AddComponent<Camera>();
+            view.fieldOfView = 50f;
+            view.nearClipPlane = 0.05f;
+            view.depth = 5f;
+            view.enabled = false;
+            cameraObject.AddComponent<HDAdditionalCameraData>();
+
+            var station = new GameObject("Deployment Table (interact)") { layer = GameLayers.Interactable };
+            station.transform.SetParent(level, false);
+            station.transform.position = center + new Vector3(0f, 1f, 0.7f);
+            var trigger = station.AddComponent<BoxCollider>();
+            trigger.isTrigger = true;
+            trigger.size = new Vector3(2.2f, 0.9f, 0.5f);
+            station.AddComponent<DeploymentStation>().Configure(Operations(), view, hologram.GetComponent<MeshRenderer>());
+        }
+
+        /// <summary>Additive cyan HDRP/Unlit for the map hologram; the station feeds the map texture per operation.</summary>
+        private static Material HologramMaterial()
+        {
+            const string path = "Assets/_Project/Art/UI/DeploymentHologram.mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material != null) return material;
+            ProjectSetupWizard.EnsureFolder("Assets/_Project/Art/UI");
+            material = new Material(Shader.Find("HDRP/Unlit")) { name = "DeploymentHologram" };
+            material.SetColor("_UnlitColor", new Color(0.55f, 1.4f, 1.7f, 1f));
+            material.SetFloat("_SurfaceType", 1f); // transparent
+            material.SetFloat("_BlendMode", 1f); // additive
+            material.SetFloat("_DoubleSidedEnable", 1f);
+            HDMaterial.ValidateMaterial(material);
+            AssetDatabase.CreateAsset(material, path);
+            return material;
         }
 
         private static void IndoorRange(Transform level)

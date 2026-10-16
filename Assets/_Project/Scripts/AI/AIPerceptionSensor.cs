@@ -298,7 +298,8 @@ namespace FPS.AI
                 if (facingUs) rangeScale = 1.5f;
             }
 
-            float effectiveRange = viewDistance * Mathf.Lerp(darkRange, 1f, light) * rangeScale;
+            AIDifficultyProfile difficulty = CombatDifficulty.Profile;
+            float effectiveRange = viewDistance * difficulty.SightRange * Mathf.Lerp(darkRange, 1f, light) * rangeScale;
             if (distance > effectiveRange) return 0f;
 
             fraction = VisibleFraction(target);
@@ -308,7 +309,7 @@ namespace FPS.AI
             float distanceFactor = 0.15f + 0.85f * proximity * proximity;
             if (distance < pointBlank) distanceFactor *= 3f;
             float vision = angle <= focusHalfAngle ? 1f : peripheralRate;
-            return detectionRate * fraction * target.Conspicuity * vision * distanceFactor * Mathf.Lerp(0.3f, 1f, light);
+            return detectionRate * difficulty.Awareness * fraction * target.Conspicuity * vision * distanceFactor * Mathf.Lerp(0.3f, 1f, light);
         }
 
         private float VisibleFraction(PerceivableTarget target)

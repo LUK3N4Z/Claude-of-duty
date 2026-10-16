@@ -76,7 +76,9 @@ namespace FPS.Core
         private InputAction crouch, prone, leanLeft, leanRight, reload, checkMagazine, changeFireMode, switchSight, mountWeapon;
         private InputAction selectPrimary, selectSecondary, switchWeapon, interact, toggleDevice, throwLethal, throwTactical, toggleNightVision;
         private InputAction jump, inspect;
+        private InputActionRebindingExtensions.RebindingOperation rebinding;
         private double lastReloadTapTime = double.NegativeInfinity;
+        private const string KeyboardGroup = "Keyboard&Mouse";
 
         public Vector2 Move => move.ReadValue<Vector2>();
 
@@ -100,6 +102,78 @@ namespace FPS.Core
         public bool JumpHeld => jump.IsPressed();
         public bool IsCheckingMagazine { get; private set; }
         public bool PlayerInputEnabled => playerMap != null && playerMap.enabled;
+        /// <summary>An interactive rebind is waiting for a key.</summary>
+        public bool IsRebinding => rebinding != null;
+
+        /// <summary>The player's binding changes as JSON (empty when none), for the profile.</summary>
+        public string SaveBindingOverrides()
+        {
+            Resolve();
+            return actionAsset.SaveBindingOverridesAsJson();
+        }
+
+        /// <summary>Replaces every binding change with <paramref name="json"/> (empty restores the defaults).</summary>
+        public void LoadBindingOverrides(string json)
+        {
+            Resolve();
+            actionAsset.RemoveAllBindingOverrides();
+            if (!string.IsNullOrEmpty(json)) actionAsset.LoadBindingOverridesFromJson(json);
+        }
+
+        /// <summary>
+        /// Index of <paramref name="actionName"/>'s keyboard-and-mouse binding (the composite part <paramref name="part"/>,
+        /// e.g. "up" of Move, when given); -1 if it has none.
+        /// </summary>
+        public int KeyboardBinding(string actionName, string part = null)
+        {
+            Resolve();
+            InputAction action = Find(actionName);
+            for (int i = 0; i < action.bindings.Count; i++)
+            {
+                InputBinding binding = action.bindings[i];
+                if (binding.isComposite || binding.groups == null || !binding.groups.Contains(KeyboardGroup)) continue;
+                if (part == null ? !binding.isPartOfComposite : binding.isPartOfComposite && binding.name == part) return i;
+            }
+
+            return -1;
+        }
+
+        /// <summary>The key shown for a binding ("Space", "R").</summary>
+        public string BindingName(string actionName, int bindingIndex)
+        {
+            Resolve();
+            return bindingIndex < 0 ? "-" : Find(actionName).GetBindingDisplayString(bindingIndex, InputBinding.DisplayStringOptions.DontIncludeInteractions);
+        }
+
+        /// <summary>
+        /// Waits for the next key or button and binds it to <paramref name="actionName"/>'s binding
+        /// <paramref name="bindingIndex"/>; Escape cancels. Actions that shared the old key (Reload and the magazine check,
+        /// Crouch and Prone, Sprint and hold breath) move with it. <paramref name="completed"/> reports whether it bound.
+        /// </summary>
+        public void Rebind(string actionName, int bindingIndex, Action<bool> completed)
+        {
+            Resolve();
+            CancelRebind();
+            InputAction action = Find(actionName);
+            string previous = action.bindings[bindingIndex].effectivePath;
+            bool wasEnabled = action.enabled;
+            action.Disable();
+            rebinding = action.PerformInteractiveRebinding(bindingIndex)
+                .WithControlsExcluding("<Pointer>/position")
+                .WithControlsExcluding("<Pointer>/delta")
+                .WithControlsExcluding("<Mouse>/scroll")
+                .WithCancelingThrough("<Keyboard>/escape")
+                .OnMatchWaitForAnother(0f) // keys and buttons bind on the press itself
+                .OnComplete(operation => FinishRebind(action, wasEnabled, previous, action.bindings[bindingIndex].effectivePath, completed, true))
+                .OnCancel(operation => FinishRebind(action, wasEnabled, previous, null, completed, false))
+                .Start();
+        }
+
+        /// <summary>Abandons a rebind in progress.</summary>
+        public void CancelRebind()
+        {
+            if (rebinding != null) rebinding.Cancel();
+        }
 
         /// <summary>Turns on the System map (menu key). Independent of gameplay input.</summary>
         public void EnableSystemInput()
@@ -182,6 +256,28 @@ namespace FPS.Core
         }
 
         private InputAction Find(string actionName) => playerMap.FindAction(actionName, throwIfNotFound: true);
+
+        private void FinishRebind(InputAction action, bool wasEnabled, string previous, string bound, Action<bool> completed, bool success)
+        {
+            rebinding.Dispose();
+            rebinding = null;
+            if (success && !string.IsNullOrEmpty(previous) && bound != previous)
+            {
+                // Keys shared by several actions (tap/hold pairs) stay shared.
+                foreach (InputAction other in playerMap.actions)
+                {
+                    if (other == action) continue;
+                    for (int i = 0; i < other.bindings.Count; i++)
+                    {
+                        if (other.bindings[i].effectivePath == previous && other.bindings[i].groups != null && other.bindings[i].groups.Contains(KeyboardGroup))
+                            other.ApplyBindingOverride(i, bound);
+                    }
+                }
+            }
+
+            if (wasEnabled) action.Enable();
+            completed?.Invoke(success);
+        }
 
         // One map-level callback instead of 36 per-action subscriptions; called for every phase change.
         private void OnActionTriggered(InputAction.CallbackContext context)

@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 namespace FPS.Gameplay
 {
-    /// <summary>uGUI built in code for the match HUD, settings menu and workbench: one look, one place.</summary>
+    /// <summary>uGUI built in code for the match HUD, menus, stations and the loading screen: one look, one place.</summary>
     internal static class UIFactory
     {
         public static readonly Color PanelColor = new Color(0.05f, 0.06f, 0.07f, 0.82f);
@@ -70,6 +70,61 @@ namespace FPS.Gameplay
         }
 
         public static void SetText(Button button, string text) => button.GetComponentInChildren<Text>().text = text;
+
+        /// <summary>Tints a button as the selected (accent) or a normal one: tabs, list choices.</summary>
+        public static void SetSelected(Button button, bool selected) =>
+            button.GetComponent<Image>().color = selected ? new Color(0.12f, 0.45f, 0.55f, 0.95f) : new Color(0.22f, 0.24f, 0.26f, 0.95f);
+
+        /// <summary>A horizontal slider from <paramref name="min"/> to <paramref name="max"/> reporting changes.</summary>
+        public static Slider Slider(RectTransform parent, Vector2 anchor, Vector2 position, Vector2 size, float min, float max, Action<float> onChanged)
+        {
+            var root = new GameObject("Slider", typeof(RectTransform)).GetComponent<RectTransform>();
+            root.SetParent(parent, false);
+            Place(root, anchor, position, size);
+
+            Image track = Stretch(new GameObject("Track").AddComponent<Image>().rectTransform, root, new Vector2(0f, 0.38f), new Vector2(1f, 0.62f)).GetComponent<Image>();
+            track.color = new Color(0.16f, 0.18f, 0.2f, 0.95f);
+            RectTransform fillArea = Stretch(new GameObject("Fill Area", typeof(RectTransform)).GetComponent<RectTransform>(), root, new Vector2(0f, 0.38f), new Vector2(1f, 0.62f));
+            var fill = new GameObject("Fill").AddComponent<Image>();
+            Stretch(fill.rectTransform, fillArea, Vector2.zero, new Vector2(0f, 1f));
+            fill.color = new Color(0.25f, 0.75f, 0.85f, 0.95f);
+            RectTransform handleArea = Stretch(new GameObject("Handle Area", typeof(RectTransform)).GetComponent<RectTransform>(), root, Vector2.zero, Vector2.one);
+            handleArea.offsetMin = new Vector2(8f, 0f);
+            handleArea.offsetMax = new Vector2(-8f, 0f);
+            var handle = new GameObject("Handle").AddComponent<Image>();
+            Stretch(handle.rectTransform, handleArea, Vector2.zero, new Vector2(0f, 1f));
+            handle.rectTransform.sizeDelta = new Vector2(16f, 0f);
+            handle.color = new Color(0.9f, 0.95f, 1f, 1f);
+
+            var slider = root.gameObject.AddComponent<Slider>();
+            slider.fillRect = fill.rectTransform;
+            slider.handleRect = handle.rectTransform;
+            slider.targetGraphic = handle;
+            slider.direction = UnityEngine.UI.Slider.Direction.LeftToRight;
+            slider.minValue = min;
+            slider.maxValue = max;
+            slider.onValueChanged.AddListener(value => onChanged(value));
+            return slider;
+        }
+
+        /// <summary>An image showing a texture (map previews).</summary>
+        public static RawImage Picture(RectTransform parent, Vector2 anchor, Vector2 position, Vector2 size)
+        {
+            var picture = new GameObject("Picture").AddComponent<RawImage>();
+            picture.rectTransform.SetParent(parent, false);
+            Place(picture.rectTransform, anchor, position, size);
+            picture.raycastTarget = false;
+            return picture;
+        }
+
+        private static RectTransform Stretch(RectTransform rect, RectTransform parent, Vector2 anchorMin, Vector2 anchorMax)
+        {
+            rect.SetParent(parent, false);
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            return rect;
+        }
 
         public static void Place(RectTransform rect, Vector2 anchor, Vector2 position, Vector2 size)
         {

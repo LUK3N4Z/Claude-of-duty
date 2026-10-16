@@ -17,4 +17,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Project/Scenes/Mode_Hardpoint.unity
     guid: 6f88e206630fb4542abc405172f424f6
+  - enabled: 1
+    path: Assets/_Project/Scenes/LocomotionTestRange.unity
+    guid: 4b270dedc764fcc42b83837eeac83cb3
   m_configObjects: {}

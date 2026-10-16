@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using FPS.AI;
 using FPS.Audio;
+using FPS.Locomotion;
 
 namespace FPS.Gameplay
 {
@@ -54,6 +56,17 @@ namespace FPS.Gameplay
         /// <summary>Internal render resolution while upscaling (% of the output).</summary>
         public int renderScale = 77;
         public AudioDynamicRange audioRange = AudioDynamicRange.StudioReference;
+        /// <summary>Look sensitivity (1 = default).</summary>
+        public float lookSensitivity = 1f;
+        /// <summary>Extra look sensitivity factor while aiming down sights.</summary>
+        public float adsSensitivity = 1f;
+        public float masterVolume = 1f;
+        public float effectsVolume = 1f;
+        public float voiceVolume = 1f;
+        public PhosphorColor nightVisionPhosphor = PhosphorColor.White;
+        public AIDifficulty aiDifficulty = AIDifficulty.Regular;
+        /// <summary>Key binding changes (Input System overrides JSON); empty keeps the defaults.</summary>
+        public string bindingOverrides = string.Empty;
     }
 
     /// <summary>Everything persisted for the player, written as JSON by <see cref="SaveProfileManager"/>.</summary>

@@ -170,6 +170,7 @@ namespace FPS.EditorTools
             var player = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab, scene);
             player.transform.SetPositionAndRotation(new Vector3(0f, 0f, -4f), Quaternion.identity);
 
+            MapPreviewBuilder.Render(scene, "LocomotionTestRange", Vector2.zero, 40f); // the course, not the 200 m lane
             ProjectSetupWizard.EnsureFolder(FolderOf(TestScenePath));
             EditorSceneManager.SaveScene(scene, TestScenePath);
             Debug.Log($"[FPS Builder] {TestScenePath} built.");

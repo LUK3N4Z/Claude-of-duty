@@ -186,6 +186,10 @@ namespace FPS.Locomotion
         public float Pitch => pitch;
         /// <summary>Look sensitivity scale set by the aiming system (zoom and optic magnification).</summary>
         public float LookSensitivityMultiplier { get; set; } = 1f;
+        /// <summary>The player's look sensitivity setting (1 = authored).</summary>
+        public float SensitivityScale { get; set; } = 1f;
+        /// <summary>Extra sensitivity factor while aiming (settings), on top of the zoom compensation.</summary>
+        public float AdsSensitivityScale { get; set; } = 1f;
         public StanceAndLeanController StanceController => stance;
         /// <summary>Sprint speed multiplier from leg injuries (1 when unhurt or without a health system).</summary>
         public float InjurySprintMultiplier => health != null ? 1f - legInjurySprintPenalty * health.LegInjury01 : 1f;
@@ -356,7 +360,8 @@ namespace FPS.Locomotion
         private void UpdateLook(float dt)
         {
             Vector2 raw = input.Look;
-            Vector2 delta = (input.LookIsPointerDelta ? raw * mouseSensitivity : raw * (stickSensitivity * dt)) * LookSensitivityMultiplier;
+            Vector2 delta = (input.LookIsPointerDelta ? raw * mouseSensitivity : raw * (stickSensitivity * dt)) *
+                            (LookSensitivityMultiplier * SensitivityScale * (IsAiming ? AdsSensitivityScale : 1f));
             float newYaw = yaw + delta.x + pendingLookOffset.y;
             float newPitch = pitch - delta.y + pendingLookOffset.x;
             pendingLookOffset = Vector2.zero;

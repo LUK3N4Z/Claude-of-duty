@@ -28,8 +28,9 @@ ballistics, Picture-in-Picture optics, procedural inertia, photoreal HDRP.
    arena: two-room warehouse, west compound, east container yard; each with its director, objectives, spawns and
    NavMesh) and adds them to the build settings. Needs steps 3–4.
 8. `Tools/FPS Builder/8. Build Armory` → `Scenes/Armory.unity` (the hub, first in the build settings): workshop with
-   the gunsmith workbench, ammo and equipment, opening onto a 30 m indoor range; also `Data/Armory/ArmoryCatalog`
-   and HDRP dynamic resolution (TAAU, DLSS, FSR2) in the pipeline asset.
+   the gunsmith workbench, the deployment table, ammo and equipment, opening onto a 30 m indoor range; also
+   `Data/Armory/ArmoryCatalog`, HDRP dynamic resolution (TAAU, DLSS, FSR2) in the pipeline asset, and every deployable
+   scene (modes and the test range) in the build settings. Needs steps 5 and 7 for the map schematics.
 9. Optional: `Window > Rendering > HDRP Wizard` for any remaining platform checks.
 
 **Importing a weapon model:** select the FBX/GLTF → `Tools/FPS Builder/6. Build Weapon From Selected Model` (or
@@ -504,6 +505,32 @@ Contracts for later milestones:
   closed door push it open. The leaf is Wood world geometry on a kinematic hinge, a gentle swing stops against bodies,
   and the hinge is excluded from NavMesh bakes (`NavMeshModifier`).
 
+## Front end, scene flow & settings (M15)
+
+- **Deployment table** (`DeploymentStation`, Armory, an `IInteractable`): pauses the player, switches to the table
+  camera over a hologram (additive `DeploymentHologram` material fed the selected map), and opens the tactical screen:
+  operations (`Operation`: title, scene, briefing, map), AI difficulty, Deploy / Back (Menu also leaves). Deploy sets
+  `CombatDifficulty.Current`, saves it in the profile and calls `SceneFlow.Load`.
+- **Scene flow** (`SceneFlow`, survives loads, created on first use): async load behind a loading screen (operation
+  name, map schematic, progress, rotating field notes), up at least 1.5 s, faded out after the scene's first frames;
+  `ReturnToArmory()`, `Quit()`. Build settings: Armory first, then Mode_Raid, Mode_SearchAndDestroy, Mode_Hardpoint,
+  LocomotionTestRange.
+- **Map schematics** (`MapPreviewBuilder`, editor, CPU): top-down `Art/UI/MapPreview_<Scene>.png` from the scene's
+  solid colliders (shaded by height, 10 m grid), objectives (`HoldInteraction`, `ObjectiveZone`) in amber and spawns by
+  team; rendered by the range and mode builders.
+- **AI difficulty** (`CombatDifficulty`, FPS.AI): Recruit / Regular / Hardened / Realism scale perception awareness
+  gain and sight range, aim spread and reaction time (`AIDifficultyProfile`), read at use, so changes apply at once.
+- **Options menu** (`HDRPSettingsMenu`): tabs Video (FOV, scope resolution, motion blur, upscaling, render scale), Audio
+  (master / effects / voice sliders, dynamic range), Controls (look and ADS sensitivity sliders →
+  `RealisticLocomotionController.SensitivityScale`/`AdsSensitivityScale`; rebinding of 22 keyboard bindings), Gameplay
+  (NVG phosphor, AI difficulty); Resume, Return to Armory (outside the hub), Quit to Desktop. Sliders save on close.
+- **Volumes** (`AudioLevels`, Core): `AudioListener.volume` = master × effects; AI voice sources set
+  `ignoreListenerVolume` and play at master × voice.
+- **Rebinding** (`InputReader.Rebind`/`KeyboardBinding`/`BindingName`/`SaveBindingOverrides`/`LoadBindingOverrides`):
+  interactive (Escape cancels, pointer motion and scroll excluded); every other keyboard binding on the old key moves
+  too (Reload + magazine check, Crouch + Prone, Sprint + tactical sprint + hold breath). Overrides JSON lives in
+  `GameSettings.bindingOverrides` (profile.json) and is applied with the settings.
+
 ## Milestones
 
 - [x] **M1** Project init, `CLAUDE.md`, assemblies, `InputReader`, `EventBus`, `ObjectPoolManager`, `ProjectSetupWizard`
@@ -520,5 +547,5 @@ Contracts for later milestones:
 - [x] **M12** Photoreal HDRP overhaul (SSGI/SSR, contact shadows, physical sky, weathered materials, combat VFX, NVG)
 - [x] **M13** Physical gunshot synthesis, environment tails, Doppler cracks, gear foley
 - [x] **M14** Mantling and vaulting, slide cancel, compressed ready, physical doors, inspect, camera kick
-- [ ] **M15** Deployment station, scene flow, loading screen, complete settings and key rebinding
+- [x] **M15** Deployment station, scene flow, loading screen, complete settings and key rebinding
 - [ ] **M16** Hit confirmation and diegetic combat polish

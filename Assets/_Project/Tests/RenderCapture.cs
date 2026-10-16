@@ -353,6 +353,28 @@ namespace FPS.Tests
 
             Save(rt, Path.Combine(dir, "armory_range.png"));
             Debug.Log($"[Capture] range: fitted {weapons.GetAttachments(weapons.ActiveSlot).Count} parts, rounds {weapons.ActiveState.LoadedRounds}");
+
+            // The deployment table and the options menu, their overlays drawn into the capture camera.
+            var station = Object.FindAnyObjectByType<FPS.Gameplay.DeploymentStation>();
+            station.StationCamera.targetTexture = rt;
+            station.Enter(rig);
+            station.SelectOperation(0);
+            OverlayInto(station.transform.Find("Deployment Screen"), station.StationCamera);
+            yield return new WaitForSeconds(0.6f);
+            Save(rt, Path.Combine(dir, "deployment.png"));
+            station.Leave();
+            station.StationCamera.targetTexture = null;
+
+            var menu = rig.GetComponent<FPS.Gameplay.HDRPSettingsMenu>();
+            menu.Open();
+            menu.ShowTab(2);
+            OverlayInto(menu.transform.Find("Settings Menu"), rig.PlayerCamera);
+            yield return new WaitForSeconds(0.3f);
+            Save(rt, Path.Combine(dir, "options_controls.png"));
+            menu.ShowTab(1);
+            yield return new WaitForSeconds(0.2f);
+            Save(rt, Path.Combine(dir, "options_audio.png"));
+            menu.Close();
             rig.PlayerCamera.targetTexture = null;
             FPS.Gameplay.SaveProfileManager.DirectoryOverride = null;
         }
@@ -385,6 +407,15 @@ namespace FPS.Tests
             RenderTexture.active = previous;
             File.WriteAllBytes(path, texture.EncodeToPNG());
             Object.Destroy(texture);
+        }
+
+        /// <summary>Draws a screen overlay canvas through <paramref name="view"/> instead, so it lands in the capture texture.</summary>
+        private static void OverlayInto(Transform canvasTransform, Camera view)
+        {
+            var canvas = canvasTransform.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceCamera;
+            canvas.worldCamera = view;
+            canvas.planeDistance = view.nearClipPlane + 0.05f;
         }
 
         /// <summary>An empty profile folder under the capture directory, so no saved loadout leaks between captures.</summary>

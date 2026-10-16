@@ -258,7 +258,7 @@ namespace FPS.AI
             lastCallout[(int)type] = now;
 
             AudioClip clip = voice != null ? voice.Pick(type) : null;
-            if (clip != null) voiceSource.PlayOneShot(clip);
+            if (clip != null) voiceSource.PlayOneShot(clip, AudioLevels.VoiceVolume);
             EventBus<SquadCalloutEvent>.Raise(new SquadCalloutEvent { Speaker = transform, Type = type, Position = body.Head.position });
         }
 
@@ -280,6 +280,7 @@ namespace FPS.AI
             voiceSource.minDistance = 2f;
             voiceSource.maxDistance = voice != null ? voice.AudibleDistance : 45f;
             voiceSource.dopplerLevel = 0f;
+            voiceSource.ignoreListenerVolume = true; // voices have their own volume setting
         }
 
         private void OnEnable()
@@ -737,7 +738,7 @@ namespace FPS.AI
             float now = Time.time;
             float settle = 1f + acquisitionSpread * Mathf.Exp(-(now - trackingSince));
             Vector3 targetVelocity = target.Velocity;
-            float spread = aimSpread * settle * (1f + perception.Suppression * suppressedSpread) *
+            float spread = aimSpread * CombatDifficulty.Profile.AimSpread * settle * (1f + perception.Suppression * suppressedSpread) *
                            (1f + 0.3f * new Vector2(targetVelocity.x, targetVelocity.z).magnitude) * (moving ? 2f : 1f);
 
             Vector3 muzzle = body.Muzzle.position;
@@ -832,7 +833,7 @@ namespace FPS.AI
 
         private void OnTargetIdentified(PerceivableTarget target)
         {
-            fireAllowedAt = Time.time + Random.Range(reactionTime.x, reactionTime.y);
+            fireAllowedAt = Time.time + Random.Range(reactionTime.x, reactionTime.y) * CombatDifficulty.Profile.Reaction;
             trackingSince = Time.time;
             Callout(CalloutType.Contact);
         }

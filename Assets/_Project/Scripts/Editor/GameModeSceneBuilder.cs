@@ -66,6 +66,7 @@ namespace FPS.EditorTools
             match.AddComponent<MatchHUD>();
 
             AIContentBuilder.BakeNavMesh(level, path.Replace(".unity", "_NavMesh.asset"));
+            MapPreviewBuilder.Render(scene, System.IO.Path.GetFileNameWithoutExtension(path));
             EditorSceneManager.SaveScene(scene, path);
         }
 
