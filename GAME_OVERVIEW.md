@@ -25,10 +25,10 @@ procedural geometry with weathered PBR finishes; every one has a Meshy spec, and
 | Enemies | AI soldiers (friendly and hostile variants) fighting as squads, with door use, three voices and four difficulty levels |
 | Game modes | Tactical Raid / Extraction, Search & Destroy, Hardpoint |
 | Graphics | Physical sky and clouds, SSGI, SSR, contact shadows, weathered materials, combat VFX, night vision, scope lens |
-| Audio | 48 kHz physically synthesized gunfire, four room tails, supersonic cracks, gear foley |
-| Front end | Deployment table, loading screen, Return to Armory / Quit, full options menu with key rebinding, hit markers |
+| Audio | 48 kHz physically synthesized gunfire, four room tails, supersonic cracks, gear foley, footsteps per surface, master limiter |
+| Front end | Deployment table, loading screen, Return to Armory / Quit, full options menu with key rebinding, hit markers, damage direction arcs, death camera |
 | Persistence | JSON profile: weapon blueprints, loadout, settings, key bindings |
-| Tests | 147 PlayMode tests (142 pass, 5 opt-in render captures skipped) |
+| Tests | 160 PlayMode tests (155 pass, 5 opt-in render captures skipped) |
 
 ### Milestones
 
@@ -50,6 +50,9 @@ procedural geometry with weathered PBR finishes; every one has a Meshy spec, and
 | M14 | Vault and mantle, slide cancel, compressed ready, physical doors, inspect, camera kick | `ce25ec5` |
 | M15 | Deployment table, scene flow, loading screen, complete settings and key rebinding | `f7ea4b8` |
 | M16 | Hit confirmation, damage attribution, Windows player builder | `5e82f20` |
+| Playtest | Battle rifle flip-up irons, station triggers, HUD hidden under menus, AI NavMesh in builds, audio mix and limiter | `957a772` |
+| Audio | Footsteps for the player and soldiers, click-free regenerated clips, trimmed voices | `1b8da03` |
+| Polish | Damage direction, death camera, weapon racks with weapons, view poses, scope radiance | `da49e6e` |
 
 ---
 
@@ -148,7 +151,11 @@ overrides are saved in the profile.
 - **Stun-grenade whiteout**: a flash anywhere on screen blinds fully, and off-screen flashes fade with angle. The
   whiteout holds and then fades back. Deafness muffles the mix and a tinnitus ring fades in and out.
 - **HUD stress**: heavy damage and suppression close a vignette and drain colour.
-- **Death**: you lose control until you respawn (in modes that allow it).
+- **Damage direction**: each hit draws a thin dark-red arc round the screen centre, turned toward where it came from
+  (the shooter's muzzle or the blast). It is full for 0.2 s and gone by 1.5 s; one arc per attacker, four at most.
+  Switch it off in Options → Gameplay.
+- **Death**: the rifle disappears and the view drops to the floor over 0.8 s, rolling onto its side, and holds there.
+  You lose control until you respawn (in modes that allow it).
 
 ### 3.6 Interaction and doors
 Look at an interactable within 2.2 m and press F: ammo crates, the equipment locker, weapon racks, the workbench, the
@@ -181,14 +188,17 @@ where it meets the shoulder.
   **compressed ready** (stock under the arm: it still fires but can't aim). Closer still, it tilts to a high ready
   (short barrels) or a low ready (barrels of 16" or more). Past a quarter tilt the weapon is tucked and can neither
   fire nor aim.
+- **View poses**: the high and low ready, the climbing carry and the magazine check are poses held in the view, so the
+  rifle stays on screen whatever its length.
 
 ### 4.2 Aiming and optics
 - **Procedural ADS**: no animation. Each frame, the exact pose is solved that puts the active sight's aligner on your
   eye's line of sight at the sight's eye relief. ADS time scales with ergonomics and attachments (base 0.3 s).
 - **Canted sights**: X rolls the weapon 45° onto the offset irons.
 - **Picture-in-picture scopes**: a second camera renders into the lens. Its field of view is the lens's angular size
-  divided by the magnification, so the scope image is optically consistent. The main view blurs in the periphery, and
-  look sensitivity scales with zoom.
+  divided by the magnification, so the scope image is optically consistent. The scope renders the scene's raw light
+  and the main camera exposes it once, so the picture is as bright as the world around it. The main view blurs in the
+  periphery, and look sensitivity scales with zoom.
 - **Scope lens**: the scope image passes through a lens shader with barrel distortion, rim chromatic aberration, an
   eye-relief shadow disc, a field stop, and an etched duplex-dot or chevron reticle with a lit centre.
 - **Night-vision active aim**: with the goggles down and a laser fitted, aiming cants the weapon 45° with the infrared
@@ -235,16 +245,19 @@ gloves are modelled in woven cloth and pored leather.
   locked back).
   - **Tap R**: tactical reload; the partial magazine goes back in your pouch.
   - **Second tap during removal**: speed reload; a physical magazine drops to the floor.
-  - **Hold R**: magazine check, reporting an estimate from "empty" to "full".
+  - **Hold R**: magazine check: the magazine comes into view and you get an estimate from "empty" to "full".
   - **Interruptions**: sprinting, diving, swapping weapons or firing the chambered round interrupts a reload. The next
     reload resumes from the last completed stage.
 - **Mechanisms**: the trigger, selector, bolt carrier or slide (cycles every shot, held back when locked open),
-  charging handle and bolt handle move on the model, for you and for AI soldiers.
+  charging handle and bolt handle move on the model, for you and for AI soldiers. A bolt action comes off the sights
+  for the bolt stroke.
+- **Flip-up irons**: the battle rifle's rear ghost ring and front post fold flat whenever an optic is fitted and stand
+  up again without one.
 - **Weapon swap**: holster and draw times scale with ergonomics. Each weapon keeps its mechanical state (rounds,
   chamber, reload progress) while holstered.
 - **Loadout and racks**: the carbine is the primary and the marksman rifle the secondary. Weapon racks in the Armory
   and the test range swap the primary to the battle rifle and the secondary to the sidearm (and back), and save the
-  loadout.
+  loadout. The racks show their weapons; the one you carry is missing.
 - **Shell casings**: pooled physical casings are ejected with spin and clink according to the surface they land on.
 - **Resupply**: ammo crates top up spare magazines and grenades. **Looting**: a fallen soldier's rifle gives up its
   loaded magazines to weapons of the same caliber (up to your loadout count + 2).
@@ -370,12 +383,20 @@ beam and a dot raycast against the world. Lit flashlights also make their carrie
 | Urban canyon | 2.2 s | 87 ms flutter echo between façades |
 | Open field | 3 s | Rolling low thunder |
 
-### 8.3 Supersonic cracks
+### 8.3 Footsteps
+- The player and every soldier make a footstep per foot strike: yours at the bottom of each head bob, soldiers' from
+  their own gait.
+- The sound comes from the surface underfoot, with separate clips for steps, prone crawling and landings.
+- Loudness follows the same noise radius the AI's hearing uses: sprinting is loud, crouch-walking quiet. Landings
+  scale with fall speed.
+- Your own steps play in your head; others' travel at the speed of sound and are heard only within their radius.
+
+### 8.4 Supersonic cracks
 Each supersonic near miss solves the Mach cone. The crack comes from upstream of where the round passed closest and
 arrives after it; its pitch and loudness follow the Mach number and the miss distance, and a receding whip follows.
 The crack seems to come from ahead of the shooter, so the shooter is behind the sound.
 
-### 8.4 Foley and mix
+### 8.5 Foley and mix
 - **Gear**: a plate-carrier rustle that follows body acceleration, turn rate and speed, and sling-swivel clinks on
   weapon swings and hard landings.
 - **Handling foley** covers dry fire, magazine out and in, bolt, fire-mode switch and magazine check, for you and nearby
@@ -383,7 +404,12 @@ The crack seems to come from ahead of the shooter, so the shooter is behind the 
 - **Muffling**: suppression, low health and stun-grenade deafness muffle the mix through a low-pass filter on the
   listener. A flashbang adds a fading **tinnitus** ring.
 - **Volumes**: master, effects and voice sliders (Options → Audio).
-- **Master-bus dynamic range** (Options → Audio), a compressor-limiter on the whole mix:
+- **Clean clips**: every synthesized clip ends with a short fade, so nothing clicks, and voices are trimmed so
+  callouts start at once.
+- **Sustained fire** rings each shot's reverb tail on its own voice (four per space), so the reverb builds instead of
+  being cut by the next round.
+- **Master-bus dynamic range** (Options → Audio), a compressor-limiter on the whole mix. A peak limiter rides loud
+  moments down instead of clipping them:
   - **War Tapes**: loud and wide, soft-saturating limiter.
   - **Studio Reference**: transparent.
   - **Night Mode**: heavy compression that lifts footsteps and tames gunfire.
@@ -597,7 +623,7 @@ Every mode is deployed from the Armory's deployment table. All modes run on a **
     at render scales of 50–100 %;
   - **Audio**: master, effects and voice volume; dynamic range (War Tapes / Studio Reference / Night Mode);
   - **Controls**: look and ADS sensitivity; rebinding of 22 keyboard bindings;
-  - **Gameplay**: night-vision phosphor (white or green), AI difficulty, hit markers.
+  - **Gameplay**: night-vision phosphor (white or green), AI difficulty, hit markers, damage direction.
 
 ---
 
@@ -649,11 +675,11 @@ geometry, with objectives in amber and spawns by team.
   9. Windows player, built next to the repository (`..\Claude of duty Build\ClaudeOfDuty.exe`).
 
   Every builder is idempotent.
-- **Tests**: 147 PlayMode tests covering every system (142 pass; the 5 opt-in render captures are skipped unless a
+- **Tests**: 160 PlayMode tests covering every system (155 pass; the 5 opt-in render captures are skipped unless a
   capture folder is set). They include locomotion and traversal, springs, recoil, reloads, the new weapons, ballistics,
   synthesized audio and acoustics, the photoreal look and effects, the model pipeline, gunsmith maths, AI perception
-  and tactics, equipment, all three modes, profiles, the workbench, the front end (deployment, difficulty, rebinding)
-  and hit confirmation.
+  and tactics, equipment, all three modes, profiles, the workbench, the front end (deployment, difficulty, rebinding),
+  hit confirmation, footsteps, damage direction, the death camera and the view poses.
 
 ---
 
@@ -672,3 +698,5 @@ geometry, with objectives in amber and spawns by team.
 - **Workbench**: it only offers parts for weapons with attachment mounts. The marksman rifle and the sidearm are fixed.
 - **Upscalers**: DLSS and FSR2 depend on hardware and platform support. They fall back to TAAU elsewhere.
 - **Players**: single-player only, with no networking.
+- **Raid balance**: two garrison posts face the player's spawn across open ground. Standing still there gets you
+  killed within seconds of the round going live; the spawn needs cover, or the posts need to face their objectives.

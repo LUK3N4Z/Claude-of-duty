@@ -28,3 +28,6 @@ crashlytics-build.properties
 *.apk
 *.aab
 *.unitypackage
+
+# Serena MCP server cache
+.serena/
