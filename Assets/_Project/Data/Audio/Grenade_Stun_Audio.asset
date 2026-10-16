@@ -13,21 +13,21 @@ MonoBehaviour:
   m_Name: Grenade_Stun_Audio
   m_EditorClassIdentifier: FPS.Audio::FPS.Audio.WeaponAudioProfileSO
   pressureTransients:
-  - {fileID: 8300000, guid: 369a5bba3d095d94da9feffb27d0226d, type: 3}
-  - {fileID: 8300000, guid: 7cfd02633b9c2f54a8be0b2b48cfe89d, type: 3}
+  - {fileID: 8300000, guid: ab80a36c771acc1429b2fec45049bd48, type: 3}
+  - {fileID: 8300000, guid: 32954c235cf0b404981354e817ac704a, type: 3}
   subBassThumps:
-  - {fileID: 8300000, guid: 37e167434144f494faba70348b9a793c, type: 3}
+  - {fileID: 8300000, guid: a38bdb248b9f44d468f117a2260e922b, type: 3}
   mechanicalCycles:
-  - {fileID: 8300000, guid: 52b74fe59d1741b44b89edb680484b2d, type: 3}
+  - {fileID: 8300000, guid: bad311d29d62a5d42bc61267b97813d8, type: 3}
   bodyResonances: []
   distantReports:
-  - {fileID: 8300000, guid: d73f9e48da8725346bb61a7460c0568c, type: 3}
+  - {fileID: 8300000, guid: 7fcf9128db841ff4bb80941a7abbbfc6, type: 3}
   distantThreshold: 150
   maxAudibleDistance: 2500
   loudness: 1
-  indoorTail: {fileID: 8300000, guid: 4a463ede95cc9884e84daac557bd8f2b, type: 3}
-  warehouseTail: {fileID: 8300000, guid: ed6cf042b0251c841a771cad008a40f4, type: 3}
-  urbanTail: {fileID: 8300000, guid: 6f890ccbe55cec542bf1da4625c84502, type: 3}
-  openTail: {fileID: 8300000, guid: a59332e98a7edc94db0921b156ceed08, type: 3}
+  indoorTail: {fileID: 8300000, guid: 27e626bfdb3cde54ba4ebd3ded6afdf3, type: 3}
+  warehouseTail: {fileID: 8300000, guid: d40cd2e9e043d7f4f8187c18f1f41c14, type: 3}
+  urbanTail: {fileID: 8300000, guid: ab4d14f841f217744b2f14248df50b4e, type: 3}
+  openTail: {fileID: 8300000, guid: f4e5962b35d58804ba561695b6ee21dd, type: 3}
   lowAmmoPing: {fileID: 0}
   lowAmmoRounds: 3

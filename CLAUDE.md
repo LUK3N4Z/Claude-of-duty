@@ -478,6 +478,13 @@ Contracts for later milestones:
 - **Gear** (`GearFoley`, FPS.Weapons, added by `ViewmodelRig.Build`): plate-carrier rustle loop following body
   acceleration, view/weapon turn rate (inertia pivot) and speed; sling swivel clinks on weapon-swing jolts and hard
   landings.
+- **Footsteps** (`FootstepEmitter`, FPS.AI, on the player and soldiers next to `PerceivableTarget`): a `FootstepEvent`
+  per foot strike — the player's at the bottoms of the head bob (`StepPhase` π/2, 3π/2), soldiers' from their own gait
+  (stride 1.2 m + 0.2 s × speed). The clip comes from the `SurfaceMaterialSO` under the feet (`footstepClips`, prone
+  `crawlClips`, `landingClips`; synthesized by `BallisticsContentBuilder` into `Art/Audio/Footsteps`), loudness =
+  `NoiseRadius` / 40 m (the radius AI hearing uses: speed × stance × sprint), landings by fall speed / 6 m/s.
+  `AcousticPropagationSystem` plays own steps in the head (√loudness) and others' through pooled emitters, delayed,
+  only within their radius.
 
 ## Movement & handling (M14)
 

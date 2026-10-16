@@ -75,7 +75,7 @@ namespace FPS.EditorTools
         /// <summary>Latch click, then the hinge creaking in stick-slip pulses.</summary>
         internal static AudioClip OpenSound() => GunshotAudioBuilder.Layer("Foley", "Door", "Open", 1, i =>
         {
-            AudioSynth creak = new AudioSynth(0.7f, 81).Click(0.5f, 0f, 3200f);
+            AudioSynth creak = new AudioSynth(1.1f, 81).Click(0.5f, 0f, 3200f);
             var random = new System.Random(82);
             float t = 0.06f;
             while (t < 0.55f)

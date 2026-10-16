@@ -15,41 +15,41 @@ MonoBehaviour:
   lines:
   - callout: 0
     clips:
-    - {fileID: 8300000, guid: 94b2ee07541ddaf45a442750d51c7f15, type: 3}
+    - {fileID: 8300000, guid: e39ffb5f9aeb4ad42a46a4035225e5b2, type: 3}
   - callout: 1
     clips:
-    - {fileID: 8300000, guid: ae651d099c0f1f54c9c81bc06b5996d5, type: 3}
+    - {fileID: 8300000, guid: ae7ce50074cead44e9b1b4758b8fed2c, type: 3}
   - callout: 2
     clips:
-    - {fileID: 8300000, guid: 2f41b1758bd431f4db3d71891261ac3b, type: 3}
+    - {fileID: 8300000, guid: 0ef8e760455c8ec45be2861ae1778432, type: 3}
   - callout: 3
     clips:
-    - {fileID: 8300000, guid: d0ca0a6bf39875c43b5256bd354130b9, type: 3}
+    - {fileID: 8300000, guid: a0f01c707c8a2134fbc8e499d818f05b, type: 3}
   - callout: 4
     clips:
-    - {fileID: 8300000, guid: 5e5e629286dfe9741b38710fc74b3c82, type: 3}
+    - {fileID: 8300000, guid: 2c949ed631849254db90d04a2a53a618, type: 3}
   - callout: 5
     clips:
-    - {fileID: 8300000, guid: 6b5b5ac7b076e174c81d8880b470b4e3, type: 3}
+    - {fileID: 8300000, guid: 2569a2716cc64ec49aa2d6aad019aa89, type: 3}
   - callout: 6
     clips:
-    - {fileID: 8300000, guid: a3cfe2f1d91b9914a929d3d923a8b05c, type: 3}
+    - {fileID: 8300000, guid: b6b0aed80d0ce4b4096714adf7c80af7, type: 3}
   - callout: 7
     clips:
-    - {fileID: 8300000, guid: 78bfc7f2d1ca9d5498a21e82cbdb6fdd, type: 3}
+    - {fileID: 8300000, guid: 5e987862269aa7745bf875c8c130beed, type: 3}
   - callout: 8
     clips:
-    - {fileID: 8300000, guid: e6bab58169536b54ab4ec29d096e3498, type: 3}
+    - {fileID: 8300000, guid: 2ae8a9fab6401a14eaaf1f750ce8b149, type: 3}
   - callout: 9
     clips:
-    - {fileID: 8300000, guid: 5e7346ab4ba93ca45a3eeb880f883a7c, type: 3}
+    - {fileID: 8300000, guid: 66e91e7a99e62d74e9b1c85d7d51a42d, type: 3}
   - callout: 10
     clips:
-    - {fileID: 8300000, guid: f08cb4fb4627882448579e9dfff844ec, type: 3}
+    - {fileID: 8300000, guid: 4cc10dc6c0d1a7a47847f29dc9ab70ed, type: 3}
   - callout: 11
     clips:
-    - {fileID: 8300000, guid: fa094229791bb174eb3828cca54eb020, type: 3}
+    - {fileID: 8300000, guid: c9e696c34aeb2964f8bb14e4ec68fd60, type: 3}
   - callout: 12
     clips:
-    - {fileID: 8300000, guid: 14bad6366e6e67042bc61c34892a3d52, type: 3}
+    - {fileID: 8300000, guid: 5c02042e46f419c4f892d25e1abe5d9b, type: 3}
   audibleDistance: 45

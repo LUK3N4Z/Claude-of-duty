@@ -13,21 +13,21 @@ MonoBehaviour:
   m_Name: Charge_C4_Audio
   m_EditorClassIdentifier: FPS.Audio::FPS.Audio.WeaponAudioProfileSO
   pressureTransients:
-  - {fileID: 8300000, guid: c1ca414fd3493c943baefbc1a92b93e8, type: 3}
-  - {fileID: 8300000, guid: 7917d9fcc2efd7f40be4272fa81c25a5, type: 3}
+  - {fileID: 8300000, guid: 4cdaa2e761fd0f14397d5a5eb8c8d6d8, type: 3}
+  - {fileID: 8300000, guid: 00253f3ac4984b34b928e3c9a71873a6, type: 3}
   subBassThumps:
-  - {fileID: 8300000, guid: b4747b17e5be1d24d9f3e2f20e1b0801, type: 3}
+  - {fileID: 8300000, guid: 0d1b21a597e9ba647ab8ca1c35183fad, type: 3}
   mechanicalCycles:
-  - {fileID: 8300000, guid: cc8ab537926889346bf0e93820e7e5ca, type: 3}
+  - {fileID: 8300000, guid: 4a300a67bc50b154c8fa43ab5c455eba, type: 3}
   bodyResonances: []
   distantReports:
-  - {fileID: 8300000, guid: 7e0256a2b6d99ee40ac6cb86c5bb8a90, type: 3}
+  - {fileID: 8300000, guid: 5bde1fb6db22aec44aa5863cd7f132d4, type: 3}
   distantThreshold: 150
   maxAudibleDistance: 2500
   loudness: 1
-  indoorTail: {fileID: 8300000, guid: a17c42f688a9a9f458e11e04e8237afc, type: 3}
-  warehouseTail: {fileID: 8300000, guid: 4f95d77963de4a94f8ccc9dd996d14f5, type: 3}
-  urbanTail: {fileID: 8300000, guid: 25332b0711753f941b48b5f5a59e01b4, type: 3}
-  openTail: {fileID: 8300000, guid: fe20f3077476f2e4da155ffd96bbdaa1, type: 3}
+  indoorTail: {fileID: 8300000, guid: 3405f511cea2e6042800986c167c1999, type: 3}
+  warehouseTail: {fileID: 8300000, guid: e89cdad4dfad8be40ac21a40dc5beae9, type: 3}
+  urbanTail: {fileID: 8300000, guid: f66228d6c6793584c976c4323381dd42, type: 3}
+  openTail: {fileID: 8300000, guid: 665f92d316c48314894d8951ca3b152b, type: 3}
   lowAmmoPing: {fileID: 0}
   lowAmmoRounds: 3

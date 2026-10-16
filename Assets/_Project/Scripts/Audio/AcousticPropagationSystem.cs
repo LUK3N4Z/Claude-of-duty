@@ -9,6 +9,8 @@ namespace FPS.Audio
     /// mechanical action, body resonance; the magazine pings on the last rounds while the action rises in pitch);
     /// others arrive after distance / 343 m/s as close or distant reports. Reverb tails blend between small room,
     /// warehouse, urban canyon and open field by ray-probing the surroundings (ceiling, walls and how far they are).
+    /// Footsteps (<see cref="FootstepEvent"/>): own steps play in the head, others' from where they fall, delayed, and only
+    /// within the footstep radius AI hearing uses.
     /// Suppression or heavy damage muffles the mix through a low-pass filter on the listener (near-miss cracks belong to
     /// <see cref="SupersonicCrackEmitter"/>). Lives on the player root.
     /// </summary>
@@ -40,6 +42,12 @@ namespace FPS.Audio
         [SerializeField] private float remoteMinDistance = 6f;
         [Tooltip("Handling noise of other people carries this far (m).")]
         [SerializeField] private float remoteFoleyMaxDistance = 25f;
+
+        [Header("Footsteps")]
+        [Tooltip("Own steps at full loudness (a sprint). Heard from 1.6 m above the feet, so a square-root curve keeps a crouched step audible.")]
+        [SerializeField, Range(0f, 1f)] private float ownFootstepVolume = 0.35f;
+        [Tooltip("Distance (m) inside which someone else's steps get no louder.")]
+        [SerializeField, Min(0.1f)] private float footstepMinDistance = 1f;
 
         [Header("Last Rounds")]
         [Tooltip("Ping pitch rise on the very last round (fraction); the follower spring is nearly unloaded.")]
@@ -80,6 +88,7 @@ namespace FPS.Audio
         private AudioSource firstPerson;
         private AudioSource mechanism;
         private AudioSource ping;
+        private AudioSource footsteps;
         private AudioSource ringing;
         private AudioLowPassFilter lowPass;
         private TacticalHealthAndArmorSystem health;
@@ -155,6 +164,7 @@ namespace FPS.Audio
             firstPerson = CreateSource(mix, firstPersonSpatialBlend);
             mechanism = CreateSource(mix, firstPersonSpatialBlend);
             ping = CreateSource(mix, firstPersonSpatialBlend);
+            footsteps = CreateSource(mix, 0f);
             for (int i = 0; i < tails.Length; i++) tails[i] = CreateSource(mix, 0f);
             ringing = CreateSource(mix, 0f);
             ringing.loop = true;
@@ -172,6 +182,7 @@ namespace FPS.Audio
             EventBus<WeaponActionEvent>.Subscribe(OnWeaponAction);
             EventBus<SuppressionEvent>.Subscribe(OnSuppressed);
             EventBus<FlashbangEvent>.Subscribe(OnFlashbang);
+            EventBus<FootstepEvent>.Subscribe(OnFootstep);
         }
 
         private void OnDisable()
@@ -180,6 +191,7 @@ namespace FPS.Audio
             EventBus<WeaponActionEvent>.Unsubscribe(OnWeaponAction);
             EventBus<SuppressionEvent>.Unsubscribe(OnSuppressed);
             EventBus<FlashbangEvent>.Unsubscribe(OnFlashbang);
+            EventBus<FootstepEvent>.Unsubscribe(OnFootstep);
         }
 
         private void Update()
@@ -267,6 +279,22 @@ namespace FPS.Audio
             float distance = Vector3.Distance(action.Position, listener.position);
             if (distance <= remoteFoleyMaxDistance)
                 Emit(clip, action.Position, 0.8f, 1f, PropagationDelay(distance), 1f, remoteFoleyMaxDistance);
+        }
+
+        private void OnFootstep(in FootstepEvent step)
+        {
+            if (step.Clip == null) return;
+            float pitch = Random.Range(0.94f, 1.06f);
+            if (step.Source == transform)
+            {
+                footsteps.pitch = pitch;
+                footsteps.PlayOneShot(step.Clip, ownFootstepVolume * Mathf.Sqrt(step.Loudness));
+                return;
+            }
+
+            float distance = Vector3.Distance(step.Position, listener.position);
+            if (distance <= step.Radius)
+                Emit(step.Clip, step.Position, step.Loudness, pitch, PropagationDelay(distance), footstepMinDistance, step.Radius);
         }
 
         private void OnSuppressed(in SuppressionEvent evt)

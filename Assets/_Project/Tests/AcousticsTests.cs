@@ -170,6 +170,46 @@ namespace FPS.Tests
             }
         }
 
+        [Test]
+        public void SavedClips_EndInSilence_WithoutOffset_LoopsKeepTheirEnds()
+        {
+            string folder = $"{GunshotAudioBuilder.AudioFolder}/SaveProbe";
+            ProjectSetupWizard.EnsureFolder(folder);
+            try
+            {
+                // the worst case: a full-level tone on a DC offset, cut mid-cycle
+                AudioSynth cut = new AudioSynth(0.3f, 4).Tone(1000f, 1000f, 1f, 0f, 0f, float.PositiveInfinity);
+                float[] raw = cut.Samples(0);
+                for (int i = 0; i < raw.Length; i++) raw[i] += 0.3f;
+                cut.Save($"{folder}/Cut.wav");
+                float[] saved = AudioSynth.FromWav($"{folder}/Cut.wav").Samples(0);
+                int last5Ms = (int)(0.005f * Rate);
+                Assert.AreEqual(0f, saved[saved.Length - 1], 1e-4f, "ends on silence, not a step");
+                Assert.Less(Peak(saved, saved.Length - 12, saved.Length), 0.01f, "the fade reaches zero smoothly");
+                double mean = 0.0;
+                for (int i = saved.Length / 2; i < saved.Length - last5Ms; i++) mean += saved[i];
+                Assert.Less(System.Math.Abs(mean / (saved.Length / 2 - last5Ms)), 0.005, "DC offset blocked");
+                Assert.AreEqual(0.9f, Peak(saved, 0, saved.Length), 0.01f, "normalised");
+
+                new AudioSynth(0.3f, 4).Tone(1000f, 1000f, 1f, 0f, 0f, float.PositiveInfinity).Loopable().Save($"{folder}/Loop.wav");
+                float[] loop = AudioSynth.FromWav($"{folder}/Loop.wav").Samples(0);
+                Assert.Greater(Rms(loop, loop.Length - last5Ms, loop.Length), 0.5f, "a loop runs to its end, no fade");
+            }
+            finally
+            {
+                AssetDatabase.DeleteAsset(folder);
+            }
+
+            string[] ringing = { "Explosives/Charge_Beep", "Impacts/Impact_Metal_0", "Explosives/Grenade_Frag_Debris_0", "Foley/HitMarker_Headshot_0",
+                "Weapons/TestRifle_Mechanism_0", "Foley/Door_Open_0" };
+            foreach (string clip in ringing)
+            {
+                float[] samples = AudioSynth.FromWav($"{GunshotAudioBuilder.AudioFolder}/{clip}.wav").Samples(0);
+                float end = Rms(samples, samples.Length - (int)(0.005f * Rate), samples.Length);
+                Assert.Less(20f * Mathf.Log10(end + 1e-9f), -50f, $"{clip} has rung out before the clip ends (last 5 ms)");
+            }
+        }
+
         // ---- Supersonic cracks ----
 
         [Test]

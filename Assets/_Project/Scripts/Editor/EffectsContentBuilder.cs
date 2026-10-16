@@ -59,7 +59,7 @@ namespace FPS.EditorTools
             Surface("Drywall", new Color(0.26f, 0.25f, 0.24f), new Color(0.85f, 0.84f, 0.82f, 0.85f), hole, crater, false, true,
                 s => s.Noise(0.8f, 0f, 0.001f, 0.03f).LowPass(1800f).Tone(180f, 160f, 0.4f, 0f, 0.001f, 0.03f));
             Surface("Metal", new Color(0.08f, 0.08f, 0.09f), new Color(1f, 0.78f, 0.45f, 0.9f), hole, crater, true, false,
-                s => s.Partials(new[] { 1800f, 3300f, 5100f, 7400f }, 0.9f, 0f, 0.25f).Noise(0.4f, 0f, 0.0003f, 0.005f));
+                s => s.Partials(new[] { 1800f, 3300f, 5100f, 7400f }, 0.9f, 0f, 0.25f).Noise(0.4f, 0f, 0.0003f, 0.005f), 1.2f); // steel rings out
             Surface("Glass", new Color(0.55f, 0.58f, 0.62f), new Color(0.85f, 0.9f, 0.95f, 0.6f), hole, crater, false, false,
                 s => s.Noise(0.6f, 0f, 0.0005f, 0.06f).HighPass(3000f).Partials(new[] { 3800f, 6100f, 8900f }, 0.6f, 0f, 0.08f));
             Surface("Dirt", new Color(0.1f, 0.08f, 0.06f), new Color(0.42f, 0.34f, 0.25f, 0.85f), hole, crater, false, true,
@@ -73,7 +73,7 @@ namespace FPS.EditorTools
             GunshotAudioBuilder.Weapon(GunshotAudioBuilder.Sidearm);
 
             AudioSynth.LoadOrCreate(Clip("Foley", "DryFire"), () => new AudioSynth(0.08f, 11).Partials(new[] { 3200f, 5600f }, 0.7f, 0f, 0.01f).Noise(0.2f, 0f, 0.0003f, 0.004f));
-            AudioSynth.LoadOrCreate(Clip("Foley", "MagazineOut"), () => new AudioSynth(0.25f, 12).Noise(0.25f, 0f, 0.02f, 0.08f).HighPass(1500f).Partials(new[] { 1800f, 3400f }, 0.5f, 0.09f, 0.02f));
+            AudioSynth.LoadOrCreate(Clip("Foley", "MagazineOut"), () => new AudioSynth(0.35f, 12).Noise(0.25f, 0f, 0.02f, 0.08f).HighPass(1500f).Partials(new[] { 1800f, 3400f }, 0.5f, 0.09f, 0.02f));
             AudioSynth.LoadOrCreate(Clip("Foley", "MagazineIn"), () => new AudioSynth(0.2f, 13).Tone(220f, 200f, 0.4f, 0f, 0.001f, 0.04f).Partials(new[] { 1500f, 2900f, 4700f }, 0.7f, 0f, 0.02f).Partials(new[] { 2100f, 3900f }, 0.5f, 0.06f, 0.015f));
             AudioSynth.LoadOrCreate(Clip("Foley", "BoltCycle"), () => new AudioSynth(0.3f, 14).Partials(new[] { 2600f, 4400f }, 0.6f, 0f, 0.015f).Noise(0.2f, 0.02f, 0.01f, 0.05f).Partials(new[] { 2000f, 3800f }, 0.7f, 0.16f, 0.02f));
             AudioSynth.LoadOrCreate(Clip("Foley", "FireModeSwitch"), () => new AudioSynth(0.06f, 15).Partials(new[] { 4200f, 6900f }, 0.5f, 0f, 0.006f));
@@ -128,12 +128,16 @@ namespace FPS.EditorTools
             });
         }
 
-        /// <summary>Stun-grenade ringing: two high partials beating slowly, looped while hearing returns.</summary>
+        /// <summary>
+        /// Stun-grenade ringing: two high partials beating, looped while hearing returns. Steady (no attack or decay) and
+        /// every partial completes whole cycles in the 3 s clip, so the loop has no seam.
+        /// </summary>
         internal static AudioClip Tinnitus()
         {
             ProjectSetupWizard.EnsureFolder($"{AudioFolder}/Foley");
             return AudioSynth.LoadOrCreate(Clip("Foley", "Tinnitus"), () => new AudioSynth(3f, 41)
-                .Tone(3900f, 3900f, 0.35f, 0f, 0.05f, 30f).Tone(3913f, 3913f, 0.3f, 0f, 0.05f, 30f).Tone(6100f, 6100f, 0.08f, 0f, 0.05f, 30f));
+                .Tone(3900f, 3900f, 0.35f, 0f, 0f, float.PositiveInfinity).Tone(3913f, 3913f, 0.3f, 0f, 0f, float.PositiveInfinity)
+                .Tone(6100f, 6100f, 0.08f, 0f, 0f, float.PositiveInfinity).Loopable());
         }
 
         internal static Material SmokeMaterial() => Vfx("BreechSmoke");
@@ -142,17 +146,17 @@ namespace FPS.EditorTools
         internal static AudioClip BombBeep()
         {
             ProjectSetupWizard.EnsureFolder($"{AudioFolder}/Explosives");
-            return AudioSynth.LoadOrCreate(Clip("Explosives", "Charge_Beep"), () => new AudioSynth(0.09f, 51).Tone(2900f, 2900f, 0.6f, 0f, 0.002f, 0.05f));
+            return AudioSynth.LoadOrCreate(Clip("Explosives", "Charge_Beep"), () => new AudioSynth(0.3f, 51).Tone(2900f, 2900f, 0.6f, 0f, 0.002f, 0.05f));
         }
 
         private static void Surface(string surfaceName, Color decalColor, Color dustColor, Texture2D hole, Texture2D crater, bool sparks, bool lingeringDust,
-            Func<AudioSynth, AudioSynth> impact)
+            Func<AudioSynth, AudioSynth> impact, float seconds = 0.6f)
         {
             var clips = new AudioClip[2];
             for (int i = 0; i < clips.Length; i++)
             {
                 int seed = surfaceName.Length * 31 + i;
-                clips[i] = AudioSynth.LoadOrCreate(Clip("Impacts", $"Impact_{surfaceName}_{i}"), () => impact(new AudioSynth(0.4f, seed)));
+                clips[i] = AudioSynth.LoadOrCreate(Clip("Impacts", $"Impact_{surfaceName}_{i}"), () => impact(new AudioSynth(seconds, seed)));
             }
 
             Material decal = hole != null ? Decal($"Decal_{surfaceName}", decalColor, hole, crater) : null;

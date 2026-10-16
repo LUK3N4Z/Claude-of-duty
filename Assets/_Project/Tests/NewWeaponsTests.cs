@@ -128,11 +128,13 @@ namespace FPS.Tests
             Assert.AreEqual(16, controller.ActiveState.LoadedRounds, "15 + 1");
 
             controller.PullTrigger();
-            // The shot fires in Update and the slide moves in LateUpdate: watch the frames right after it.
-            float maxTravel = 0f, minZ = rest;
-            for (int frame = 0; frame < 30 && (shots == 0 || maxTravel <= 0f); frame++)
+            // The shot fires in Update and the slide moves in LateUpdate. Follow it back and into battery again: headless
+            // frames can be a fraction of a millisecond, so the first moving frame may show almost no travel.
+            float maxTravel = 0f, minZ = rest, deadline = Time.time + 0.5f;
+            while (Time.time < deadline && (maxTravel <= 0f || mechanism.CarrierTravel > 0f))
             {
                 yield return null;
+                if (shots > 0) controller.ReleaseTrigger();
                 maxTravel = Mathf.Max(maxTravel, mechanism.CarrierTravel);
                 minZ = Mathf.Min(minZ, slide.localPosition.z);
             }

@@ -33,6 +33,12 @@ namespace FPS.Ballistics
         [SerializeField] private AudioClip[] casingImpactClips = new AudioClip[0];
         [Tooltip("Bullet impacts on this surface; one is picked at random.")]
         [SerializeField] private AudioClip[] impactClips = new AudioClip[0];
+        [Tooltip("Foot strikes on this surface; one is picked at random.")]
+        [SerializeField] private AudioClip[] footstepClips = new AudioClip[0];
+        [Tooltip("Prone crawl movements (elbows, knees, gear dragging) on this surface.")]
+        [SerializeField] private AudioClip[] crawlClips = new AudioClip[0];
+        [Tooltip("Landings from a fall or jump on this surface.")]
+        [SerializeField] private AudioClip[] landingClips = new AudioClip[0];
 
         [Header("Impact Visuals")]
         [Tooltip("HDRP/Decal material for bullet marks; none leaves no mark.")]
@@ -58,10 +64,12 @@ namespace FPS.Ballistics
         public bool Sparks => sparks;
         public bool LingeringDust => lingeringDust;
 
-        public AudioClip RandomCasingClip() =>
-            casingImpactClips.Length == 0 ? null : casingImpactClips[Random.Range(0, casingImpactClips.Length)];
+        public AudioClip RandomCasingClip() => Pick(casingImpactClips);
+        public AudioClip RandomImpactClip() => Pick(impactClips);
+        public AudioClip RandomFootstepClip() => Pick(footstepClips);
+        public AudioClip RandomCrawlClip() => Pick(crawlClips);
+        public AudioClip RandomLandingClip() => Pick(landingClips);
 
-        public AudioClip RandomImpactClip() =>
-            impactClips.Length == 0 ? null : impactClips[Random.Range(0, impactClips.Length)];
+        private static AudioClip Pick(AudioClip[] clips) => clips.Length == 0 ? null : clips[Random.Range(0, clips.Length)];
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -97,8 +98,9 @@ namespace FPS.EditorTools
         private static string SpeechPath(VoiceSpec spec, CalloutType callout) => $"{VoiceAudioFolder}/{spec.Name}/{callout}.wav";
 
         /// <summary>
-        /// Placeholder voice acting through the Windows speech synthesizer (one PowerShell run for every missing line).
-        /// Elsewhere the callouts stay silent until recorded clips are assigned to the voice profiles.
+        /// Placeholder voice acting through the Windows speech synthesizer (one PowerShell run for every missing line),
+        /// then cleaned like a recorded line (<see cref="CleanSpeech"/>). Elsewhere the callouts stay silent until
+        /// recorded clips are assigned to the voice profiles.
         /// </summary>
         private static void GenerateSpeech(Array callouts)
         {
@@ -106,7 +108,7 @@ namespace FPS.EditorTools
             script.AppendLine("Add-Type -AssemblyName System.Speech");
             script.AppendLine("$s = New-Object System.Speech.Synthesis.SpeechSynthesizer");
             script.AppendLine("$male = @($s.GetInstalledVoices() | Where-Object { $_.Enabled -and $_.VoiceInfo.Gender -eq 'Male' } | ForEach-Object { $_.VoiceInfo.Name })");
-            script.AppendLine("$fmt = New-Object System.Speech.AudioFormat.SpeechAudioFormatInfo(22050, [System.Speech.AudioFormat.AudioBitsPerSample]::Sixteen, [System.Speech.AudioFormat.AudioChannel]::Mono)");
+            script.AppendLine("$fmt = New-Object System.Speech.AudioFormat.SpeechAudioFormatInfo(48000, [System.Speech.AudioFormat.AudioBitsPerSample]::Sixteen, [System.Speech.AudioFormat.AudioChannel]::Mono)");
             script.AppendLine("function Say($index, $rate, $pitch, $text, $path) {");
             script.AppendLine("  if ($male.Count -gt 0) { $s.SelectVoice($male[$index % $male.Count]) }");
             script.AppendLine("  $s.Rate = $rate");
@@ -115,7 +117,7 @@ namespace FPS.EditorTools
             script.AppendLine("  $s.SetOutputToNull()");
             script.AppendLine("}");
 
-            int missing = 0;
+            var missing = new List<string>();
             string projectRoot = Path.GetDirectoryName(Application.dataPath);
             foreach (VoiceSpec spec in Voices)
             {
@@ -127,11 +129,11 @@ namespace FPS.EditorTools
                     string fullPath = Path.GetFullPath(Path.Combine(projectRoot, assetPath)).Replace("'", "''");
                     string text = AIVoiceProfileSO.Text(callout).Replace("'", "''");
                     script.AppendLine($"Say {spec.VoiceIndex} {spec.Rate} '{spec.Pitch}' '{text}' '{fullPath}'");
-                    missing++;
+                    missing.Add(assetPath);
                 }
             }
 
-            if (missing == 0) return;
+            if (missing.Count == 0) return;
             if (Application.platform != RuntimePlatform.WindowsEditor)
             {
                 Debug.LogWarning("[FPS Builder] Voice lines need the Windows speech synthesizer; callouts stay silent until clips are assigned.");
@@ -165,7 +167,23 @@ namespace FPS.EditorTools
                 File.Delete(scriptPath);
             }
 
+            foreach (string assetPath in missing)
+            {
+                if (File.Exists(Path.Combine(projectRoot, assetPath))) CleanSpeech(projectRoot, assetPath);
+            }
+
             AssetDatabase.Refresh();
+        }
+
+        /// <summary>
+        /// Readies a synthesized line for play: high-pass at 80 Hz (DC offset and rumble), leading and trailing silence
+        /// trimmed to -50 dBFS with 5 ms to spare (no callout lag or dead air), normalised to -3 dBFS.
+        /// </summary>
+        private static void CleanSpeech(string projectRoot, string assetPath)
+        {
+            const float Peak = 0.708f; // -3 dBFS
+            AudioSynth.FromWav(Path.Combine(projectRoot, assetPath)).HighPass(80f)
+                .TrimSilence(-50f - 20f * Mathf.Log10(Peak), 0.005f).Save(assetPath, Peak);
         }
 
         // ---- Soldier ----
@@ -225,6 +243,7 @@ namespace FPS.EditorTools
                 AIBody body = root.AddComponent<AIBody>();
                 body.Configure(pelvis, torso, chest, head, aimPivot, legs, left, right);
                 root.AddComponent<PerceivableTarget>().SetTeam(team);
+                root.AddComponent<FootstepEmitter>().FallbackSurface = BallisticsContentBuilder.Surface("Concrete");
                 root.AddComponent<AIPerceptionSensor>().Configure(head, team);
 
                 AIWeaponHandler weapon = root.AddComponent<AIWeaponHandler>();

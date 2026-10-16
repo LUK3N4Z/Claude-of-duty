@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text;
 using UnityEditor;
 using UnityEngine;
 using Random = System.Random;
@@ -16,15 +17,22 @@ namespace FPS.EditorTools
     internal sealed class AudioSynth
     {
         public const int SampleRate = 48000;
+        private const float DcBlockerCutoff = 10f; // Hz: removes offset, leaves a 30 Hz sub within 0.5 dB
+        private const float EndFade = 0.005f; // s
 
         private readonly float[][] channels;
         private readonly Random random;
+        private bool looping;
 
         public AudioSynth(float seconds, int seed, int channelCount = 1)
+            : this(Mathf.CeilToInt(seconds * SampleRate), seed, channelCount)
         {
-            int length = Mathf.Max(1, Mathf.CeilToInt(seconds * SampleRate));
+        }
+
+        private AudioSynth(int length, int seed, int channelCount)
+        {
             channels = new float[Mathf.Clamp(channelCount, 1, 2)][];
-            for (int c = 0; c < channels.Length; c++) channels[c] = new float[length];
+            for (int c = 0; c < channels.Length; c++) channels[c] = new float[Mathf.Max(1, length)];
             random = new Random(seed);
         }
 
@@ -371,11 +379,14 @@ namespace FPS.EditorTools
         }
 
         /// <summary>
-        /// Makes the clip loop seamlessly: its last <paramref name="crossfade"/> s are faded into the start (equal power)
-        /// and cut off, so the end flows into the beginning.
+        /// Makes the clip loop seamlessly: its last <paramref name="crossfade"/> s are faded into the start (equal power,
+        /// for noise) and cut off, so the end flows into the beginning. Without a crossfade the content must already be
+        /// periodic over the clip (tones completing whole cycles). Either way <see cref="Save"/> leaves a loop's ends alone.
         /// </summary>
-        public AudioSynth Loopable(float crossfade)
+        public AudioSynth Loopable(float crossfade = 0f)
         {
+            looping = true;
+            if (crossfade <= 0f) return this;
             int fade = Mathf.Clamp(Index(crossfade), 1, Length / 2);
             int length = Length - fade;
             for (int c = 0; c < channels.Length; c++)
@@ -400,6 +411,36 @@ namespace FPS.EditorTools
             return this;
         }
 
+        /// <summary>
+        /// Cuts leading and trailing silence: everything quieter than <paramref name="threshold"/> dB below the peak,
+        /// keeping <paramref name="pad"/> s before the first and after the last louder sample.
+        /// </summary>
+        public AudioSynth TrimSilence(float threshold, float pad)
+        {
+            float floor = Peak() * Mathf.Pow(10f, threshold / 20f);
+            int first = Length, last = -1;
+            foreach (float[] s in channels)
+            {
+                for (int i = 0; i < s.Length; i++)
+                {
+                    if (Mathf.Abs(s[i]) < floor) continue;
+                    first = Mathf.Min(first, i);
+                    last = Mathf.Max(last, i);
+                }
+            }
+
+            if (last < 0) return this;
+            int begin = Mathf.Max(0, first - Index(pad)), end = Mathf.Min(Length, last + 1 + Index(pad));
+            for (int c = 0; c < channels.Length; c++)
+            {
+                var trimmed = new float[end - begin];
+                Array.Copy(channels[c], begin, trimmed, 0, trimmed.Length);
+                channels[c] = trimmed;
+            }
+
+            return this;
+        }
+
         public float Peak()
         {
             float peak = 0f;
@@ -413,10 +454,20 @@ namespace FPS.EditorTools
 
         // ---- Output ----
 
-        /// <summary>Normalises to 0.9 peak and writes <paramref name="assetPath"/> (interleaved PCM), returning the imported clip.</summary>
-        public AudioClip Save(string assetPath)
+        /// <summary>
+        /// Finishes the clip and writes <paramref name="assetPath"/> (interleaved PCM), returning the imported clip. A
+        /// one-shot loses its DC offset (10 Hz blocker) and ends on a 5 ms raised-cosine fade, so it never stops on a step
+        /// (a click); a <see cref="Loopable"/> clip keeps its ends. Then normalised to <paramref name="peak"/>.
+        /// </summary>
+        public AudioClip Save(string assetPath, float peak = 0.9f)
         {
-            float gain = 0.9f / Mathf.Max(1e-6f, Peak());
+            if (!looping)
+            {
+                HighPass(DcBlockerCutoff);
+                foreach (float[] s in channels) FadeOut(s, EndFade);
+            }
+
+            float gain = peak / Mathf.Max(1e-6f, Peak());
             int frames = Length, count = channels.Length;
 
             string fullPath = Path.Combine(Directory.GetCurrentDirectory(), assetPath);
@@ -452,6 +503,55 @@ namespace FPS.EditorTools
         {
             var existing = AssetDatabase.LoadAssetAtPath<AudioClip>(assetPath);
             return existing != null ? existing : build().Save(assetPath);
+        }
+
+        /// <summary>Reads a 16-bit PCM WAV at <see cref="SampleRate"/> (mono or stereo, any chunk layout) for processing.</summary>
+        public static AudioSynth FromWav(string fullPath)
+        {
+            using (var reader = new BinaryReader(File.OpenRead(fullPath)))
+            {
+                long size = reader.BaseStream.Length;
+                reader.BaseStream.Position = 12; // "RIFF", size, "WAVE"
+                int count = 0;
+                while (reader.BaseStream.Position + 8 <= size)
+                {
+                    string id = Encoding.ASCII.GetString(reader.ReadBytes(4));
+                    int chunk = reader.ReadInt32();
+                    long next = reader.BaseStream.Position + chunk + (chunk & 1);
+                    if (id == "fmt ")
+                    {
+                        short format = reader.ReadInt16();
+                        count = reader.ReadInt16();
+                        int rate = reader.ReadInt32();
+                        reader.ReadBytes(6); // byte rate, block align
+                        short bits = reader.ReadInt16();
+                        if (format != 1 || bits != 16 || rate != SampleRate || count < 1 || count > 2)
+                            throw new InvalidDataException($"{fullPath}: expected {SampleRate} Hz 16-bit PCM, mono or stereo");
+                    }
+                    else if (id == "data" && count > 0)
+                    {
+                        int frames = (int)(Math.Min(chunk, size - reader.BaseStream.Position) / (2 * count));
+                        var synth = new AudioSynth(frames, 0, count);
+                        for (int i = 0; i < frames; i++)
+                        {
+                            for (int c = 0; c < count; c++) synth.channels[c][i] = reader.ReadInt16() / 32768f;
+                        }
+
+                        return synth;
+                    }
+
+                    reader.BaseStream.Position = next;
+                }
+            }
+
+            throw new InvalidDataException($"{fullPath}: no PCM data");
+        }
+
+        /// <summary>Raised-cosine fade over the last <paramref name="seconds"/> of <paramref name="samples"/>, ending on exactly zero.</summary>
+        internal static void FadeOut(float[] samples, float seconds)
+        {
+            int fade = Mathf.Min(samples.Length, Index(seconds));
+            for (int i = 1; i <= fade; i++) samples[samples.Length - i] *= 0.5f - 0.5f * Mathf.Cos(Mathf.PI * (i - 1) / fade);
         }
 
         private void Add(int index, float value)

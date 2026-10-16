@@ -13,24 +13,24 @@ MonoBehaviour:
   m_Name: TestRifle_Audio
   m_EditorClassIdentifier: FPS.Audio::FPS.Audio.WeaponAudioProfileSO
   pressureTransients:
-  - {fileID: 8300000, guid: d95621993f2d7ca4d98dd62d3b23eaae, type: 3}
-  - {fileID: 8300000, guid: 27a9b5bc0c6895c49ba14dcd98cb81b9, type: 3}
-  - {fileID: 8300000, guid: 0e38df43b9f0bba4587833525ce62024, type: 3}
+  - {fileID: 8300000, guid: b2c4dca50cbf82d4aad4b9bd9413fc65, type: 3}
+  - {fileID: 8300000, guid: 079f9e08cba65c64bb441f00057004fb, type: 3}
+  - {fileID: 8300000, guid: 1a2e0746d24ea5c418f1e67a88214e71, type: 3}
   subBassThumps:
-  - {fileID: 8300000, guid: 0a5d53b218d47df4fbbb8797dd33a01c, type: 3}
+  - {fileID: 8300000, guid: aad4bbc48c202b1439c87f83bf4b5bf3, type: 3}
   mechanicalCycles:
-  - {fileID: 8300000, guid: e50faa3dd396e594195c06f8f119976a, type: 3}
-  - {fileID: 8300000, guid: 1252ee5e6b53c7843a4ea3635a3a1f5e, type: 3}
+  - {fileID: 8300000, guid: a992db14a53899641960e897d841e35e, type: 3}
+  - {fileID: 8300000, guid: 56bbd435d73d0fd428969c5658bf1e2c, type: 3}
   bodyResonances:
-  - {fileID: 8300000, guid: 39a2756ddd24a7c48a817ba1caec90c1, type: 3}
+  - {fileID: 8300000, guid: 02bb78214c3ffb44294510b62df631ec, type: 3}
   distantReports:
-  - {fileID: 8300000, guid: 17680140937363442bf7f38d0f50b3ef, type: 3}
+  - {fileID: 8300000, guid: 40ab52876d7c10d47a4b2aa290fa0a7f, type: 3}
   distantThreshold: 120
   maxAudibleDistance: 1500
   loudness: 0.8
-  indoorTail: {fileID: 8300000, guid: 0ccc0bfb20691204ebef3cbf5edc1813, type: 3}
-  warehouseTail: {fileID: 8300000, guid: 3b29fa8aaf71ffe4f9f60cbb53cd40de, type: 3}
-  urbanTail: {fileID: 8300000, guid: 15b795cfd9d563144b84ce98bf0a08e1, type: 3}
-  openTail: {fileID: 8300000, guid: 371f5f4960ccceb4d85f906d7518458b, type: 3}
-  lowAmmoPing: {fileID: 8300000, guid: a4e4982d158cc57448df1e7422f9945a, type: 3}
+  indoorTail: {fileID: 8300000, guid: 1a9412c6fc320944b9fb0be3303be030, type: 3}
+  warehouseTail: {fileID: 8300000, guid: 73b2df9415e8bde4a9c25a962aa68331, type: 3}
+  urbanTail: {fileID: 8300000, guid: fb2a1da182c8fee4eb76b409ae0b2be5, type: 3}
+  openTail: {fileID: 8300000, guid: f800a9e9a12e7ca428fe5b8e1868248f, type: 3}
+  lowAmmoPing: {fileID: 8300000, guid: eaa581b29a7a214409c6a9e5a7a1708f, type: 3}
   lowAmmoRounds: 3

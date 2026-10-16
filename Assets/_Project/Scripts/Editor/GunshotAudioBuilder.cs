@@ -145,7 +145,7 @@ namespace FPS.EditorTools
         public static WeaponAudioProfileSO Explosion(string owner, float power, float crack)
         {
             int seed = StableSeed(owner);
-            Func<int, AudioSynth> blast = s => new AudioSynth(1.2f * power, s)
+            Func<int, AudioSynth> blast = s => new AudioSynth(2.4f * power, s) // until the afterburn has died away
                 .Blast(1f, 0f, 0.0025f * power, 0.5f).NWave(crack * 0.6f, 0f, 0.0008f)
                 .Noise(0.8f, 0f, 0.001f, 0.12f * power).Overdrive(3f, 2.4f).LowPass(6000f)
                 .Noise(0.35f, 0.02f, 0.02f, 0.5f * power).LowPass(2500f);
@@ -153,9 +153,9 @@ namespace FPS.EditorTools
 
             AudioClip[] blasts = Layer("Explosives", owner, "Blast", 2, i => blast(seed + i));
             AudioClip[] subs = Layer("Explosives", owner, "SubBass", 1, i => thump());
-            AudioClip[] debris = Layer("Explosives", owner, "Debris", 1, i => new AudioSynth(1f, seed + 10)
+            AudioClip[] debris = Layer("Explosives", owner, "Debris", 1, i => new AudioSynth(2.2f, seed + 10)
                 .Noise(0.25f, 0.15f, 0.05f, 0.4f).HighPass(1500f).Partials(new[] { 2400f, 4100f }, 0.15f, 0.3f, 0.05f));
-            AudioClip[] distant = Layer("Explosives", owner, "Distant", 1, i => new AudioSynth(2.5f * power, seed + 30)
+            AudioClip[] distant = Layer("Explosives", owner, "Distant", 1, i => new AudioSynth(3.2f * power, seed + 30)
                 .Blast(1f, 0f, 0.02f * power, 0.5f).Noise(1f, 0f, 0.03f, 0.7f * power).LowPass(300f).LowPass(300f)
                 .SubThump(45f, 28f, 0.8f, 0f, 0.6f * power).Rumble(0.3f, 0.2f, 2.4f * power, 160f, 1.5f));
             AudioClip[] tails = Tails("Explosives", owner, () => Dry(blast(seed), thump()), seed + 40, 0.12f);
@@ -203,16 +203,16 @@ namespace FPS.EditorTools
                     return Layer("Foley", "HitMarker", "Armor", 1, i => new AudioSynth(0.12f, 92).Noise(1f, 0f, 0.0001f, 0.008f).HighPass(1800f)
                         .Partials(new[] { 3900f, 5600f, 7900f }, 0.5f, 0f, 0.03f).Click(0.6f, 0.012f, 4500f))[0];
                 case FPS.UI.HitMarkerKind.Kill:
-                    return Layer("Foley", "HitMarker", "Kill", 1, i => KillTick(93))[0];
+                    return Layer("Foley", "HitMarker", "Kill", 1, i => KillTick(93, 0.4f))[0];
                 case FPS.UI.HitMarkerKind.Headshot:
-                    return Layer("Foley", "HitMarker", "Headshot", 1, i => KillTick(94).Partials(new[] { 2600f, 4100f }, 0.4f, 0.02f, 0.12f))[0];
+                    return Layer("Foley", "HitMarker", "Headshot", 1, i => KillTick(94, 0.6f).Partials(new[] { 2600f, 4100f }, 0.4f, 0.02f, 0.12f))[0];
                 default:
                     return Layer("Foley", "HitMarker", "Flesh", 1, i => new AudioSynth(0.08f, 91).Click(0.6f, 0f, 2600f)
                         .Noise(0.15f, 0f, 0.0002f, 0.004f).LowPass(5000f))[0];
             }
         }
 
-        private static AudioSynth KillTick(int seed) => new AudioSynth(0.25f, seed)
+        private static AudioSynth KillTick(int seed, float seconds) => new AudioSynth(seconds, seed)
             .Click(0.7f, 0f, 1400f).Tone(320f, 240f, 0.6f, 0f, 0.001f, 0.05f)
             .Click(0.6f, 0.07f, 1700f).Tone(280f, 210f, 0.5f, 0.07f, 0.001f, 0.06f).LowPass(6000f);
 
@@ -223,7 +223,7 @@ namespace FPS.EditorTools
         /// the turbulent gas jet and afterburning muzzle gases, overdriven asymmetrically and band-limited to 200 Hz –
         /// <see cref="GunshotSpec.Brightness"/>.
         /// </summary>
-        internal static AudioSynth Blast(GunshotSpec spec, int seed) => new AudioSynth(0.06f + spec.JetDecay * 6f, seed)
+        internal static AudioSynth Blast(GunshotSpec spec, int seed) => new AudioSynth(0.06f + spec.JetDecay * 10f, seed) // the slow jet falls 50 dB
             .Blast(1f, 0f, spec.BlastDuration)
             .Noise(0.55f, 0f, 0.0002f, spec.JetDecay)
             .Noise(0.25f, 0.0005f, 0.003f, spec.JetDecay * 2.5f)
@@ -238,8 +238,8 @@ namespace FPS.EditorTools
         {
             switch (action)
             {
-                case ActionSound.DirectImpingement: // ~800 rpm: 75 ms cycle
-                    return new AudioSynth(0.35f, seed)
+                case ActionSound.DirectImpingement: // ~800 rpm: 75 ms cycle; long enough for the buffer spring to ring out
+                    return new AudioSynth(0.9f, seed)
                         .Click(0.4f, 0f, 3800f) // hammer and firing pin
                         .Click(0.7f, 0.004f, 6200f) // bolt unlocks, extractor claw snaps the case out
                         .Noise(0.12f, 0.006f, 0.002f, 0.012f) // carrier sliding back
@@ -251,8 +251,8 @@ namespace FPS.EditorTools
                         .Click(0.35f, 0.062f, 5200f) // cam pin rotates the bolt home
                         .Click(0.3f, 0.085f, 7000f) // trigger reset
                         .HighPass(100f);
-                case ActionSound.Piston: // ~600 rpm: 100 ms cycle
-                    return new AudioSynth(0.3f, seed)
+                case ActionSound.Piston: // ~600 rpm: 100 ms cycle; long enough for the recoil spring to ring out
+                    return new AudioSynth(0.45f, seed)
                         .Click(0.4f, 0f, 3400f)
                         .Tone(170f, 120f, 0.7f, 0.003f, 0.001f, 0.03f) // op-rod and piston clunk
                         .Noise(0.25f, 0.003f, 0.001f, 0.01f)
@@ -280,7 +280,7 @@ namespace FPS.EditorTools
         }
 
         /// <summary>Receiver and handguard ring.</summary>
-        internal static AudioSynth Body(GunshotSpec spec, int seed) => new AudioSynth(0.4f * spec.Power, seed)
+        internal static AudioSynth Body(GunshotSpec spec, int seed) => new AudioSynth(0.7f * spec.Power, seed)
             .Tone(190f * spec.BodyPitch, 190f * spec.BodyPitch, 0.6f, 0f, 0.002f, 0.12f * spec.Power)
             .Tone(410f * spec.BodyPitch, 400f * spec.BodyPitch, 0.35f, 0f, 0.002f, 0.08f)
             .Tone(620f * spec.BodyPitch, 610f * spec.BodyPitch, 0.2f, 0f, 0.002f, 0.05f)
@@ -294,7 +294,7 @@ namespace FPS.EditorTools
         /// <summary>The magazine spring and follower ringing on the last rounds.</summary>
         internal static AudioSynth Ping(MagazineSound magazine, int seed)
         {
-            var ping = new AudioSynth(0.18f, seed);
+            var ping = new AudioSynth(0.3f, seed);
             switch (magazine)
             {
                 case MagazineSound.Pistol: return ping.Partials(new[] { 4100f, 6350f, 9100f }, 0.8f, 0f, 0.035f);
@@ -382,10 +382,12 @@ namespace FPS.EditorTools
             return dry.Samples(0);
         }
 
+        /// <summary>The first <paramref name="seconds"/> of a dry report, faded out over its last 10 ms so the space is not excited by a step.</summary>
         private static float[] Trim(float[] samples, float seconds)
         {
             var trimmed = new float[Mathf.Min(samples.Length, Mathf.CeilToInt(seconds * AudioSynth.SampleRate))];
             Array.Copy(samples, trimmed, trimmed.Length);
+            AudioSynth.FadeOut(trimmed, 0.01f);
             return trimmed;
         }
 

@@ -21,8 +21,11 @@ MonoBehaviour:
   ricochetSpread: 0
   casingImpactClips: []
   impactClips:
-  - {fileID: 8300000, guid: 7a71abd389f5f6e4589087c7e9e6a745, type: 3}
-  - {fileID: 8300000, guid: 38d6b58a898fa944da7aecfa2d4e475a, type: 3}
+  - {fileID: 8300000, guid: 8899dbee18a037f448f55e9ce49cb193, type: 3}
+  - {fileID: 8300000, guid: 8c07b8e7292fbd147972e38c5049b849, type: 3}
+  footstepClips: []
+  crawlClips: []
+  landingClips: []
   impactDecal: {fileID: 0}
   impactDustColor: {r: 0.35, g: 0.04, b: 0.03, a: 0.7}
   sparks: 0

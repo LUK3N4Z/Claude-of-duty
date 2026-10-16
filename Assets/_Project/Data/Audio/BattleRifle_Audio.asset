@@ -13,24 +13,24 @@ MonoBehaviour:
   m_Name: BattleRifle_Audio
   m_EditorClassIdentifier: FPS.Audio::FPS.Audio.WeaponAudioProfileSO
   pressureTransients:
-  - {fileID: 8300000, guid: 91a9543d4c2f6f94985b5f14d6aacbf2, type: 3}
-  - {fileID: 8300000, guid: f30925d07b915bc4baf088ee3499437d, type: 3}
-  - {fileID: 8300000, guid: 3fd46bf12d02ee544a4627a523fec3f2, type: 3}
+  - {fileID: 8300000, guid: 5a9afbe4a995aaf45bad937f28bacd28, type: 3}
+  - {fileID: 8300000, guid: 6a3c54f3e3cccc94c8ffbf09ee3c70c4, type: 3}
+  - {fileID: 8300000, guid: 3149cd57f8be9b843b903101519f3f2d, type: 3}
   subBassThumps:
-  - {fileID: 8300000, guid: 758c0e2813e102548aa73a2c26d133fb, type: 3}
+  - {fileID: 8300000, guid: ae6c167bc4250fb4dbe7dfd72c16462d, type: 3}
   mechanicalCycles:
-  - {fileID: 8300000, guid: e8e83ea6ea35051408d5d440f1f129bf, type: 3}
-  - {fileID: 8300000, guid: 11f95aa277142c94b89d9411956d770b, type: 3}
+  - {fileID: 8300000, guid: 3e726b77e99092e4181cf581f3d1c79a, type: 3}
+  - {fileID: 8300000, guid: 3824d9674c2ed574e844934b38e2591a, type: 3}
   bodyResonances:
-  - {fileID: 8300000, guid: 2b80e4a054c6f7d44a2a5403e0576f43, type: 3}
+  - {fileID: 8300000, guid: 8aec196f461ed9f47bcd9f53aa1b2144, type: 3}
   distantReports:
-  - {fileID: 8300000, guid: f2cdc9dd20135e946ab4cb32ffce5b34, type: 3}
+  - {fileID: 8300000, guid: 6bf7431404a9fba499ea3051a931629b, type: 3}
   distantThreshold: 144
   maxAudibleDistance: 1800.0001
   loudness: 0.96000004
-  indoorTail: {fileID: 8300000, guid: 139289419a0a22243b8c6a3d3203b01e, type: 3}
-  warehouseTail: {fileID: 8300000, guid: bbdf970b150fca44f95afd73ebd6aa6b, type: 3}
-  urbanTail: {fileID: 8300000, guid: b8bd98924cfcd434f9d5d5f53760f7a4, type: 3}
-  openTail: {fileID: 8300000, guid: 97f090a4207003545ac740d21308d399, type: 3}
-  lowAmmoPing: {fileID: 8300000, guid: c60a74aa339fef44793f37af3b41029a, type: 3}
+  indoorTail: {fileID: 8300000, guid: 2b7c502be9482f8418b4289888ba9a32, type: 3}
+  warehouseTail: {fileID: 8300000, guid: f1343d5d0b52fd54ab0549933ab25d58, type: 3}
+  urbanTail: {fileID: 8300000, guid: f057331ade98a284890f19463210940e, type: 3}
+  openTail: {fileID: 8300000, guid: bfb881f6a60437c479db6d93e56b8cd4, type: 3}
+  lowAmmoPing: {fileID: 8300000, guid: 26c287b347b301e43be5023449b3e557, type: 3}
   lowAmmoRounds: 3

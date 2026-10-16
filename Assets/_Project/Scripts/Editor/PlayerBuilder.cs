@@ -196,6 +196,9 @@ namespace FPS.EditorTools
             BuildArms(viewmodel);
             if (!root.TryGetComponent(out FPS.UI.DiegeticTacticalHUD _)) root.AddComponent<FPS.UI.DiegeticTacticalHUD>();
             if (!root.TryGetComponent(out FPS.AI.PerceivableTarget _)) root.AddComponent<FPS.AI.PerceivableTarget>(); // team 0: AI sees and hears the player
+            if (!root.TryGetComponent(out FPS.AI.FootstepEmitter footsteps)) footsteps = root.AddComponent<FPS.AI.FootstepEmitter>();
+            footsteps.FallbackSurface = BallisticsContentBuilder.Surface("Concrete");
+            EditorUtility.SetDirty(footsteps);
             EquipmentContentBuilder.CreateContent();
             if (!root.TryGetComponent(out TacticalEquipmentSystem equipment)) equipment = root.AddComponent<TacticalEquipmentSystem>();
             equipment.SetLoadout(EquipmentSlot.Lethal, EquipmentContentBuilder.Grenade(EquipmentContentBuilder.FragName), 2);

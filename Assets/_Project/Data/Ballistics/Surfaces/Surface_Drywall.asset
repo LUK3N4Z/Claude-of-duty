@@ -20,12 +20,23 @@ MonoBehaviour:
   ricochetSpeedRetention: 0.3
   ricochetSpread: 10
   casingImpactClips:
-  - {fileID: 8300000, guid: 19c418393e1b0f24fb424ef93a627440, type: 3}
-  - {fileID: 8300000, guid: 6c88ac92b1ddcf14494fe02e0847dbcf, type: 3}
-  - {fileID: 8300000, guid: 4173daac433c9294995a0224223d1cde, type: 3}
+  - {fileID: 8300000, guid: 2ca446d8320f0ea4baa0a0f93adcb8df, type: 3}
+  - {fileID: 8300000, guid: bd8eb6f92b1b1d548ba1cc9d5371b7bc, type: 3}
+  - {fileID: 8300000, guid: 71c5a2f008139cb44bd0cf6cad1a1105, type: 3}
   impactClips:
-  - {fileID: 8300000, guid: 48e8d8f6c6377d24492471044217107f, type: 3}
-  - {fileID: 8300000, guid: 477e37a5484a75f4caa0e7be85929a50, type: 3}
+  - {fileID: 8300000, guid: 1959be7303dddae45b7940b06aabc8d4, type: 3}
+  - {fileID: 8300000, guid: 75909649224e8b14cba13dd498da84e4, type: 3}
+  footstepClips:
+  - {fileID: 8300000, guid: 800e560201030ae44922c524989cddfc, type: 3}
+  - {fileID: 8300000, guid: 06ea90124f8d4984ab3496be5c10953b, type: 3}
+  - {fileID: 8300000, guid: 794af7fa43f0ad540bcc26ca65f02d61, type: 3}
+  - {fileID: 8300000, guid: 3d385f8ddb0d7db48aeb48f1073c5924, type: 3}
+  crawlClips:
+  - {fileID: 8300000, guid: 067d3ebea578fd94cb3ae77965f4166b, type: 3}
+  - {fileID: 8300000, guid: a942d32d652f47d4983998e00dac2ab8, type: 3}
+  landingClips:
+  - {fileID: 8300000, guid: 1bf411d79dff2f243a083ab3bed3616c, type: 3}
+  - {fileID: 8300000, guid: 82827463ba5faf2458f8901dd8a86eb1, type: 3}
   impactDecal: {fileID: 2100000, guid: 10bf93d87da16da43909126b662c92ee, type: 2}
   impactDustColor: {r: 0.85, g: 0.84, b: 0.82, a: 0.85}
   sparks: 0
