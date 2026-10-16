@@ -224,6 +224,7 @@ namespace FPS.AI
                 Shooter = transform,
                 Profile = data.AudioProfile,
                 MuzzleFlash = data.MuzzleFlashMultiplier,
+                RoundsLeft = rounds, // the next round feeds from the magazine into the chamber
             });
 
             if (rounds > 0) rounds--;

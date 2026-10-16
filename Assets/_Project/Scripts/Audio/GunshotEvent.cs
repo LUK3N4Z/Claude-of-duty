@@ -12,5 +12,7 @@ namespace FPS.Audio
         public WeaponAudioProfileSO Profile;
         /// <summary>Visible muzzle flash: 0 suppressed (or none), 1 bare muzzle. AI sees flashes inside its view.</summary>
         public float MuzzleFlash;
+        /// <summary>Rounds still loaded after this shot (magazine + chamber); negative for anything without a magazine.</summary>
+        public int RoundsLeft;
     }
 }

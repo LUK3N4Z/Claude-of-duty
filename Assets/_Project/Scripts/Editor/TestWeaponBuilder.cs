@@ -75,7 +75,7 @@ namespace FPS.EditorTools
                 Magnification = 4f, EyeRelief = 0.07f, AdsZoom = 1.25f, CantedIrons = true,
                 MagazineSize = new Vector3(0.025f, 0.12f, 0.06f), MagazineAngle = 8f, Modular = true,
             };
-            AttachmentDataSO[] carbineBuild = AttachmentContentBuilder.CreateParts(EffectsContentBuilder.SuppressedAudio(CarbineName));
+            AttachmentDataSO[] carbineBuild = AttachmentContentBuilder.CreateParts(GunshotAudioBuilder.Suppressed(GunshotAudioBuilder.Carbine));
             BuildRifle(carbine);
             Rigidbody carbineMagazine = DroppedMagazine(CarbineName, carbine.MagazineSize, 0.45f);
             RecoilProfileSO carbineRecoil = LoadOrCreate<RecoilProfileSO>($"{DataFolder}/{CarbineName}_Recoil.asset");

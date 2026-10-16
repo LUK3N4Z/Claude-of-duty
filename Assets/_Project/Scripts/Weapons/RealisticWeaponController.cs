@@ -634,6 +634,7 @@ namespace FPS.Weapons
                 Shooter = transform,
                 Profile = state.Data.AudioProfile,
                 MuzzleFlash = state.Data.MuzzleFlashMultiplier,
+                RoundsLeft = state.LoadedRounds,
             });
         }
 

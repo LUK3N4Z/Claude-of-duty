@@ -220,8 +220,8 @@ Contracts for later milestones:
 - `ObjectPoolManager.Instance` — scene-scoped, auto-created on first use. `Spawn(prefab, pos, rot, parent, lifetime)`,
   `Release(obj)`, `Prewarm(prefab, count, maxSize)`. Pooled prefabs implement `IPoolable` to reset state.
 - `GameLayers.EnvironmentMask` — Default + WorldGeometry; every environment query uses it.
-- `SuppressionEvent` (EventBus) — `Listener` (head/camera transform), `Intensity` 0–1, closest `Point`, `Direction`;
-  consumers ignore events for other listeners.
+- `SuppressionEvent` (EventBus) — `Listener` (head/camera transform), `Intensity` 0–1, closest `Point`, `Direction`,
+  round `Speed` (m/s, 0 for blasts); consumers ignore events for other listeners.
 - `FlashbangEvent` (EventBus) — `Position`, `Intensity`; every eye/ear computes its own `FlashbangEvent.Exposure`
   (distance, facing, occlusion → blindness; deafness passes walls at 60%).
 - `BallisticsSimulationManager.Clear()` drops all rounds in flight (round resets, test teardown).
@@ -256,8 +256,8 @@ Contracts for later milestones:
   `GunshotEvent` with their `WeaponAudioProfileSO`. Own shots = first-person transient + mechanism + body layers;
   others arrive after `distance / 343 m/s` as the close or (beyond `distantThreshold`) distant report. Reverb tails
   (indoor / urban / open, one restarting voice each) are weighted by a 9-ray environment probe around the listener.
-  Supersonic near misses play a crack at the closest point; suppression and low health sweep an `AudioLowPassFilter`
-  on the listener. Weapon handling foley comes from `WeaponActionEvent`.
+  Suppression and low health sweep an `AudioLowPassFilter` on the listener (near-miss cracks: M13). Weapon handling
+  foley comes from `WeaponActionEvent`.
 - **Impacts** (`ImpactEffectsController`, on the player): per `ProjectileImpactEvent`, a pooled HDRP `DecalProjector`
   using `SurfaceMaterialSO.impactDecal` (parented to the hit collider), a dust puff tinted `impactDustColor`, and the
   surface's impact clip delayed by distance.
@@ -271,8 +271,8 @@ Contracts for later milestones:
 - **HUD** (`DiegeticTacticalHUD`, uGUI built in code, legacy built-in font): compass tape + bearing, interaction
   prompt, fire-mode / magazine status that fades in only on mode switch or magazine check, optional crosshair (off),
   stress vignette + desaturation (main-camera-only volume on the Player layer).
-- **Placeholder sound design:** all clips are synthesized by `AudioSynth` (editor) into `Art/Audio`; replace clips in
-  the profiles/surfaces with recorded audio without code changes.
+- **Sound design:** clips are synthesized by `AudioSynth` (editor, 48 kHz) into `Art/Audio` (delete a clip to
+  regenerate it); recorded audio replaces them without code changes (profiles/surfaces, or the M13 override folders).
 
 ## Gunsmith & attachments (M7)
 
@@ -444,6 +444,33 @@ Contracts for later milestones:
   barrel distortion, rim chromatic aberration, eye-relief shadow disc, field stop, etched duplex and an HDR lit centre
   (`WeaponSight.ConfigureReticle`: `DuplexDot` = 1, `Chevron` = 2). Without the shader the vignette shadow is used.
 
+## Acoustics & gunshot synthesis (M13)
+
+- **Synthesis** (`AudioSynth`, 48 kHz 16-bit mono/stereo WAV): noise/tones/partials/filters plus physical models —
+  `Blast` (Friedlander wave), `Overdrive` (asymmetric air overload: rarefaction clips harder), `SubThump`
+  (phase-aligned exponential sweep), `Spring` (dispersive coil twang), `Click`, impulse-response building blocks
+  (`Reflection`, `Flutter`, `Diffuse` with darkening RT60 decay, `Rumble`) and `Convolve`.
+- **Reports** (`GunshotAudioBuilder`, per `GunshotSpec`: blast positive phase, gas-jet decay, band, sub sweep, power,
+  `ActionSound`, `MagazineSound`): layers `Transient` (blast 200 Hz–8 kHz, 3 variants), `SubBass` (30–90 Hz),
+  `Mechanism` (DI: extractor snap, buffer impact + buffer spring twang, carrier slam ~55 ms, trigger reset; piston,
+  pistol slide, bolt action variants), `Body`, `Distant`, `LowAmmoPing`, and stereo tails `TailSmallRoom` (0.4 s),
+  `TailWarehouse` (1.4 s), `TailUrbanCanyon` (2.2 s, 87 ms flutter), `TailOpenField` (3 s rolling low thunder) = the
+  dry blast convolved with each space's impulse response. Suppressor and explosion profiles use the same layers.
+- **Overrides:** a WAV at `Art/Audio/Overrides/<Owner>/<Layer>.wav` or `<Layer>_*.wav` (owner = weapon name,
+  `<Weapon>_Suppressed`, `Grenade_Frag`, `Bullet`, `Gear`, ...) replaces that synthesized layer on the next build.
+- **Playback** (`AcousticPropagationSystem`): own shots layer blast + sub + body on one voice, the action on its own
+  voice; `GunshotEvent.RoundsLeft` (magazine + chamber after the shot, −1 without a magazine) below
+  `WeaponAudioProfileSO.lowAmmoRounds` (3) plays the magazine ping and raises ping/action pitch
+  (`LowAmmoShift`). Remote close shots add the sub. Tails: indoor weight splits into small room vs warehouse by
+  `HallShare` (1.6 × ceiling height or mean wall distance, 5 → 12 m).
+- **Cracks** (`SupersonicCrackEmitter`, player root): per supersonic `SuppressionEvent` (`Speed` > 0) solves the Mach
+  cone — crack from upstream of the closest point (`miss / sqrt(M² − 1)`), arriving `miss·sqrt(M² − 1) / (M·c)` later,
+  N-wave duration ∝ M b^¼ / (M² − 1)^⅜ (pitch) and overpressure ∝ (M² − 1)^⅛ / b^¾ (volume) relative to a 1 m Mach
+  2.5 reference — then the receding whip at `1 / (1 + M cos 45°)` pitch.
+- **Gear** (`GearFoley`, FPS.Weapons, added by `ViewmodelRig.Build`): plate-carrier rustle loop following body
+  acceleration, view/weapon turn rate (inertia pivot) and speed; sling swivel clinks on weapon-swing jolts and hard
+  landings.
+
 ## Milestones
 
 - [x] **M1** Project init, `CLAUDE.md`, assemblies, `InputReader`, `EventBus`, `ObjectPoolManager`, `ProjectSetupWizard`
@@ -458,7 +485,7 @@ Contracts for later milestones:
 - [x] **M10** 3D gunsmith workbench, loadout persistence, HDRP settings menu
 - [x] **M11** Meshy asset pipeline, high-detail procedural models, weapon mechanisms, battle rifle and sidearm
 - [x] **M12** Photoreal HDRP overhaul (SSGI/SSR, contact shadows, physical sky, weathered materials, combat VFX, NVG)
-- [ ] **M13** Physical gunshot synthesis, environment tails, Doppler cracks, gear foley
+- [x] **M13** Physical gunshot synthesis, environment tails, Doppler cracks, gear foley
 - [ ] **M14** Mantling and vaulting, slide cancel, compressed ready, physical doors, inspect, camera kick
 - [ ] **M15** Deployment station, scene flow, loading screen, complete settings and key rebinding
 - [ ] **M16** Hit confirmation and diegetic combat polish

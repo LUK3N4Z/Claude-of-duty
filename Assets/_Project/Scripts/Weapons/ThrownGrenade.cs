@@ -155,6 +155,7 @@ namespace FPS.Weapons
                 Shooter = transform,
                 Profile = data.DetonationAudio,
                 MuzzleFlash = 1f,
+                RoundsLeft = -1,
             });
 
             if (data.Type == GrenadeType.Fragmentation)

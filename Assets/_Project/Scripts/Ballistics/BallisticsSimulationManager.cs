@@ -295,6 +295,7 @@ namespace FPS.Ballistics
                     Intensity = Mathf.Clamp01(1.15f - distance / nearMissRadius),
                     Point = closest,
                     Direction = p.Velocity.normalized,
+                    Speed = p.Velocity.magnitude,
                 });
             }
         }

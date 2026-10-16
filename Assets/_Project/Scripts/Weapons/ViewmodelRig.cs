@@ -93,6 +93,7 @@ namespace FPS.Weapons
             if (!root.TryGetComponent(out PhysicalRecoilEngine _)) root.AddComponent<PhysicalRecoilEngine>();
             if (!root.TryGetComponent(out RealisticWeaponController _)) root.AddComponent<RealisticWeaponController>();
             if (!root.TryGetComponent(out MuzzleAndSmokeVFXController _)) root.AddComponent<MuzzleAndSmokeVFXController>();
+            if (!root.TryGetComponent(out GearFoley _)) root.AddComponent<GearFoley>();
 
             root.SetActive(wasActive);
             return rig;

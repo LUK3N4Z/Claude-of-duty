@@ -66,7 +66,7 @@ namespace FPS.EditorTools
                 Set(so, "fragmentVelocity", 1300f);
                 Set(so, "blastRadius", 4f);
                 Set(so, "blastDamage", 140f);
-                Set(so, "detonationAudio", EffectsContentBuilder.ExplosionAudio("Grenade_Frag", 1f, 0.6f));
+                Set(so, "detonationAudio", GunshotAudioBuilder.Explosion("Grenade_Frag", 1f, 0.6f));
                 Set(so, "flashLumen", 2000000f);
                 Set(so, "suppressionRadius", 18f);
                 Set(so, "smokeMaterial", EffectsContentBuilder.SmokeMaterial());
@@ -84,7 +84,7 @@ namespace FPS.EditorTools
                 Set(so, "blastRadius", 0f);
                 Set(so, "blastDamage", 0f);
                 Set(so, "flashIntensity", 1f);
-                Set(so, "detonationAudio", EffectsContentBuilder.ExplosionAudio("Grenade_Stun", 0.7f, 1f));
+                Set(so, "detonationAudio", GunshotAudioBuilder.Explosion("Grenade_Stun", 0.7f, 1f));
                 Set(so, "flashLumen", 6000000f);
                 Set(so, "suppressionRadius", 8f);
                 Set(so, "smokeMaterial", EffectsContentBuilder.SmokeMaterial());
@@ -125,7 +125,7 @@ namespace FPS.EditorTools
                 Set(so, "fragmentVelocity", 1500f);
                 Set(so, "blastRadius", 10f);
                 Set(so, "blastDamage", 450f);
-                Set(so, "detonationAudio", EffectsContentBuilder.ExplosionAudio("Charge_C4", 1.6f, 0.5f));
+                Set(so, "detonationAudio", GunshotAudioBuilder.Explosion("Charge_C4", 1.6f, 0.5f));
                 Set(so, "flashLumen", 8000000f);
                 Set(so, "suppressionRadius", 30f);
                 Set(so, "smokeMaterial", EffectsContentBuilder.SmokeMaterial());

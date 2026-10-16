@@ -16,5 +16,7 @@ namespace FPS.Core
         public Vector3 Point;
         /// <summary>Unit direction of travel of the round.</summary>
         public Vector3 Direction;
+        /// <summary>Speed of the round at the closest point (m/s); 0 for blasts and anything that is not a projectile.</summary>
+        public float Speed;
     }
 }

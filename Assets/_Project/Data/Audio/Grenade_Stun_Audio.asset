@@ -15,6 +15,8 @@ MonoBehaviour:
   pressureTransients:
   - {fileID: 8300000, guid: 369a5bba3d095d94da9feffb27d0226d, type: 3}
   - {fileID: 8300000, guid: 7cfd02633b9c2f54a8be0b2b48cfe89d, type: 3}
+  subBassThumps:
+  - {fileID: 8300000, guid: 37e167434144f494faba70348b9a793c, type: 3}
   mechanicalCycles:
   - {fileID: 8300000, guid: 52b74fe59d1741b44b89edb680484b2d, type: 3}
   bodyResonances: []
@@ -23,6 +25,9 @@ MonoBehaviour:
   distantThreshold: 150
   maxAudibleDistance: 2500
   loudness: 1
-  indoorTail: {fileID: 8300000, guid: 6737b0bdb62a160499e9919ba671343d, type: 3}
-  urbanTail: {fileID: 8300000, guid: fac37ac0f3c6e35439417094ab0c6a0a, type: 3}
-  openTail: {fileID: 8300000, guid: 2477714a1081de943a15bd99520d8293, type: 3}
+  indoorTail: {fileID: 8300000, guid: 4a463ede95cc9884e84daac557bd8f2b, type: 3}
+  warehouseTail: {fileID: 8300000, guid: ed6cf042b0251c841a771cad008a40f4, type: 3}
+  urbanTail: {fileID: 8300000, guid: 6f890ccbe55cec542bf1da4625c84502, type: 3}
+  openTail: {fileID: 8300000, guid: a59332e98a7edc94db0921b156ceed08, type: 3}
+  lowAmmoPing: {fileID: 0}
+  lowAmmoRounds: 3

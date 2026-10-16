@@ -5,15 +5,17 @@ using UnityEngine;
 namespace FPS.Audio
 {
     /// <summary>
-    /// The listener's acoustic world. Own shots play as layered first-person audio (pressure transient, mechanism, body
-    /// resonance); others arrive after distance / 343 m/s as close or distant reports. Reverb tails blend between indoor,
-    /// urban and open by ray-probing the surroundings. Supersonic rounds crack past the head, and suppression or heavy
-    /// damage muffles the mix through a low-pass filter on the listener. Lives on the player root.
+    /// The listener's acoustic world. Own shots play as layered first-person audio (muzzle blast, sub-bass thump,
+    /// mechanical action, body resonance; the magazine pings on the last rounds while the action rises in pitch);
+    /// others arrive after distance / 343 m/s as close or distant reports. Reverb tails blend between small room,
+    /// warehouse, urban canyon and open field by ray-probing the surroundings (ceiling, walls and how far they are).
+    /// Suppression or heavy damage muffles the mix through a low-pass filter on the listener (near-miss cracks belong to
+    /// <see cref="SupersonicCrackEmitter"/>). Lives on the player root.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class AcousticPropagationSystem : MonoBehaviour
     {
-        private const int Indoor = 0, Urban = 1, Open = 2;
+        private const int SmallRoom = 0, Warehouse = 1, Urban = 2, Open = 3;
 
         [Header("Handling Foley")]
         [SerializeField] private AudioClip dryFire;
@@ -22,16 +24,22 @@ namespace FPS.Audio
         [SerializeField] private AudioClip boltCycle;
         [SerializeField] private AudioClip fireModeSwitch;
         [SerializeField] private AudioClip magazineCheck;
-        [Tooltip("Supersonic N-wave cracks; one is picked per near miss.")]
-        [SerializeField] private AudioClip[] supersonicCracks = new AudioClip[0];
 
         [Header("Mix")]
         [Tooltip("How much own-weapon audio is placed in the world rather than in the head.")]
         [SerializeField, Range(0f, 1f)] private float firstPersonSpatialBlend = 0.3f;
         [SerializeField, Range(0f, 1f)] private float tailVolume = 0.8f;
+        [SerializeField, Range(0f, 1f)] private float subBassVolume = 0.85f;
         [SerializeField] private float remoteMinDistance = 6f;
         [Tooltip("Handling noise of other people carries this far (m).")]
         [SerializeField] private float remoteFoleyMaxDistance = 25f;
+
+        [Header("Last Rounds")]
+        [Tooltip("Ping pitch rise on the very last round (fraction); the follower spring is nearly unloaded.")]
+        [SerializeField] private float lowAmmoPitchRise = 0.12f;
+        [Tooltip("Action pitch rise on the very last round (fraction): a lighter magazine stack under the bolt.")]
+        [SerializeField] private float lowAmmoActionRise = 0.04f;
+        [SerializeField, Range(0f, 1f)] private float lowAmmoVolume = 0.55f;
 
         [Header("Environment Probe")]
         [SerializeField] private float probeInterval = 0.25f;
@@ -39,6 +47,10 @@ namespace FPS.Audio
         [SerializeField] private float wallProbe = 60f;
         [SerializeField, Range(4, 16)] private int horizontalRays = 8;
         [SerializeField] private float environmentBlendSpeed = 3f;
+        [Tooltip("Room size (m, larger of 1.6 x ceiling height and mean wall distance) where a room starts sounding like a hall.")]
+        [SerializeField] private float hallStart = 5f;
+        [Tooltip("Room size (m) at which it is fully a warehouse.")]
+        [SerializeField] private float hallFull = 12f;
 
         [Header("Muffling")]
         [SerializeField] private float openCutoff = 22000f;
@@ -55,19 +67,23 @@ namespace FPS.Audio
         [Tooltip("Time for full deafness to wear off (s).")]
         [SerializeField, Min(0.1f)] private float deafnessRecovery = 6f;
 
-        private readonly AudioSource[] tails = new AudioSource[3];
+        private readonly AudioSource[] tails = new AudioSource[4];
         private Transform listener;
         private AudioSource firstPerson;
+        private AudioSource mechanism;
+        private AudioSource ping;
         private AudioSource ringing;
         private AudioLowPassFilter lowPass;
         private TacticalHealthAndArmorSystem health;
         private AudioEmitter emitterTemplate;
         private Vector3 environment = new Vector3(0f, 0f, 1f);
         private Vector3 targetEnvironment = new Vector3(0f, 0f, 1f);
-        private float nextProbe, suppression;
+        private float nextProbe, suppression, targetWarehouse;
 
         /// <summary>Smoothed (indoor, urban, open) tail weights; they sum to 1.</summary>
         public Vector3 EnvironmentWeights => environment;
+        /// <summary>Smoothed share of the indoor weight that is a warehouse or hall rather than a small room (0-1).</summary>
+        public float WarehouseShare { get; private set; }
         public float MuffleAmount { get; private set; }
         /// <summary>Stun-grenade deafness, 0-1.</summary>
         public float Deafness { get; private set; }
@@ -88,6 +104,21 @@ namespace FPS.Audio
             return new Vector3(indoor, urban, open) / (indoor + urban + open);
         }
 
+        /// <summary>
+        /// How much of a room is a hall: 0 below <paramref name="start"/> metres of size, 1 above <paramref name="full"/>,
+        /// where size is the larger of 1.6 x the ceiling height and the mean distance to the walls.
+        /// </summary>
+        public static float HallShare(float ceilingHeight, float meanWallDistance, float start, float full) =>
+            Mathf.Clamp01((Mathf.Max(ceilingHeight * 1.6f, meanWallDistance) - start) / Mathf.Max(0.01f, full - start));
+
+        /// <summary>
+        /// Last-rounds warning, 0 while plenty is left, then rising to 1 on the very last round: with
+        /// <paramref name="warnRounds"/> = 3 the shots leaving 2, 1 and 0 rounds give 1/3, 2/3 and 1. Negative counts
+        /// (no magazine) never warn.
+        /// </summary>
+        public static float LowAmmoShift(int roundsLeft, int warnRounds) =>
+            roundsLeft < 0 || roundsLeft >= warnRounds || warnRounds <= 0 ? 0f : (float)(warnRounds - roundsLeft) / warnRounds;
+
         private void Awake()
         {
             var audioListener = GetComponentInChildren<AudioListener>(true);
@@ -107,6 +138,8 @@ namespace FPS.Audio
             var mix = new GameObject("Acoustics").transform;
             mix.SetParent(listener, false);
             firstPerson = CreateSource(mix, firstPersonSpatialBlend);
+            mechanism = CreateSource(mix, firstPersonSpatialBlend);
+            ping = CreateSource(mix, firstPersonSpatialBlend);
             for (int i = 0; i < tails.Length; i++) tails[i] = CreateSource(mix, 0f);
             ringing = CreateSource(mix, 0f);
             ringing.loop = true;
@@ -140,10 +173,11 @@ namespace FPS.Audio
             if (Time.time >= nextProbe)
             {
                 nextProbe = Time.time + probeInterval;
-                targetEnvironment = Probe(listener.position);
+                targetEnvironment = Probe(listener.position, out targetWarehouse);
             }
 
             environment = Vector3.MoveTowards(environment, targetEnvironment, environmentBlendSpeed * dt);
+            WarehouseShare = Mathf.MoveTowards(WarehouseShare, targetWarehouse, environmentBlendSpeed * dt);
             suppression = Mathf.Max(0f, suppression - dt / suppressionDecay);
 
             float lowHealth = health != null && lowHealthThreshold > 0f
@@ -169,8 +203,21 @@ namespace FPS.Audio
             {
                 firstPerson.pitch = Random.Range(0.97f, 1.03f);
                 PlayFirstPerson(profile.PressureTransient, profile.Loudness);
-                PlayFirstPerson(profile.MechanicalCycle, profile.Loudness * 0.8f);
+                PlayFirstPerson(profile.SubBass, profile.Loudness * subBassVolume);
                 PlayFirstPerson(profile.BodyResonance, profile.Loudness * 0.9f);
+
+                float lowAmmo = LowAmmoShift(shot.RoundsLeft, profile.LowAmmoRounds);
+                mechanism.pitch = Random.Range(0.98f, 1.02f) * (1f + lowAmmoActionRise * lowAmmo);
+                AudioClip action = profile.MechanicalCycle;
+                if (action != null) mechanism.PlayOneShot(action, profile.Loudness * 0.8f);
+                if (lowAmmo > 0f && profile.LowAmmoPing != null)
+                {
+                    ping.clip = profile.LowAmmoPing;
+                    ping.pitch = 1f + lowAmmoPitchRise * lowAmmo;
+                    ping.volume = lowAmmoVolume * (0.6f + 0.4f * lowAmmo);
+                    ping.Play();
+                }
+
                 PlayTails(profile, 0f, profile.Loudness);
                 return;
             }
@@ -179,8 +226,11 @@ namespace FPS.Audio
             if (distance > profile.MaxAudibleDistance) return;
 
             float delay = PropagationDelay(distance);
-            AudioClip report = distance > profile.DistantThreshold ? profile.DistantReport : profile.PressureTransient;
-            Emit(report, shot.Position, profile.Loudness, Random.Range(0.97f, 1.03f), delay, remoteMinDistance, profile.MaxAudibleDistance);
+            float pitch = Random.Range(0.97f, 1.03f);
+            bool distant = distance > profile.DistantThreshold;
+            AudioClip report = distant ? profile.DistantReport : profile.PressureTransient;
+            Emit(report, shot.Position, profile.Loudness, pitch, delay, remoteMinDistance, profile.MaxAudibleDistance);
+            if (!distant) Emit(profile.SubBass, shot.Position, profile.Loudness * subBassVolume, pitch, delay, remoteMinDistance, profile.DistantThreshold);
             PlayTails(profile, delay, profile.Loudness * 0.7f * (1f - distance / profile.MaxAudibleDistance));
         }
 
@@ -205,9 +255,6 @@ namespace FPS.Audio
             if (evt.Listener != listener) return;
 
             suppression = Mathf.Clamp01(suppression + evt.Intensity * 0.7f);
-            if (supersonicCracks.Length > 0)
-                Emit(supersonicCracks[Random.Range(0, supersonicCracks.Length)], evt.Point, Mathf.Lerp(0.5f, 1f, evt.Intensity),
-                    Random.Range(0.95f, 1.05f), 0f, 1f, 30f);
         }
 
         private void OnFlashbang(in FlashbangEvent bang)
@@ -229,7 +276,8 @@ namespace FPS.Audio
 
         private void PlayTails(WeaponAudioProfileSO profile, float delay, float volume)
         {
-            PlayTail(tails[Indoor], profile.IndoorTail, environment.x * volume, delay);
+            PlayTail(tails[SmallRoom], profile.IndoorTail, environment.x * (1f - WarehouseShare) * volume, delay);
+            PlayTail(tails[Warehouse], profile.WarehouseTail, environment.x * WarehouseShare * volume, delay);
             PlayTail(tails[Urban], profile.UrbanTail, environment.y * volume, delay);
             PlayTail(tails[Open], profile.OpenTail, environment.z * volume, delay);
         }
@@ -252,10 +300,10 @@ namespace FPS.Audio
             emitter.Play(clip, volume, pitch, delay, minDistance, maxDistance);
         }
 
-        private Vector3 Probe(Vector3 origin)
+        private Vector3 Probe(Vector3 origin, out float hall)
         {
             int mask = GameLayers.EnvironmentMask;
-            bool ceiling = Physics.Raycast(origin, Vector3.up, ceilingProbe, mask, QueryTriggerInteraction.Ignore);
+            bool ceiling = Physics.Raycast(origin, Vector3.up, out RaycastHit roof, ceilingProbe, mask, QueryTriggerInteraction.Ignore);
             int hits = 0;
             float distanceSum = 0f;
             for (int i = 0; i < horizontalRays; i++)
@@ -266,7 +314,9 @@ namespace FPS.Audio
                 distanceSum += hit.distance;
             }
 
-            return ClassifyEnvironment(ceiling, (float)hits / horizontalRays, hits > 0 ? distanceSum / hits : wallProbe);
+            float meanWall = hits > 0 ? distanceSum / hits : wallProbe;
+            hall = ceiling ? HallShare(roof.distance, meanWall, hallStart, hallFull) : 0f;
+            return ClassifyEnvironment(ceiling, (float)hits / horizontalRays, meanWall);
         }
 
         private AudioClip FoleyFor(WeaponActionType type)

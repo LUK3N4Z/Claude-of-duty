@@ -86,10 +86,13 @@ namespace FPS.Tests
             var acoustics = player.GetComponent<AcousticPropagationSystem>();
             AudioClip crack = AudioClip.Create("Crack", 441, 1, 44100, false);
             created.Add(crack);
-            TestWeapons.SetField(acoustics, "supersonicCracks", new[] { crack });
+            TestWeapons.SetField(player.GetComponent<SupersonicCrackEmitter>(), "crackClips", new[] { crack }); // cracks moved there in M13
             Transform ear = rig.PlayerCamera.transform;
 
-            EventBus<SuppressionEvent>.Raise(new SuppressionEvent { Listener = ear, Intensity = 1f, Point = ear.position + Vector3.right, Direction = Vector3.forward });
+            EventBus<SuppressionEvent>.Raise(new SuppressionEvent
+            {
+                Listener = ear, Intensity = 1f, Point = ear.position + Vector3.right, Direction = Vector3.forward, Speed = 860f,
+            });
             yield return null;
             yield return null;
 

@@ -16,15 +16,21 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 88a3bb2cbf01c7d4eaa1828b87bd5e6b, type: 3}
   - {fileID: 8300000, guid: d103a0640d960d043aa2f56e1ca881c3, type: 3}
   - {fileID: 8300000, guid: 8ceb5a795d4835f478e6d8697345d1f0, type: 3}
+  subBassThumps:
+  - {fileID: 8300000, guid: 3c1731eb52bdcbd489613312814b55d5, type: 3}
   mechanicalCycles:
   - {fileID: 8300000, guid: bfea927a062f2974bb98f0671e19a8e5, type: 3}
+  - {fileID: 8300000, guid: d8ac2441e0c5c4b42bfd37a40033dd8d, type: 3}
   bodyResonances:
   - {fileID: 8300000, guid: a86c47cbf6ac38549aaf45ef70a33e34, type: 3}
   distantReports:
   - {fileID: 8300000, guid: b23041515096f484d8e7801e57ac234e, type: 3}
-  distantThreshold: 120
-  maxAudibleDistance: 1500
-  loudness: 0.49600002
-  indoorTail: {fileID: 8300000, guid: aef5554c203b47f43b100c5b03976c54, type: 3}
-  urbanTail: {fileID: 8300000, guid: 107bf0a6070554247b4053375176e3ff, type: 3}
-  openTail: {fileID: 8300000, guid: 9bee4f10232b78d4f9c4f3c4d5d48fed, type: 3}
+  distantThreshold: 72
+  maxAudibleDistance: 900.00006
+  loudness: 0.48000002
+  indoorTail: {fileID: 8300000, guid: 236d0f2e019a1f649b2167c99fc43bf6, type: 3}
+  warehouseTail: {fileID: 8300000, guid: 30b34f3d977c7a3418b24deec3a8edbc, type: 3}
+  urbanTail: {fileID: 8300000, guid: ffc526b2001bcb443ae1c1764c166d55, type: 3}
+  openTail: {fileID: 8300000, guid: 39447b0d446cd3a43b2a4fd1fe6131c8, type: 3}
+  lowAmmoPing: {fileID: 8300000, guid: f347b29a1567d3b48bbb39d39a083a86, type: 3}
+  lowAmmoRounds: 3

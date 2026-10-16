@@ -81,6 +81,7 @@ namespace FPS.Locomotion
             if (!root.TryGetComponent(out FlashbangFeedback _)) root.AddComponent<FlashbangFeedback>();
             if (!root.TryGetComponent(out Interactor _)) root.AddComponent<Interactor>();
             if (!root.TryGetComponent(out AcousticPropagationSystem _)) root.AddComponent<AcousticPropagationSystem>();
+            if (!root.TryGetComponent(out SupersonicCrackEmitter _)) root.AddComponent<SupersonicCrackEmitter>();
             if (!root.TryGetComponent(out ImpactEffectsController _)) root.AddComponent<ImpactEffectsController>();
 
             // Body zones for incoming fire: torso and arms lean with LeanPivot, legs follow the stance/prone pivot.

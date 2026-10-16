@@ -13,18 +13,24 @@ MonoBehaviour:
   m_Name: TestRifle_Suppressed_Audio
   m_EditorClassIdentifier: FPS.Audio::FPS.Audio.WeaponAudioProfileSO
   pressureTransients:
-  - {fileID: 8300000, guid: d0c47354a3086ef448a7f1e210faf80e, type: 3}
-  - {fileID: 8300000, guid: 593ad3fdf65398b41a5876d84279b88e, type: 3}
-  - {fileID: 8300000, guid: 9e131ecb739297e4b8c913666631ce5e, type: 3}
+  - {fileID: 8300000, guid: eefdca0e4d98ee34d8ee2fe05d21922f, type: 3}
+  - {fileID: 8300000, guid: 53f8ef9dcfc7a7349836abe6c976cb93, type: 3}
+  - {fileID: 8300000, guid: 84948883a3589244b8052205a562b4a3, type: 3}
+  subBassThumps:
+  - {fileID: 8300000, guid: a64dc4f09faeb91468b880ab28e65b75, type: 3}
   mechanicalCycles:
   - {fileID: 8300000, guid: e50faa3dd396e594195c06f8f119976a, type: 3}
+  - {fileID: 8300000, guid: 1252ee5e6b53c7843a4ea3635a3a1f5e, type: 3}
   bodyResonances:
   - {fileID: 8300000, guid: 39a2756ddd24a7c48a817ba1caec90c1, type: 3}
   distantReports:
-  - {fileID: 8300000, guid: 904459353bcf3714a9af7a5574b3210a, type: 3}
+  - {fileID: 8300000, guid: a17dd0a77cf3fd74b94bf77cf3bd5736, type: 3}
   distantThreshold: 40
   maxAudibleDistance: 300
   loudness: 0.35
-  indoorTail: {fileID: 8300000, guid: c89a1fab4fa62ee45845167d72ac98c0, type: 3}
-  urbanTail: {fileID: 8300000, guid: bd1d13f3b20efc14eb99f8b39398b487, type: 3}
-  openTail: {fileID: 8300000, guid: bd1d13f3b20efc14eb99f8b39398b487, type: 3}
+  indoorTail: {fileID: 8300000, guid: e683d22b4efa9b34cb3a655ef57ae506, type: 3}
+  warehouseTail: {fileID: 8300000, guid: 20aa401f0e1d8d645a61d863980b94d4, type: 3}
+  urbanTail: {fileID: 8300000, guid: afeeecd910bcda043b826220066aa11f, type: 3}
+  openTail: {fileID: 8300000, guid: 9b1a490987337bf4d94e01102cc8eb13, type: 3}
+  lowAmmoPing: {fileID: 8300000, guid: a4e4982d158cc57448df1e7422f9945a, type: 3}
+  lowAmmoRounds: 3

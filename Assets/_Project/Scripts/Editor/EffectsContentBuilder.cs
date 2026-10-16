@@ -10,9 +10,9 @@ using Object = UnityEngine.Object;
 namespace FPS.EditorTools
 {
     /// <summary>
-    /// Generates the audio-visual content: synthesized weapon reports (transient, mechanism, body, distant, three reverb
-    /// tails), handling foley, supersonic cracks and per-surface impacts; flipbook, bullet-hole and distortion textures;
-    /// dust, muzzle gas, smoke, heat-haze and per-surface decal materials. Wires them into surfaces and the player.
+    /// Generates the audio-visual content: weapon reports (<see cref="GunshotAudioBuilder"/>), handling foley, bullet
+    /// cracks and whips, gear rustle and per-surface impacts; flipbook, bullet-hole and distortion textures; dust, muzzle
+    /// gas, smoke, heat-haze and per-surface decal materials. Wires them into surfaces and the player.
     /// </summary>
     public static class EffectsContentBuilder
     {
@@ -67,10 +67,10 @@ namespace FPS.EditorTools
             Surface("Flesh", Color.clear, new Color(0.35f, 0.04f, 0.03f, 0.7f), null, null, false, false,
                 s => s.Noise(0.4f, 0f, 0.002f, 0.03f).LowPass(900f).Tone(140f, 90f, 0.8f, 0f, 0.002f, 0.05f));
 
-            WeaponReport(TestWeaponBuilder.CarbineName, 1f, 1f, false);
-            WeaponReport(TestWeaponBuilder.MarksmanName, 1.35f, 0.8f, true);
-            WeaponReport(TestWeaponBuilder.BattleRifleName, 1.2f, 0.88f, false);
-            WeaponReport(TestWeaponBuilder.SidearmName, 0.62f, 1.35f, false);
+            GunshotAudioBuilder.Weapon(GunshotAudioBuilder.Carbine);
+            GunshotAudioBuilder.Weapon(GunshotAudioBuilder.Marksman);
+            GunshotAudioBuilder.Weapon(GunshotAudioBuilder.BattleRifle);
+            GunshotAudioBuilder.Weapon(GunshotAudioBuilder.Sidearm);
 
             AudioSynth.LoadOrCreate(Clip("Foley", "DryFire"), () => new AudioSynth(0.08f, 11).Partials(new[] { 3200f, 5600f }, 0.7f, 0f, 0.01f).Noise(0.2f, 0f, 0.0003f, 0.004f));
             AudioSynth.LoadOrCreate(Clip("Foley", "MagazineOut"), () => new AudioSynth(0.25f, 12).Noise(0.25f, 0f, 0.02f, 0.08f).HighPass(1500f).Partials(new[] { 1800f, 3400f }, 0.5f, 0.09f, 0.02f));
@@ -78,17 +78,15 @@ namespace FPS.EditorTools
             AudioSynth.LoadOrCreate(Clip("Foley", "BoltCycle"), () => new AudioSynth(0.3f, 14).Partials(new[] { 2600f, 4400f }, 0.6f, 0f, 0.015f).Noise(0.2f, 0.02f, 0.01f, 0.05f).Partials(new[] { 2000f, 3800f }, 0.7f, 0.16f, 0.02f));
             AudioSynth.LoadOrCreate(Clip("Foley", "FireModeSwitch"), () => new AudioSynth(0.06f, 15).Partials(new[] { 4200f, 6900f }, 0.5f, 0f, 0.006f));
             AudioSynth.LoadOrCreate(Clip("Foley", "MagazineCheck"), () => new AudioSynth(0.25f, 16).Partials(new[] { 1700f, 3300f }, 0.3f, 0f, 0.02f).Partials(new[] { 1600f, 3100f }, 0.3f, 0.12f, 0.02f));
-            for (int i = 0; i < 2; i++)
-            {
-                int seed = 20 + i;
-                AudioSynth.LoadOrCreate(Clip("Foley", $"SupersonicCrack_{i}"), () => new AudioSynth(0.12f, seed)
-                    .NWave(1f, 0f, 0.0012f).Noise(0.5f, 0.0012f, 0.0005f, 0.012f).HighPass(2500f).Echo(0.021f, 0.2f));
-            }
+            GunshotAudioBuilder.Cracks();
+            GunshotAudioBuilder.Whips();
+            GunshotAudioBuilder.GearRustle();
+            GunshotAudioBuilder.SlingClinks();
 
             AssetDatabase.SaveAssets();
         }
 
-        /// <summary>Assigns foley, cracks and VFX materials to a built player.</summary>
+        /// <summary>Assigns foley, cracks, gear sounds and VFX materials to a built player.</summary>
         internal static void ConfigurePlayer(GameObject player)
         {
             TestWeaponBuilder.Configure(player.GetComponent<AcousticPropagationSystem>(), so =>
@@ -99,8 +97,17 @@ namespace FPS.EditorTools
                 TestWeaponBuilder.Set(so, "boltCycle", Load(Clip("Foley", "BoltCycle")));
                 TestWeaponBuilder.Set(so, "fireModeSwitch", Load(Clip("Foley", "FireModeSwitch")));
                 TestWeaponBuilder.Set(so, "magazineCheck", Load(Clip("Foley", "MagazineCheck")));
-                SetClips(TestWeaponBuilder.Property(so, "supersonicCracks"), Load(Clip("Foley", "SupersonicCrack_0")), Load(Clip("Foley", "SupersonicCrack_1")));
                 TestWeaponBuilder.Set(so, "tinnitus", Tinnitus());
+            });
+            TestWeaponBuilder.Configure(player.GetComponent<SupersonicCrackEmitter>(), so =>
+            {
+                SetClips(TestWeaponBuilder.Property(so, "crackClips"), GunshotAudioBuilder.Cracks());
+                SetClips(TestWeaponBuilder.Property(so, "whipClips"), GunshotAudioBuilder.Whips());
+            });
+            TestWeaponBuilder.Configure(player.GetComponent<GearFoley>(), so =>
+            {
+                TestWeaponBuilder.Set(so, "rustleLoop", GunshotAudioBuilder.GearRustle());
+                SetClips(TestWeaponBuilder.Property(so, "swivelClinks"), GunshotAudioBuilder.SlingClinks());
             });
             TestWeaponBuilder.Configure(player.GetComponent<ImpactEffectsController>(), so =>
             {
@@ -121,104 +128,12 @@ namespace FPS.EditorTools
             });
         }
 
-        private static void WeaponReport(string weapon, float power, float pitch, bool boltAction)
-        {
-            string Path(string layer, int variant) => Clip("Weapons", $"{weapon}_{layer}_{variant}");
-            int seed = weapon.Length * 101;
-            var transients = new AudioClip[3];
-            for (int i = 0; i < transients.Length; i++)
-            {
-                int s = seed + i;
-                transients[i] = AudioSynth.LoadOrCreate(Path("Transient", i), () => new AudioSynth(0.35f * power, s)
-                    .Noise(1f, 0f, 0.0003f, 0.018f * power).Tone(160f * pitch, 55f * pitch, 0.9f * power, 0f, 0.001f, 0.06f * power, 0.04f)
-                    .Noise(0.25f, 0f, 0.002f, 0.08f * power).LowPass(9000f));
-            }
-
-            AudioClip mechanism = AudioSynth.LoadOrCreate(Path("Mechanism", 0), () => boltAction
-                ? new AudioSynth(0.08f, seed + 10).Partials(new[] { 3000f, 5200f }, 0.4f, 0f, 0.008f) // firing pin only
-                : new AudioSynth(0.15f, seed + 10).Partials(new[] { 2300f, 4100f, 6200f }, 0.6f, 0f, 0.012f)
-                    .Partials(new[] { 1900f, 3600f }, 0.45f, 0.045f, 0.015f).Noise(0.15f, 0f, 0.0005f, 0.01f).HighPass(800f));
-            AudioClip body = AudioSynth.LoadOrCreate(Path("Body", 0), () => new AudioSynth(0.4f * power, seed + 20)
-                .Tone(190f * pitch, 190f * pitch, 0.6f, 0f, 0.002f, 0.12f * power).Tone(410f * pitch, 400f * pitch, 0.35f, 0f, 0.002f, 0.08f)
-                .Tone(620f * pitch, 610f * pitch, 0.2f, 0f, 0.002f, 0.05f).Noise(0.1f, 0f, 0.002f, 0.05f).LowPass(3000f));
-            AudioClip distant = AudioSynth.LoadOrCreate(Path("Distant", 0), () => new AudioSynth(1.6f * power, seed + 30)
-                .Noise(1f, 0f, 0.012f, 0.35f * power).LowPass(700f).LowPass(700f).Tone(70f * pitch, 45f * pitch, 0.5f, 0f, 0.02f, 0.4f * power, 0.3f)
-                .Echo(0.4f, 0.25f));
-            AudioClip indoor = AudioSynth.LoadOrCreate(Path("TailIndoor", 0), () => new AudioSynth(0.8f * power, seed + 40)
-                .Noise(0.7f, 0f, 0.005f, 0.18f * power).LowPass(5000f).Echo(0.013f, 0.6f).Echo(0.029f, 0.45f).Echo(0.047f, 0.35f));
-            AudioClip urban = AudioSynth.LoadOrCreate(Path("TailUrban", 0), () => new AudioSynth(2f * power, seed + 50)
-                .Noise(0.6f, 0f, 0.01f, 0.25f).LowPass(2500f).Echo(0.18f, 0.55f).Echo(0.37f, 0.4f).Echo(0.62f, 0.3f)
-                .Noise(0.15f, 0.05f, 0.1f, 0.8f * power).LowPass(4000f));
-            AudioClip open = AudioSynth.LoadOrCreate(Path("TailOpen", 0), () => new AudioSynth(2.6f * power, seed + 60)
-                .Noise(0.5f, 0f, 0.03f, 0.9f * power).LowPass(450f).LowPass(450f).Tone(55f * pitch, 40f * pitch, 0.25f, 0f, 0.05f, 1f * power, 0.8f));
-
-            WeaponAudioProfileSO profile = TestWeaponBuilder.LoadOrCreate<WeaponAudioProfileSO>($"{AudioDataFolder}/{weapon}_Audio.asset");
-            TestWeaponBuilder.Configure(profile, so =>
-            {
-                SetClips(TestWeaponBuilder.Property(so, "pressureTransients"), transients);
-                SetClips(TestWeaponBuilder.Property(so, "mechanicalCycles"), mechanism);
-                SetClips(TestWeaponBuilder.Property(so, "bodyResonances"), body);
-                SetClips(TestWeaponBuilder.Property(so, "distantReports"), distant);
-                TestWeaponBuilder.Set(so, "indoorTail", indoor);
-                TestWeaponBuilder.Set(so, "urbanTail", urban);
-                TestWeaponBuilder.Set(so, "openTail", open);
-                TestWeaponBuilder.Set(so, "loudness", Mathf.Min(1f, 0.8f * power));
-            });
-        }
-
         /// <summary>Stun-grenade ringing: two high partials beating slowly, looped while hearing returns.</summary>
         internal static AudioClip Tinnitus()
         {
             ProjectSetupWizard.EnsureFolder($"{AudioFolder}/Foley");
             return AudioSynth.LoadOrCreate(Clip("Foley", "Tinnitus"), () => new AudioSynth(3f, 41)
                 .Tone(3900f, 3900f, 0.35f, 0f, 0.05f, 30f).Tone(3913f, 3913f, 0.3f, 0f, 0.05f, 30f).Tone(6100f, 6100f, 0.08f, 0f, 0.05f, 30f));
-        }
-
-        /// <summary>
-        /// A grenade report: <paramref name="power"/> scales the blast, <paramref name="crack"/> the sharp high-frequency
-        /// snap (a stun grenade is mostly crack, a frag mostly thump). Close report, distant boom and three tails.
-        /// </summary>
-        internal static WeaponAudioProfileSO ExplosionAudio(string name, float power, float crack)
-        {
-            ProjectSetupWizard.EnsureFolder($"{AudioFolder}/Explosives");
-            ProjectSetupWizard.EnsureFolder(AudioDataFolder);
-            string Path(string layer, int variant) => Clip("Explosives", $"{name}_{layer}_{variant}");
-            int seed = name.Length * 307;
-            var blasts = new AudioClip[2];
-            for (int i = 0; i < blasts.Length; i++)
-            {
-                int s = seed + i;
-                blasts[i] = AudioSynth.LoadOrCreate(Path("Blast", i), () => new AudioSynth(1.2f * power, s)
-                    .NWave(crack, 0f, 0.002f).Noise(1f, 0f, 0.001f, 0.12f * power).LowPass(6000f)
-                    .Tone(70f, 32f, 1f, 0f, 0.004f, 0.5f * power, 0.3f).Noise(0.35f, 0.02f, 0.02f, 0.5f * power).LowPass(2500f));
-            }
-
-            AudioClip debris = AudioSynth.LoadOrCreate(Path("Debris", 0), () => new AudioSynth(1f, seed + 10)
-                .Noise(0.25f, 0.15f, 0.05f, 0.4f).HighPass(1500f).Partials(new[] { 2400f, 4100f }, 0.15f, 0.3f, 0.05f));
-            AudioClip distant = AudioSynth.LoadOrCreate(Path("Distant", 0), () => new AudioSynth(2.5f * power, seed + 30)
-                .Noise(1f, 0f, 0.03f, 0.7f * power).LowPass(300f).LowPass(300f).Tone(45f, 28f, 0.8f, 0f, 0.05f, 1f * power, 0.6f).Echo(0.5f, 0.3f));
-            AudioClip indoor = AudioSynth.LoadOrCreate(Path("TailIndoor", 0), () => new AudioSynth(1.4f * power, seed + 40)
-                .Noise(0.8f, 0f, 0.005f, 0.4f * power).LowPass(3000f).Echo(0.017f, 0.6f).Echo(0.037f, 0.5f).Echo(0.061f, 0.4f));
-            AudioClip urban = AudioSynth.LoadOrCreate(Path("TailUrban", 0), () => new AudioSynth(3f * power, seed + 50)
-                .Noise(0.7f, 0f, 0.02f, 0.6f).LowPass(1500f).Echo(0.21f, 0.55f).Echo(0.43f, 0.4f).Echo(0.71f, 0.3f));
-            AudioClip open = AudioSynth.LoadOrCreate(Path("TailOpen", 0), () => new AudioSynth(4f * power, seed + 60)
-                .Noise(0.6f, 0f, 0.06f, 1.6f * power).LowPass(300f).LowPass(300f).Tone(38f, 30f, 0.4f, 0f, 0.1f, 2f * power, 1.5f));
-
-            WeaponAudioProfileSO profile = TestWeaponBuilder.LoadOrCreate<WeaponAudioProfileSO>($"{AudioDataFolder}/{name}_Audio.asset");
-            TestWeaponBuilder.Configure(profile, so =>
-            {
-                SetClips(TestWeaponBuilder.Property(so, "pressureTransients"), blasts);
-                SetClips(TestWeaponBuilder.Property(so, "mechanicalCycles"), debris);
-                SetClips(TestWeaponBuilder.Property(so, "bodyResonances"));
-                SetClips(TestWeaponBuilder.Property(so, "distantReports"), distant);
-                TestWeaponBuilder.Set(so, "distantThreshold", 150f);
-                TestWeaponBuilder.Set(so, "maxAudibleDistance", 2500f);
-                TestWeaponBuilder.Set(so, "indoorTail", indoor);
-                TestWeaponBuilder.Set(so, "urbanTail", urban);
-                TestWeaponBuilder.Set(so, "openTail", open);
-                TestWeaponBuilder.Set(so, "loudness", 1f);
-            });
-            return profile;
         }
 
         internal static Material SmokeMaterial() => Vfx("BreechSmoke");
@@ -228,48 +143,6 @@ namespace FPS.EditorTools
         {
             ProjectSetupWizard.EnsureFolder($"{AudioFolder}/Explosives");
             return AudioSynth.LoadOrCreate(Clip("Explosives", "Charge_Beep"), () => new AudioSynth(0.09f, 51).Tone(2900f, 2900f, 0.6f, 0f, 0.002f, 0.05f));
-        }
-
-        /// <summary>
-        /// The weapon behind a suppressor: a short, dull "thup" with the bolt clearly audible, quieter tails and a
-        /// report that fades out far sooner. Shares the unsuppressed mechanism and body clips.
-        /// </summary>
-        internal static WeaponAudioProfileSO SuppressedAudio(string weapon)
-        {
-            WeaponAudioProfileSO open = WeaponAudio(weapon);
-            string Path(string layer, int variant) => Clip("Weapons", $"{weapon}_Suppressed{layer}_{variant}");
-            int seed = weapon.Length * 211;
-            var transients = new AudioClip[3];
-            for (int i = 0; i < transients.Length; i++)
-            {
-                int s = seed + i;
-                transients[i] = AudioSynth.LoadOrCreate(Path("Transient", i), () => new AudioSynth(0.25f, s)
-                    .Noise(0.6f, 0f, 0.001f, 0.025f).LowPass(1800f).Tone(120f, 70f, 0.7f, 0f, 0.002f, 0.05f, 0.03f)
-                    .Noise(0.12f, 0.002f, 0.004f, 0.04f).HighPass(60f));
-            }
-
-            AudioClip distant = AudioSynth.LoadOrCreate(Path("Distant", 0), () => new AudioSynth(0.6f, seed + 30)
-                .Noise(0.6f, 0f, 0.008f, 0.12f).LowPass(500f).LowPass(500f));
-            AudioClip indoor = AudioSynth.LoadOrCreate(Path("TailIndoor", 0), () => new AudioSynth(0.4f, seed + 40)
-                .Noise(0.35f, 0f, 0.005f, 0.08f).LowPass(2500f).Echo(0.013f, 0.5f).Echo(0.029f, 0.35f));
-            AudioClip outdoor = AudioSynth.LoadOrCreate(Path("TailOutdoor", 0), () => new AudioSynth(0.8f, seed + 50)
-                .Noise(0.25f, 0f, 0.01f, 0.2f).LowPass(900f).Echo(0.18f, 0.35f));
-
-            WeaponAudioProfileSO profile = TestWeaponBuilder.LoadOrCreate<WeaponAudioProfileSO>($"{AudioDataFolder}/{weapon}_Suppressed_Audio.asset");
-            TestWeaponBuilder.Configure(profile, so =>
-            {
-                SetClips(TestWeaponBuilder.Property(so, "pressureTransients"), transients);
-                SetClips(TestWeaponBuilder.Property(so, "mechanicalCycles"), open.MechanicalCycle); // one clip each on the base profile
-                SetClips(TestWeaponBuilder.Property(so, "bodyResonances"), open.BodyResonance);
-                SetClips(TestWeaponBuilder.Property(so, "distantReports"), distant);
-                TestWeaponBuilder.Set(so, "distantThreshold", 40f);
-                TestWeaponBuilder.Set(so, "maxAudibleDistance", 300f);
-                TestWeaponBuilder.Set(so, "indoorTail", indoor);
-                TestWeaponBuilder.Set(so, "urbanTail", outdoor);
-                TestWeaponBuilder.Set(so, "openTail", outdoor);
-                TestWeaponBuilder.Set(so, "loudness", 0.35f);
-            });
-            return profile;
         }
 
         private static void Surface(string surfaceName, Color decalColor, Color dustColor, Texture2D hole, Texture2D crater, bool sparks, bool lingeringDust,
@@ -533,7 +406,7 @@ namespace FPS.EditorTools
                 0.5f + (Mathf.PerlinNoise(u * 6f + 31.7f, v * 6f + 17.3f) - 0.5f) * fade, fade, 1f);
         }
 
-        private static void SetClips(SerializedProperty list, params AudioClip[] clips)
+        internal static void SetClips(SerializedProperty list, params AudioClip[] clips)
         {
             list.arraySize = clips.Length;
             for (int i = 0; i < clips.Length; i++) list.GetArrayElementAtIndex(i).objectReferenceValue = clips[i];
