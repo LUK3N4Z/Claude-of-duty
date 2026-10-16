@@ -28,7 +28,7 @@ procedural geometry with weathered PBR finishes; every one has a Meshy spec, and
 | Audio | 48 kHz physically synthesized gunfire, four room tails, supersonic cracks, gear foley, footsteps per surface, master limiter |
 | Front end | Deployment table, loading screen, Return to Armory / Quit, full options menu with key rebinding, hit markers, damage direction arcs, death camera |
 | Persistence | JSON profile: weapon blueprints, loadout, settings, key bindings |
-| Tests | 160 PlayMode tests (155 pass, 5 opt-in render captures skipped) |
+| Tests | 165 PlayMode tests (160 pass, 5 opt-in render captures skipped) |
 
 ### Milestones
 
@@ -583,7 +583,7 @@ Every mode is deployed from the Armory's deployment table. All modes run on a **
 
 | Mode | Rules | Setup |
 |------|-------|-------|
-| **Tactical Raid / Extraction** | One life, no resupply. Complete the objectives (hold Interact: download intel 6 s, plant tracker 5 s); each completion **raises the alarm** across the garrison. Then reach the LZ and hold inside it for 8 s. Death or the 15-minute clock fails the mission. Ammunition is what you carry plus magazines looted from the dead. | Solo vs a 6-man garrison in two squads guarding the objectives |
+| **Tactical Raid / Extraction** | One life, no resupply. You start behind a line of concrete T-walls that hides every start from the garrison. Complete the objectives (hold Interact: download intel 6 s, plant tracker 5 s); each completion **raises the alarm** across the garrison. Then reach the LZ and hold inside it for 8 s. Death or the 15-minute clock fails the mission. Ammunition is what you carry plus magazines looted from the dead. | Solo vs a 6-man garrison in two squads guarding the objectives |
 | **Search & Destroy** | Rounds of 120 s, one life each. Attackers plant the C4 at site A (warehouse) or B (container yard): 5 s hold, 40 s fuse with a quickening beep. Defenders stop the plant or defuse (7 s hold). Elimination wins unless a planted charge still needs defusing; a planted charge stops the clock. Sides swap after round 3; first to 4 rounds wins. AI attackers send a planter and cover him; defenders split over the sites; everyone converges on a planted charge. | Player + 2 friendlies vs 3 |
 | **Hardpoint** | One of three zones is live for 60 s at a time, then moves. Each second, a team alone in the zone scores; contested zones score nobody. First to 150 or the most after 10 minutes. 4 s respawns placed away from enemy sight and outside the live zone; all squads are sent to the live zone. | Player + 3 friendlies vs 4 |
 
@@ -675,11 +675,11 @@ geometry, with objectives in amber and spawns by team.
   9. Windows player, built next to the repository (`..\Claude of duty Build\ClaudeOfDuty.exe`).
 
   Every builder is idempotent.
-- **Tests**: 160 PlayMode tests covering every system (155 pass; the 5 opt-in render captures are skipped unless a
+- **Tests**: 165 PlayMode tests covering every system (160 pass; the 5 opt-in render captures are skipped unless a
   capture folder is set). They include locomotion and traversal, springs, recoil, reloads, the new weapons, ballistics,
   synthesized audio and acoustics, the photoreal look and effects, the model pipeline, gunsmith maths, AI perception
   and tactics, equipment, all three modes, profiles, the workbench, the front end (deployment, difficulty, rebinding),
-  hit confirmation, footsteps, damage direction, the death camera and the view poses.
+  hit confirmation, footsteps, damage direction, the death camera, the view poses and the Raid opening.
 
 ---
 
@@ -698,5 +698,3 @@ geometry, with objectives in amber and spawns by team.
 - **Workbench**: it only offers parts for weapons with attachment mounts. The marksman rifle and the sidearm are fixed.
 - **Upscalers**: DLSS and FSR2 depend on hardware and platform support. They fall back to TAAU elsewhere.
 - **Players**: single-player only, with no networking.
-- **Raid balance**: two garrison posts face the player's spawn across open ground. Standing still there gets you
-  killed within seconds of the round going live; the spawn needs cover, or the posts need to face their objectives.

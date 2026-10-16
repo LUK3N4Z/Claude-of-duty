@@ -27,6 +27,7 @@ namespace FPS.EditorTools
         internal const string SearchAndDestroyScene = SceneFolder + "/Mode_SearchAndDestroy.unity";
         internal const string HardpointScene = SceneFolder + "/Mode_Hardpoint.unity";
         private const float WallHeight = 3.2f;
+        private static readonly float[] StartLanes = { -12f, -6f, 0f, 6f, 12f };
 
         [MenuItem("Tools/FPS Builder/7. Build Game Mode Scenes", priority = 7)]
         public static void BuildGameModeScenes()
@@ -75,6 +76,11 @@ namespace FPS.EditorTools
         private static void BuildRaid(Transform level, GameObject match)
         {
             Spawns(level, false);
+            // Infiltration line: a T-wall just ahead of each player start hides it from the garrison, which watches the
+            // open ground south of the objectives; the gaps between the walls lead out.
+            Transform infiltration = Group(level, "Infiltration Line");
+            foreach (float x in StartLanes) Block(infiltration, "T-Wall", new Vector3(x, 1.2f, -32.8f), new Vector3(4f, 2.4f, 0.3f));
+
             // The garrison starts at the objectives.
             foreach (Vector3 post in new[]
                      {
@@ -230,7 +236,7 @@ namespace FPS.EditorTools
         private static void Spawns(Transform level, bool northInitial)
         {
             Transform spawns = Group(level, "Spawns");
-            foreach (float x in new[] { -12f, -6f, 0f, 6f, 12f })
+            foreach (float x in StartLanes)
             {
                 Spawn(spawns, "South", new Vector3(x, 0f, -34f), 0f, 0, true);
                 Spawn(spawns, "North", new Vector3(x, 0f, 34f), 180f, 1, northInitial);

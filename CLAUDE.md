@@ -364,8 +364,9 @@ Contracts for later milestones:
   `GameMode.ChooseSpawn` → `SpawnSelector` (enemy line of sight to the spawn −60, nearest enemy distance, teammates,
   recent use); respawns after `respawnDelay` (negative = one life); dead player loses control; soldiers get a fresh
   body per spawn; respawn-mode corpses clear after 20 s.
-- **Modes:** `ExtractionMode` (Tactical Raid: one life, objectives are `HoldInteraction` terminals — each completed one
-  alerts the garrison — then hold out in the extraction `ObjectiveZone`), `SearchAndDestroyMode` (rounds, plant at a
+- **Modes:** `ExtractionMode` (Tactical Raid: one life, the player starts behind the infiltration line of T-walls that
+  hides every start from the garrison, objectives are `HoldInteraction` terminals — each completed one alerts the
+  garrison — then hold out in the extraction `ObjectiveZone`), `SearchAndDestroyMode` (rounds, plant at a
   site's plant point, `PlantedBomb` with beeps and a defuse hold, elimination/time/detonation/defuse, sides swap,
   first to N rounds), `HardpointMode` (rotating zones, uncontested holder scores per second, respawns away from the
   live zone).
