@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 33c78e238f98cb043898b2929f927a2d, type: 3}
+  m_Name: BattleRifle_Recoil
+  m_EditorClassIdentifier: FPS.Weapons::FPS.Weapons.RecoilProfileSO
+  referenceMassKg: 4.1
+  verticalKick: 230
+  verticalSpread: 0.18
+  horizontalBias: 18
+  horizontalSpread: 60
+  rollKick: 30
+  backKick: 1.35
+  upKick: 0.16
+  boltCarrierDelay: 0.035
+  boltCarrierImpulse: 0.35
+  boltCarrierPitch: 24
+  viewClimb: 0.6
+  viewHorizontalFactor: 0.4
+  cameraKick: 42
+  cameraPush: 0.07
+  kickRampPerShot: 0.07
+  maxKickRamp: 1.5
+  rampResetTime: 0.3
+  hipMultiplier: 1
+  adsMultiplier: 0.75
+  weaponPositionSpring:
+    frequency: 10
+    dampingRatio: 0.55
+  weaponRotationSpring:
+    frequency: 7
+    dampingRatio: 0.45
+  cameraPositionSpring:
+    frequency: 12
+    dampingRatio: 1
+  cameraRotationSpring:
+    frequency: 9
+    dampingRatio: 0.95

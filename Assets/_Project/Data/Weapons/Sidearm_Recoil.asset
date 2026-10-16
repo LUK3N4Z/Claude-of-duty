@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 33c78e238f98cb043898b2929f927a2d, type: 3}
+  m_Name: Sidearm_Recoil
+  m_EditorClassIdentifier: FPS.Weapons::FPS.Weapons.RecoilProfileSO
+  referenceMassKg: 0.85
+  verticalKick: 120
+  verticalSpread: 0.2
+  horizontalBias: 4
+  horizontalSpread: 40
+  rollKick: 18
+  backKick: 0.35
+  upKick: 0.25
+  boltCarrierDelay: 0.035
+  boltCarrierImpulse: 0.1
+  boltCarrierPitch: 10
+  viewClimb: 0.5
+  viewHorizontalFactor: 0.4
+  cameraKick: 14
+  cameraPush: 0.02
+  kickRampPerShot: 0.03
+  maxKickRamp: 1.2
+  rampResetTime: 0.3
+  hipMultiplier: 1
+  adsMultiplier: 0.75
+  weaponPositionSpring:
+    frequency: 10
+    dampingRatio: 0.55
+  weaponRotationSpring:
+    frequency: 7
+    dampingRatio: 0.45
+  cameraPositionSpring:
+    frequency: 12
+    dampingRatio: 1
+  cameraRotationSpring:
+    frequency: 9
+    dampingRatio: 0.95

@@ -98,10 +98,16 @@ namespace FPS.EditorTools
                 instance.name = ModelChildName;
                 instance.transform.SetParent(root.transform, false);
 
-                Bounds bounds = LocalRendererBounds(root.transform);
-                if (bounds.size.x > bounds.size.z * 1.5f) instance.transform.Rotate(0f, 90f, 0f, Space.Self); // barrel along X
+                // Barrel along +Z, muzzle (the slimmer end) forward, receiver up: the fitting heuristics used for Meshy models.
+                Quaternion orientation = ModelFitting.SolveOrientation(ImportedModels.Vertices(root.transform), ModelOrientation.ForwardThinFront);
+                instance.transform.localRotation = orientation * instance.transform.localRotation;
 
-                ConvertMaterials(root);
+                // Meshy-style PBR textures next to the model become one HDRP/Lit material with a packed Mask Map
+                // (R metallic, G occlusion, A smoothness = 1 - roughness); otherwise the embedded materials are converted.
+                string modelFolder = System.IO.Path.GetDirectoryName(AssetDatabase.GetAssetPath(model))?.Replace('\\', '/');
+                Material packed = ImportedModels.MaterialFromFolder(modelFolder, weaponName);
+                if (packed != null) AssignMaterial(root, packed);
+                else ConvertMaterials(root);
                 StripCollidersAndSetLayer(root);
                 var rig = root.AddComponent<WeaponModelRig>();
                 GenerateSockets(rig);
@@ -219,6 +225,17 @@ namespace FPS.EditorTools
                 }
 
                 if (changed) renderer.sharedMaterials = materials;
+            }
+        }
+
+        /// <summary>Puts <paramref name="material"/> in every material slot under <paramref name="root"/>.</summary>
+        public static void AssignMaterial(GameObject root, Material material)
+        {
+            foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>(true))
+            {
+                var materials = new Material[Mathf.Max(1, renderer.sharedMaterials.Length)];
+                for (int i = 0; i < materials.Length; i++) materials[i] = material;
+                renderer.sharedMaterials = materials;
             }
         }
 

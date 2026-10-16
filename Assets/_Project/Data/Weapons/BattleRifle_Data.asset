@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc76d32764559d44593c818105aac01f, type: 3}
+  m_Name: BattleRifle_Data
+  m_EditorClassIdentifier: FPS.Weapons::FPS.Weapons.WeaponDataSO
+  displayName: Battle Rifle 7.62
+  massKg: 3.45
+  ergonomics: 42
+  barrelLengthInches: 16
+  caliber: {fileID: 11400000, guid: 8acbeeef6fa7cbb4194b365fdb97fe7d, type: 2}
+  boltType: 0
+  fireModes: 0000000002000000i
+  roundsPerMinute: 600
+  burstCount: 3
+  moaAccuracy: 1.5
+  magazineCapacity: 20
+  boltHoldOpen: 1
+  spareMagazines: 4
+  droppedMagazinePrefab: {fileID: 6387316899067501290, guid: b6675ab095774af4eafe793d634f3b23, type: 3}
+  aimDownSightsTime: 0.36
+  sprintToFireTime: 0.18
+  holsterTime: 0.35
+  drawTime: 0.45
+  fireModeSwitchTime: 0.25
+  magazineCheckTime: 0.8
+  manualCycleTime: 0.9
+  magazineRemoveTime: 0.7
+  speedMagazineRemoveTime: 0.25
+  magazineInsertTime: 1
+  boltCycleTime: 0.6
+  hipStockOffset: {x: 0.14, y: -0.2, z: -0.17}
+  hipEuler: {x: 1.5, y: -2, z: -4}
+  recoil: {fileID: 11400000, guid: c97a290ddbc67974caad1eeac7c7248c, type: 2}
+  audioProfile: {fileID: 11400000, guid: 4da33d723037ca740a30fcd94f3ee544, type: 2}
+  centerOfMass: {x: 0, y: -0.01, z: 0.02}
+  defaultAttachments:
+  - {fileID: 11400000, guid: c3ea5cc77689d6f4ea924d0b792598fe, type: 2}
+  - {fileID: 11400000, guid: d73c5ed0c08691d4fa5afefc942633fa, type: 2}
+  - {fileID: 11400000, guid: 467d81f6fba6d0b45b9f11b66cd9073a, type: 2}

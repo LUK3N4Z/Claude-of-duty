@@ -181,7 +181,7 @@ namespace FPS.Tests
             var pipeline = (HDRenderPipelineAsset)UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline;
             GlobalDynamicResolutionSettings dynamicResolution = pipeline.currentPlatformRenderPipelineSettings.dynamicResolutionSettings;
             Assert.IsTrue(dynamicResolution.enabled, "the HDRP asset allows dynamic resolution");
-            CollectionAssert.AreEqual(new[] { AdvancedUpscalers.DLSS, AdvancedUpscalers.FSR2 }, dynamicResolution.advancedUpscalersByPriority);
+            CollectionAssert.AreEqual(new[] { "DLSS", "FSR2" }, dynamicResolution.advancedUpscalerNames);
 
             settings.upscaler = UpscalerMode.Native;
             menu.Apply(settings);

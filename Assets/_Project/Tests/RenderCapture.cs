@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using FPS.AI;
 using FPS.Ballistics;
@@ -158,6 +159,29 @@ namespace FPS.Tests
 
             Debug.Log($"[Capture] player health {playerHealth.Health}/{playerHealth.MaxHealth}");
             rig.PlayerCamera.targetTexture = null;
+
+            // Close look at both operator variants, staged on open ground with their brains off.
+            var staged = new List<GameObject>();
+            foreach (string variant in new[] { "AI_Soldier_Friendly", "AI_Soldier" })
+            {
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/_Project/Prefabs/AI/{variant}.prefab");
+                GameObject soldier = Object.Instantiate(prefab, new Vector3(staged.Count == 0 ? -4.6f : -3.4f, 0f, -12f), Quaternion.Euler(0f, 160f, 0f));
+                soldier.GetComponent<TacticalAIBrain>().enabled = false;
+                soldier.GetComponent<AIPerceptionSensor>().enabled = false;
+                staged.Add(soldier);
+            }
+
+            var closeup = new GameObject("Operator Closeup").AddComponent<Camera>();
+            closeup.gameObject.AddComponent<UnityEngine.Rendering.HighDefinition.HDAdditionalCameraData>();
+            Vector3 chest = new Vector3(-4f, 1.25f, -12f);
+            closeup.transform.position = chest + new Vector3(0.6f, 0.2f, -3.2f);
+            closeup.transform.LookAt(chest);
+            closeup.fieldOfView = 45f;
+            closeup.targetTexture = rt;
+            yield return new WaitForSeconds(0.3f);
+            Save(rt, Path.Combine(dir, "operator_closeup.png"));
+            Object.Destroy(closeup.gameObject);
+            foreach (GameObject soldier in staged) Object.Destroy(soldier);
         }
 
         [UnityTest]

@@ -17,8 +17,9 @@ using Object = UnityEngine.Object;
 namespace FPS.EditorTools
 {
     /// <summary>
-    /// Generates the opposing force: callout voices (Windows speech synthesis, three voices), a procedural soldier
-    /// prefab (NavMesh agent, IK arms on a gunsmith-built carbine, hitboxes, helmet, perception, brain, two grenades)
+    /// Generates the opposing force: callout voices (Windows speech synthesis, three voices), a soldier prefab dressed as
+    /// a tactical operator (NavMesh agent, IK arms on a gunsmith-built carbine, invisible hitbox colliders under
+    /// <see cref="ProceduralOperators"/> visuals, helmet armour, perception, brain, two grenades)
     /// and, for the test range, a cover yard held by a three-man squad, the shoot house as a clearable CQB room, and
     /// the baked NavMesh.
     /// </summary>
@@ -59,8 +60,8 @@ namespace FPS.EditorTools
             ProjectSetupWizard.EnsureFolder(PrefabFolder);
             ProjectSetupWizard.EnsureFolder(VoiceDataFolder);
             CreateVoices();
-            CreateSoldierPrefab(SoldierPath, 1, LitMaterial("SoldierUniform", new Color(0.27f, 0.29f, 0.21f), 0f, 0.3f), "Alpha");
-            CreateSoldierPrefab(FriendlySoldierPath, 0, LitMaterial("SoldierUniformFriendly", new Color(0.52f, 0.45f, 0.33f), 0f, 0.3f), "Bravo");
+            CreateSoldierPrefab(SoldierPath, 1, ProceduralOperators.Kit.Hostile, "Alpha");
+            CreateSoldierPrefab(FriendlySoldierPath, 0, ProceduralOperators.Kit.Friendly, "Bravo");
             AssetDatabase.SaveAssets();
             Debug.Log("[FPS Builder] AI soldier, voices and grenades ready.");
         }
@@ -169,11 +170,8 @@ namespace FPS.EditorTools
 
         // ---- Soldier ----
 
-        private static void CreateSoldierPrefab(string path, int team, Material uniform, string voiceName)
+        private static void CreateSoldierPrefab(string path, int team, ProceduralOperators.Kit kit, string voiceName)
         {
-            Material gear = LitMaterial("SoldierGear", new Color(0.12f, 0.13f, 0.1f), 0f, 0.35f);
-            Material skin = LitMaterial("SoldierSkin", new Color(0.55f, 0.43f, 0.34f), 0f, 0.35f);
-            Material glove = LitMaterial("SoldierGlove", new Color(0.05f, 0.05f, 0.05f), 0f, 0.3f);
 
             var root = new GameObject(System.IO.Path.GetFileNameWithoutExtension(path)) { layer = GameLayers.Player };
             try
@@ -202,25 +200,27 @@ namespace FPS.EditorTools
                 });
 
                 Transform legs = Bone(t, "Legs", Vector3.zero);
-                Zone(legs, "Left Leg", HitZone.LeftLeg, PrimitiveType.Cube, new Vector3(-0.1f, 0.5f, 0f), new Vector3(0.15f, 1f, 0.17f), Quaternion.identity, uniform);
-                Zone(legs, "Right Leg", HitZone.RightLeg, PrimitiveType.Cube, new Vector3(0.1f, 0.5f, 0f), new Vector3(0.15f, 1f, 0.17f), Quaternion.identity, uniform);
+                Zone(legs, "Left Leg", HitZone.LeftLeg, PrimitiveType.Cube, new Vector3(-0.1f, 0.5f, 0f), new Vector3(0.15f, 1f, 0.17f), Quaternion.identity);
+                Zone(legs, "Right Leg", HitZone.RightLeg, PrimitiveType.Cube, new Vector3(0.1f, 0.5f, 0f), new Vector3(0.15f, 1f, 0.17f), Quaternion.identity);
+                ProceduralOperators.Legs(kit, legs, GameLayers.Hitbox);
 
                 Transform pelvis = Bone(t, "Pelvis", new Vector3(0f, 1f, 0f));
                 Transform torso = Bone(pelvis, "Torso", Vector3.zero);
-                Zone(torso, "Stomach", HitZone.Stomach, PrimitiveType.Cube, new Vector3(0f, 0.11f, 0f), new Vector3(0.32f, 0.22f, 0.2f), Quaternion.identity, uniform);
+                Zone(torso, "Stomach", HitZone.Stomach, PrimitiveType.Cube, new Vector3(0f, 0.11f, 0f), new Vector3(0.32f, 0.22f, 0.2f), Quaternion.identity);
+                ProceduralOperators.Torso(kit, torso, GameLayers.Hitbox);
                 Transform chest = Bone(torso, "Chest", new Vector3(0f, 0.35f, 0f));
-                Zone(chest, "Thorax", HitZone.Thorax, PrimitiveType.Cube, Vector3.zero, new Vector3(0.38f, 0.3f, 0.22f), Quaternion.identity, uniform);
-                Part(chest, "Vest", PrimitiveType.Cube, new Vector3(0f, -0.01f, 0f), new Vector3(0.42f, 0.32f, 0.27f), Quaternion.identity, gear);
+                Zone(chest, "Thorax", HitZone.Thorax, PrimitiveType.Cube, Vector3.zero, new Vector3(0.38f, 0.3f, 0.22f), Quaternion.identity);
+                ProceduralOperators.Chest(kit, chest, GameLayers.Hitbox);
                 Transform head = Bone(torso, "Head", new Vector3(0f, 0.65f, 0f));
-                Zone(head, "Head", HitZone.Head, PrimitiveType.Sphere, new Vector3(0f, 0f, -0.02f), new Vector3(0.22f, 0.24f, 0.22f), Quaternion.identity, skin);
-                Part(head, "Helmet", PrimitiveType.Sphere, new Vector3(0f, 0.06f, -0.02f), new Vector3(0.27f, 0.2f, 0.28f), Quaternion.identity, gear);
+                Zone(head, "Head", HitZone.Head, PrimitiveType.Sphere, new Vector3(0f, 0f, -0.02f), new Vector3(0.22f, 0.24f, 0.22f), Quaternion.identity);
+                ProceduralOperators.Head(kit, head, GameLayers.Hitbox);
                 var voice = head.gameObject.AddComponent<AudioSource>();
                 voice.playOnAwake = false;
                 voice.spatialBlend = 1f;
                 Transform aimPivot = Bone(torso, "AimPivot", new Vector3(0.16f, 0.47f, 0.06f));
 
-                AIBody.Arm left = BuildArm(torso, "Left", new Vector3(-0.21f, 0.48f, 0f), new Vector3(-0.4f, 0.15f, 0.25f), uniform, glove, HitZone.LeftArm);
-                AIBody.Arm right = BuildArm(torso, "Right", new Vector3(0.21f, 0.48f, 0f), new Vector3(0.45f, 0.2f, -0.05f), uniform, glove, HitZone.RightArm);
+                AIBody.Arm left = BuildArm(torso, "Left", new Vector3(-0.21f, 0.48f, 0f), new Vector3(-0.4f, 0.15f, 0.25f), kit, HitZone.LeftArm);
+                AIBody.Arm right = BuildArm(torso, "Right", new Vector3(0.21f, 0.48f, 0f), new Vector3(0.45f, 0.2f, -0.05f), kit, HitZone.RightArm);
 
                 AIBody body = root.AddComponent<AIBody>();
                 body.Configure(pelvis, torso, chest, head, aimPivot, legs, left, right);
@@ -251,7 +251,7 @@ namespace FPS.EditorTools
         private static AttachmentDataSO Attachment(string partName) =>
             AssetDatabase.LoadAssetAtPath<AttachmentDataSO>(AttachmentContentBuilder.DataPath(partName));
 
-        private static AIBody.Arm BuildArm(Transform torso, string side, Vector3 shoulder, Vector3 elbowHint, Material sleeve, Material glove, HitZone zone)
+        private static AIBody.Arm BuildArm(Transform torso, string side, Vector3 shoulder, Vector3 elbowHint, ProceduralOperators.Kit kit, HitZone zone)
         {
             const float upperLength = 0.31f;
             const float lowerLength = 0.33f;
@@ -259,10 +259,10 @@ namespace FPS.EditorTools
             Transform lower = Bone(upper, $"{side} Forearm", new Vector3(0f, 0f, upperLength));
             Transform hand = Bone(lower, $"{side} Hand", new Vector3(0f, 0f, lowerLength));
             Zone(upper, $"{side} Upper Arm Zone", zone, PrimitiveType.Capsule, new Vector3(0f, 0f, upperLength * 0.5f), new Vector3(0.09f, upperLength * 0.5f, 0.09f),
-                Quaternion.Euler(90f, 0f, 0f), sleeve);
+                Quaternion.Euler(90f, 0f, 0f));
             Zone(lower, $"{side} Forearm Zone", zone, PrimitiveType.Capsule, new Vector3(0f, 0f, lowerLength * 0.5f), new Vector3(0.08f, lowerLength * 0.5f, 0.08f),
-                Quaternion.Euler(90f, 0f, 0f), sleeve);
-            Part(hand, "Glove", PrimitiveType.Cube, new Vector3(0f, 0f, 0.03f), new Vector3(0.08f, 0.035f, 0.1f), Quaternion.identity, glove);
+                Quaternion.Euler(90f, 0f, 0f));
+            ProceduralOperators.Arm($"{kit.Name}_{side}Arm", kit.Uniform, upper, lower, hand, upperLength, lowerLength, GameLayers.Hitbox);
             return new AIBody.Arm { upper = upper, lower = lower, hand = hand, elbowHint = elbowHint };
         }
 
@@ -275,17 +275,17 @@ namespace FPS.EditorTools
             return bone;
         }
 
-        /// <summary>A visible body part that is also its damage zone (collider on the Hitbox layer).</summary>
-        private static void Zone(Transform parent, string zoneName, HitZone zone, PrimitiveType shape, Vector3 position, Vector3 size, Quaternion rotation,
-            Material material)
+        /// <summary>An invisible damage zone: a primitive collider on the Hitbox layer (the operator visuals are separate).</summary>
+        private static void Zone(Transform parent, string zoneName, HitZone zone, PrimitiveType shape, Vector3 position, Vector3 size, Quaternion rotation)
         {
             GameObject part = GameObject.CreatePrimitive(shape);
             part.name = zoneName;
             part.layer = GameLayers.Hitbox;
+            Object.DestroyImmediate(part.GetComponent<MeshRenderer>());
+            Object.DestroyImmediate(part.GetComponent<MeshFilter>());
             part.transform.SetParent(parent, false);
             part.transform.SetLocalPositionAndRotation(position, rotation);
             part.transform.localScale = size;
-            part.GetComponent<MeshRenderer>().sharedMaterial = material;
             part.AddComponent<Hitbox>().Configure(zone, null);
         }
 

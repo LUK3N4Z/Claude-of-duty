@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53dfdec1530d6344bb2a986d02fb2693, type: 3}
+  m_Name: Sidearm_Audio
+  m_EditorClassIdentifier: FPS.Audio::FPS.Audio.WeaponAudioProfileSO
+  pressureTransients:
+  - {fileID: 8300000, guid: 88a3bb2cbf01c7d4eaa1828b87bd5e6b, type: 3}
+  - {fileID: 8300000, guid: d103a0640d960d043aa2f56e1ca881c3, type: 3}
+  - {fileID: 8300000, guid: 8ceb5a795d4835f478e6d8697345d1f0, type: 3}
+  mechanicalCycles:
+  - {fileID: 8300000, guid: bfea927a062f2974bb98f0671e19a8e5, type: 3}
+  bodyResonances:
+  - {fileID: 8300000, guid: a86c47cbf6ac38549aaf45ef70a33e34, type: 3}
+  distantReports:
+  - {fileID: 8300000, guid: b23041515096f484d8e7801e57ac234e, type: 3}
+  distantThreshold: 120
+  maxAudibleDistance: 1500
+  loudness: 0.49600002
+  indoorTail: {fileID: 8300000, guid: aef5554c203b47f43b100c5b03976c54, type: 3}
+  urbanTail: {fileID: 8300000, guid: 107bf0a6070554247b4053375176e3ff, type: 3}
+  openTail: {fileID: 8300000, guid: 9bee4f10232b78d4f9c4f3c4d5d48fed, type: 3}

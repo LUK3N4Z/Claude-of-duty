@@ -40,6 +40,7 @@ namespace FPS.AI
         private AIBody body;
         private WeaponDataSO data;
         private WeaponModelRig weapon;
+        private WeaponMechanism mechanism;
         private Light flash;
         private bool automatic, chambered;
         private int rounds, spares, burstLeft;
@@ -116,6 +117,7 @@ namespace FPS.AI
             weapon = Instantiate(weaponPrefab);
             weapon.name = weaponPrefab.name;
             GunsmithAssembler.AttachParts(weapon, data, parts);
+            mechanism = weapon.GetComponent<WeaponMechanism>();
             SetLayer(weapon.transform, 0); // third-person weapon: seen by every camera, no colliders
             body.HoldWeapon(weapon);
 
@@ -162,6 +164,22 @@ namespace FPS.AI
             Discharge();
             burstLeft--;
             nextShotTime = Time.time + (automatic ? data.CycleTime : Mathf.Max(data.CycleTime, semiInterval));
+        }
+
+        private void LateUpdate()
+        {
+            if (mechanism == null || data == null || body.IsDead) return;
+            float boltStage = Mathf.Max(data.BoltCycleTime * reloadTimeScale, 0.01f);
+            float charge = IsReloading && !chambered ? Mathf.Clamp01((Time.time - (reloadEnd - boltStage)) / boltStage) : 0f;
+            mechanism.Drive(new MechanismState
+            {
+                TriggerPressed = burstLeft > 0,
+                FireMode = automatic ? 1 : 0,
+                SinceShot = Time.time - LastShotTime,
+                CycleTime = data.CycleTime,
+                LockedBack = !chambered && rounds <= 0 && !IsReloading,
+                Charge = charge,
+            }, Time.deltaTime);
         }
 
         private void UpdateReload()

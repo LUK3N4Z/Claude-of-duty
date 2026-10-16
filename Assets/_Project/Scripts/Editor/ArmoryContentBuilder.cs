@@ -34,7 +34,7 @@ namespace FPS.EditorTools
                 attachments.Add(AssetDatabase.LoadAssetAtPath<AttachmentDataSO>(AssetDatabase.GUIDToAssetPath(guid)));
 
             var weapons = new List<ArmoryCatalogSO.WeaponEntry>();
-            foreach (string weaponName in new[] { CarbineName, MarksmanName })
+            foreach (string weaponName in new[] { CarbineName, MarksmanName, BattleRifleName, SidearmName })
             {
                 var model = AssetDatabase.LoadAssetAtPath<WeaponModelRig>(PrefabPath(weaponName));
                 var data = AssetDatabase.LoadAssetAtPath<WeaponDataSO>(DataPath(weaponName));
@@ -75,6 +75,10 @@ namespace FPS.EditorTools
                 upscalers.arraySize = 2;
                 upscalers.GetArrayElementAtIndex(0).intValue = (int)AdvancedUpscalers.DLSS;
                 upscalers.GetArrayElementAtIndex(1).intValue = (int)AdvancedUpscalers.FSR2;
+                SerializedProperty names = Property(so, root + "advancedUpscalerNames");
+                names.arraySize = 2;
+                names.GetArrayElementAtIndex(0).stringValue = AdvancedUpscalers.DLSS.ToString();
+                names.GetArrayElementAtIndex(1).stringValue = AdvancedUpscalers.FSR2.ToString();
             });
             AssetDatabase.SaveAssets();
         }
@@ -120,14 +124,19 @@ namespace FPS.EditorTools
             // East wall with the doorway into the range.
             GameModeSceneBuilder.Block(level, "Workshop Wall E North", new Vector3(6f, 1.5f, 3.05f), new Vector3(0.3f, 3f, 4.2f), "Brick");
             GameModeSceneBuilder.Block(level, "Workshop Wall E South", new Vector3(6f, 1.5f, -3.05f), new Vector3(0.3f, 3f, 4.2f), "Brick");
-            GameModeSceneBuilder.Block(level, "Weapon Rack", new Vector3(-5.6f, 1f, 0f), new Vector3(0.4f, 2f, 3f), "Wood");
+            // Weapon racks on the west wall: the primary rack swaps carbine / battle rifle, the secondary marksman / sidearm.
+            ProceduralProps.PlaceWeaponRack(level, "Primary Rack", new Vector3(-5.6f, 0.8f, -0.8f), Quaternion.Euler(0f, 90f, 0f), 0, CarbineName, BattleRifleName);
+            ProceduralProps.PlaceWeaponRack(level, "Secondary Rack", new Vector3(-5.6f, 0.8f, 0.8f), Quaternion.Euler(0f, 90f, 0f), 1, MarksmanName, SidearmName);
 
             foreach (Vector3 lamp in new[] { new Vector3(-3f, 2.85f, 0f), new Vector3(2.5f, 2.85f, 0f), new Vector3(0f, 2.85f, 3f) })
                 Lamp(level, "Workshop Lamp", lamp, 1800f);
 
             BoxCollider crate = Crate(level, "Ammo Crate", new Vector3(4.5f, 0.3f, -3.8f));
+            ProceduralProps.Dress(crate, "Prop_AmmoCrate");
             Interactable(crate.transform, "Resupply (interact)", new Vector3(1.1f, 1.2f, 1.2f)).AddComponent<AmmoCrate>();
             BoxCollider locker = Crate(level, "Equipment Locker", new Vector3(4.5f, 0.9f, 3.9f), new Vector3(0.9f, 1.8f, 0.5f));
+            ProceduralProps.Dress(locker, "Prop_Locker");
+            ProceduralProps.Equipment("Clacker_M57", Socket(level, "Clacker (display)", new Vector3(4.2f, 1.82f, 3.85f), Quaternion.Euler(0f, 20f, 0f)), 0);
             Interactable(locker.transform, "Swap tactical (interact)", new Vector3(1.4f, 1.1f, 1.6f)).AddComponent<EquipmentLocker>().Configure(
                 EquipmentContentBuilder.Grenade(EquipmentContentBuilder.FlashName), EquipmentContentBuilder.Grenade(EquipmentContentBuilder.SmokeName), 2);
         }
@@ -135,6 +144,7 @@ namespace FPS.EditorTools
         private static void Workbench(Transform level, ArmoryCatalogSO catalog)
         {
             GameModeSceneBuilder.Block(level, "Workbench Table", new Vector3(0f, 0.45f, 3.6f), new Vector3(2.6f, 0.9f, 1.1f), "Wood");
+            ProceduralProps.Dress(level.Find("Workbench Table"), "Prop_Workbench");
             Transform turntable = new GameObject("Turntable").transform;
             turntable.SetParent(level, false);
             turntable.position = new Vector3(0f, 1.2f, 3.6f);

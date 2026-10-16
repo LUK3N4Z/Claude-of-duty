@@ -10,14 +10,18 @@ using Object = UnityEngine.Object;
 namespace FPS.EditorTools
 {
     /// <summary>
-    /// Generates the reference calibers and two primitive test weapons with every socket so the weapon systems can be
-    /// played before real models arrive: a 5.56 closed-bolt carbine (4x PiP scope, 45° canted irons) and a .300 Win Mag
-    /// bolt-action marksman rifle (8x PiP scope), each with weapon data, recoil profile and a droppable magazine.
+    /// Generates the reference calibers and the weapons with every socket: a modular 5.56 closed-bolt carbine (45° canted
+    /// irons), a .300 Win Mag bolt-action marksman rifle (8x PiP scope), a 7.62 battle rifle (optic, grip and rail
+    /// mounts) and a 9 mm striker sidearm with a reciprocating slide, each with weapon data, recoil profile, audio,
+    /// a droppable magazine and a <see cref="WeaponMechanism"/> over its moving parts. Models are imported Meshy assets
+    /// when present (Art/Models), otherwise high-detail procedural geometry.
     /// </summary>
     public static class TestWeaponBuilder
     {
         internal const string CarbineName = "TestRifle";
         internal const string MarksmanName = "TestMarksman";
+        internal const string BattleRifleName = "BattleRifle";
+        internal const string SidearmName = "Sidearm";
 
         private const string ArtFolder = "Assets/_Project/Art/TestRifle";
         private const string PrefabFolder = "Assets/_Project/Prefabs/Weapons";
@@ -61,12 +65,9 @@ namespace FPS.EditorTools
             ProjectSetupWizard.EnsureFolder(CaliberFolder);
 
             CaliberDataSO nato556 = Caliber("Caliber_556x45", "5.56x45mm NATO (M855)", 4.0f, 5.7f, 940f, 20f, 7.5f, DragModel.G7, 0.151f, 40f, 35f, "Casing_556x45");
-            Caliber("Caliber_762x51", "7.62x51mm NATO (M80)", 9.5f, 7.82f, 840f, 22f, 5.5f, DragModel.G7, 0.2f, 55f, 55f, "Casing_762x51");
-            Caliber("Caliber_9x19", "9x19mm Parabellum (124gr FMJ)", 8.0f, 9.01f, 360f, 4f, 4.5f, DragModel.G1, 0.15f, 15f, 30f, "Casing_9x19");
+            CaliberDataSO nato762 = Caliber("Caliber_762x51", "7.62x51mm NATO (M80)", 9.5f, 7.82f, 840f, 22f, 5.5f, DragModel.G7, 0.2f, 55f, 55f, "Casing_762x51");
+            CaliberDataSO parabellum = Caliber("Caliber_9x19", "9x19mm Parabellum (124gr FMJ)", 8.0f, 9.01f, 360f, 4f, 4.5f, DragModel.G1, 0.15f, 15f, 30f, "Casing_9x19");
             CaliberDataSO winMag = Caliber("Caliber_300WM", ".300 Winchester Magnum (190gr)", 12.3f, 7.82f, 880f, 24f, 7.6f, DragModel.G7, 0.29f, 70f, 90f, "Casing_300WM");
-
-            Material metal = LitMaterial("Gunmetal", new Color(0.16f, 0.16f, 0.17f), 0.85f, 0.45f);
-            Material polymer = LitMaterial("Polymer", new Color(0.05f, 0.05f, 0.05f), 0f, 0.3f);
 
             var carbine = new RifleSpec
             {
@@ -74,9 +75,9 @@ namespace FPS.EditorTools
                 Magnification = 4f, EyeRelief = 0.07f, AdsZoom = 1.25f, CantedIrons = true,
                 MagazineSize = new Vector3(0.025f, 0.12f, 0.06f), MagazineAngle = 8f, Modular = true,
             };
-            AttachmentDataSO[] carbineBuild = AttachmentContentBuilder.CreateParts(metal, polymer, EffectsContentBuilder.SuppressedAudio(CarbineName));
-            WeaponModelRig carbineModel = BuildRifle(carbine, metal, polymer);
-            Rigidbody carbineMagazine = DroppedMagazine($"{CarbineName}_DroppedMagazine", carbine.MagazineSize, 0.45f, polymer);
+            AttachmentDataSO[] carbineBuild = AttachmentContentBuilder.CreateParts(EffectsContentBuilder.SuppressedAudio(CarbineName));
+            BuildRifle(carbine);
+            Rigidbody carbineMagazine = DroppedMagazine(CarbineName, carbine.MagazineSize, 0.45f);
             RecoilProfileSO carbineRecoil = LoadOrCreate<RecoilProfileSO>($"{DataFolder}/{CarbineName}_Recoil.asset");
             Configure(LoadOrCreate<WeaponDataSO>(DataPath(CarbineName)), so =>
             {
@@ -108,8 +109,8 @@ namespace FPS.EditorTools
                 Magnification = 8f, EyeRelief = 0.09f, AdsZoom = 1.3f, CantedIrons = false,
                 MagazineSize = new Vector3(0.03f, 0.07f, 0.09f), MagazineAngle = 0f,
             };
-            BuildRifle(marksman, metal, polymer);
-            Rigidbody marksmanMagazine = DroppedMagazine($"{MarksmanName}_DroppedMagazine", marksman.MagazineSize, 0.3f, polymer);
+            BuildRifle(marksman);
+            Rigidbody marksmanMagazine = DroppedMagazine(MarksmanName, marksman.MagazineSize, 0.3f);
             RecoilProfileSO marksmanRecoil = LoadOrCreate<RecoilProfileSO>($"{DataFolder}/{MarksmanName}_Recoil.asset");
             Configure(marksmanRecoil, so =>
             {
@@ -151,8 +152,11 @@ namespace FPS.EditorTools
                 Set(so, "audioProfile", EffectsContentBuilder.WeaponAudio(MarksmanName));
             });
 
+            CreateBattleRifle(nato762);
+            CreateSidearm(parabellum);
+
             AssetDatabase.SaveAssets();
-            Debug.Log($"[FPS Builder] Test weapons {CarbineName}, {MarksmanName} and 4 calibers ready.");
+            Debug.Log($"[FPS Builder] Weapons {CarbineName}, {MarksmanName}, {BattleRifleName}, {SidearmName} and 4 calibers ready.");
         }
 
         internal static Material LitMaterial(string materialName, Color color, float metallic, float smoothness)
@@ -171,12 +175,8 @@ namespace FPS.EditorTools
             return material;
         }
 
-        private static WeaponModelRig BuildRifle(RifleSpec spec, Material metal, Material polymer)
+        private static WeaponModelRig BuildRifle(RifleSpec spec)
         {
-            Material lens = UnlitMaterial("Scope Lens", Color.white, null, false);
-            Material reticle = UnlitMaterial("Scope Reticle", Color.black, ReticleTexture(), true);
-            Mesh disc = DiscMesh();
-
             var root = new GameObject(spec.Name);
             try
             {
@@ -185,22 +185,7 @@ namespace FPS.EditorTools
                 float stockEnd = spec.Modular ? -0.15f : -0.15f - spec.StockLength;
                 float muzzle = spec.Modular ? handguardEnd : handguardEnd + spec.BarrelExposed;
 
-                Part(t, "Receiver", PrimitiveType.Cube, new Vector3(0f, 0f, 0f), new Vector3(0.05f, 0.08f, 0.3f), Quaternion.identity, metal);
-                Part(t, "Handguard", PrimitiveType.Cube, new Vector3(0f, 0.005f, (0.15f + handguardEnd) * 0.5f),
-                    new Vector3(0.045f, 0.055f, handguardEnd - 0.15f), Quaternion.identity, polymer);
-                if (!spec.Modular)
-                {
-                    Part(t, "Barrel", PrimitiveType.Cylinder, new Vector3(0f, 0f, handguardEnd + spec.BarrelExposed * 0.5f),
-                        new Vector3(0.02f, spec.BarrelExposed * 0.5f, 0.02f), Quaternion.Euler(90f, 0f, 0f), metal);
-                    Part(t, "Stock", PrimitiveType.Cube, new Vector3(0f, -0.015f, -0.15f - spec.StockLength * 0.5f),
-                        new Vector3(0.04f, 0.09f, spec.StockLength), Quaternion.identity, polymer);
-                }
-
-                Part(t, "Grip", PrimitiveType.Cube, new Vector3(0f, -0.075f, -0.07f), new Vector3(0.03f, 0.09f, 0.035f), Quaternion.Euler(15f, 0f, 0f), polymer);
-                Transform magazine = Part(t, "Magazine", PrimitiveType.Cube, new Vector3(0f, -0.04f - spec.MagazineSize.y * 0.5f, 0.06f),
-                    spec.MagazineSize, Quaternion.Euler(spec.MagazineAngle, 0f, 0f), polymer);
-
-                // Scope: eyepiece fixed at z = -0.06, 7.5 cm above the bore; longer scopes extend forward.
+                // Sockets first: the models are built around them.
                 Transform primary = Socket(t, WeaponModelRig.PrimarySightSocketName, new Vector3(0f, 0.075f, -0.06f), Quaternion.identity);
                 if (spec.Modular)
                 {
@@ -211,48 +196,36 @@ namespace FPS.EditorTools
                     Socket(t, AttachmentDataSO.MountName(AttachmentSlot.Laser), new Vector3(0.026f, 0.005f, 0.26f), Quaternion.identity);
                     Socket(t, AttachmentDataSO.MountName(AttachmentSlot.Light), new Vector3(-0.028f, 0.005f, 0.26f), Quaternion.identity);
                 }
-                else
-                {
-                    Part(t, "Scope Mount", PrimitiveType.Cube, new Vector3(0f, 0.05f, 0.02f), new Vector3(0.02f, 0.03f, 0.06f), Quaternion.identity, metal);
-                    Part(t, "Scope Body", PrimitiveType.Cylinder, new Vector3(0f, 0.075f, -0.06f + spec.ScopeLength * 0.5f),
-                        new Vector3(spec.ScopeDiameter, spec.ScopeLength * 0.5f, spec.ScopeDiameter), Quaternion.Euler(90f, 0f, 0f), metal);
-                    float lensRadius = spec.ScopeDiameter * 0.4125f;
-                    MeshRenderer lensRenderer = Disc(primary, "Ocular Lens", disc, -0.001f, lensRadius, lens);
-                    Disc(primary, "Reticle", disc, -0.0015f, lensRadius, reticle);
-                    primary.gameObject.AddComponent<WeaponSight>().Configure(spec.Magnification, spec.EyeRelief, spec.AdsZoom, lensRenderer);
-                }
-
-                if (spec.CantedIrons)
-                {
-                    // 45° canted irons on the right: aperture ring at the aligner, post 48 cm ahead, both on the sight line.
-                    Quaternion cant = Quaternion.Euler(0f, 0f, -45f);
-                    Transform canted = Socket(t, WeaponModelRig.CantedSightSocketName, new Vector3(0.042f, 0.042f, -0.09f), cant);
-                    Part(canted, "Aperture Top", PrimitiveType.Cube, new Vector3(0f, 0.006f, 0.005f), new Vector3(0.016f, 0.003f, 0.004f), Quaternion.identity, metal);
-                    Part(canted, "Aperture Bottom", PrimitiveType.Cube, new Vector3(0f, -0.006f, 0.005f), new Vector3(0.016f, 0.003f, 0.004f), Quaternion.identity, metal);
-                    Part(canted, "Aperture Left", PrimitiveType.Cube, new Vector3(-0.006f, 0f, 0.005f), new Vector3(0.003f, 0.016f, 0.004f), Quaternion.identity, metal);
-                    Part(canted, "Aperture Right", PrimitiveType.Cube, new Vector3(0.006f, 0f, 0.005f), new Vector3(0.003f, 0.016f, 0.004f), Quaternion.identity, metal);
-                    Part(canted, "Rear Base", PrimitiveType.Cube, new Vector3(0f, -0.012f, 0.005f), new Vector3(0.016f, 0.006f, 0.01f), Quaternion.identity, metal);
-                    float post = spec.Modular ? 0.38f : 0.48f; // on the handguard's front rail
-                    Part(canted, "Front Post", PrimitiveType.Cube, new Vector3(0f, -0.004f, post), new Vector3(0.0025f, 0.008f, 0.003f), Quaternion.identity, metal);
-                    Part(canted, "Front Base", PrimitiveType.Cube, new Vector3(0f, -0.012f, post), new Vector3(0.012f, 0.01f, 0.006f), Quaternion.identity, metal);
-                    canted.gameObject.AddComponent<WeaponSight>().Configure(1f, 0.09f, 1.1f, null);
-                }
 
                 Socket(t, WeaponModelRig.MuzzleSocketName, new Vector3(0f, 0f, muzzle), Quaternion.identity);
                 Socket(t, WeaponModelRig.StockPivotSocketName, new Vector3(0f, -0.02f, stockEnd), Quaternion.identity);
                 Socket(t, WeaponModelRig.ChamberEjectionSocketName, new Vector3(0.026f, 0.01f, 0f), Quaternion.Euler(0f, 90f, 0f));
-                Socket(t, WeaponModelRig.MagazineSocketName, magazine.localPosition, magazine.localRotation);
+                Transform magazineSocket = Socket(t, WeaponModelRig.MagazineSocketName, new Vector3(0f, -0.04f - spec.MagazineSize.y * 0.5f, 0.06f),
+                    Quaternion.Euler(spec.MagazineAngle, 0f, 0f));
                 Socket(t, WeaponModelRig.ChargingHandleSocketName, new Vector3(0f, 0.03f, -0.15f), Quaternion.identity);
                 Socket(t, WeaponModelRig.LeftHandIKGripName, new Vector3(0f, -0.035f, spec.Modular ? 0.25f : 0.3f), Quaternion.identity);
                 Socket(t, WeaponModelRig.RightHandIKGripName, new Vector3(0f, -0.075f, -0.07f), Quaternion.Euler(15f, 0f, 0f));
+
+                WeaponVisual visual;
+                if (spec.Modular)
+                {
+                    visual = ProceduralWeapons.Carbine(t, magazineSocket);
+                }
+                else
+                {
+                    visual = ProceduralWeapons.Marksman(t, primary, magazineSocket, out _);
+                    float lensRadius = spec.ScopeDiameter * 0.4125f;
+                    MeshRenderer lensRenderer = Disc(primary, "Ocular Lens", DiscMesh(), -0.001f, lensRadius, UnlitMaterial("Scope Lens", Color.white, null, false));
+                    Disc(primary, "Reticle", DiscMesh(), -0.0015f, lensRadius, UnlitMaterial("Scope Reticle", Color.black, ReticleTexture(), true));
+                    primary.gameObject.AddComponent<WeaponSight>().Configure(spec.Magnification, spec.EyeRelief, spec.AdsZoom, lensRenderer);
+                }
+
+                if (spec.CantedIrons) CantedIrons(t, spec.Modular ? 0.38f : 0.48f);
+
                 var rig = root.AddComponent<WeaponModelRig>();
                 rig.EnsureSockets();
-                Configure(rig, so =>
-                {
-                    SerializedProperty list = Property(so, WeaponModelRig.MagazineRenderersFieldName);
-                    list.arraySize = 1;
-                    list.GetArrayElementAtIndex(0).objectReferenceValue = magazine.GetComponent<Renderer>();
-                });
+                SetMagazineRenderers(rig, visual);
+                AddMechanism(root, visual, new Vector3(0f, 0f, -0.026f), new Vector3(0f, 0f, -0.06f), false);
 
                 SetLayerRecursively(t, GameLayers.FirstPersonViewmodel);
                 return PrefabUtility.SaveAsPrefabAsset(root, PrefabPath(spec.Name)).GetComponent<WeaponModelRig>();
@@ -263,20 +236,234 @@ namespace FPS.EditorTools
             }
         }
 
-        private static Rigidbody DroppedMagazine(string prefabName, Vector3 size, float massKg, Material material)
+        /// <summary>45° canted irons on the right: aperture ring at the aligner, post <paramref name="post"/> ahead, both on the sight line.</summary>
+        private static void CantedIrons(Transform weapon, float post)
         {
-            GameObject magazine = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            Transform canted = Socket(weapon, WeaponModelRig.CantedSightSocketName, new Vector3(0.042f, 0.042f, -0.09f), Quaternion.Euler(0f, 0f, -45f));
+            var model = new ModelAssembly("CantedIrons", canted, GameLayers.FirstPersonViewmodel);
+            MeshKit steel = model.Static(SurfaceFinish.AnodizedBlack);
+            steel.Push(new Vector3(0f, 0f, 0.005f), Quaternion.identity);
+            steel.Tube(0.0085f, 0.0042f, -0.002f, 0.002f, 24); // aperture ring
+            steel.Pop();
+            steel.Box(new Vector3(0f, -0.0125f, 0.005f), new Vector3(0.016f, 0.008f, 0.012f), 0.0015f); // rear base
+            steel.Box(new Vector3(0f, -0.009f, 0.005f), new Vector3(0.006f, 0.004f, 0.004f), 0.001f);
+            steel.Box(new Vector3(0f, -0.004f, post), new Vector3(0.0025f, 0.008f, 0.003f), 0.0005f); // front post
+            steel.Box(new Vector3(-0.004f, -0.004f, post), new Vector3(0.0015f, 0.01f, 0.006f), 0.0004f); // post ears
+            steel.Box(new Vector3(0.004f, -0.004f, post), new Vector3(0.0015f, 0.01f, 0.006f), 0.0004f);
+            steel.Box(new Vector3(0f, -0.012f, post), new Vector3(0.014f, 0.01f, 0.01f), 0.0015f); // front base
+            // 45° offset mounts bridging each sight down to the rail's upper right edge (rail edge at (-0.017, -0.027) here).
+            foreach (float z in new[] { 0.005f, post })
+            {
+                steel.Box(new Vector3(-0.0085f, -0.0215f, z), new Vector3(0.024f, 0.011f, 0.014f), 0.0015f);
+                steel.Box(new Vector3(-0.0175f, -0.0285f, z), new Vector3(0.008f, 0.006f, 0.02f), 0.001f); // rail clamp
+            }
+
+            model.Finish();
+            canted.gameObject.AddComponent<WeaponSight>().Configure(1f, 0.09f, 1.1f, null);
+        }
+
+        private static void SetMagazineRenderers(WeaponModelRig rig, WeaponVisual visual)
+        {
+            Configure(rig, so =>
+            {
+                SerializedProperty list = Property(so, WeaponModelRig.MagazineRenderersFieldName);
+                list.arraySize = visual.MagazineRenderers.Length;
+                for (int i = 0; i < visual.MagazineRenderers.Length; i++) list.GetArrayElementAtIndex(i).objectReferenceValue = visual.MagazineRenderers[i];
+            });
+        }
+
+        private static void AddMechanism(GameObject root, WeaponVisual visual, Vector3 carrierTravel, Vector3 chargeTravel, bool handleReciprocates)
+        {
+            root.AddComponent<WeaponMechanism>().Configure(visual.Trigger, visual.Selector, visual.Reciprocating, carrierTravel, visual.ChargingHandle,
+                chargeTravel, handleReciprocates, visual.BoltHandle);
+        }
+
+        // ---- Battle rifle ----
+
+        private static void CreateBattleRifle(CaliberDataSO caliber)
+        {
+            var root = new GameObject(BattleRifleName);
             try
             {
-                magazine.name = prefabName;
-                magazine.transform.localScale = size;
-                magazine.GetComponent<MeshRenderer>().sharedMaterial = material;
+                Transform t = root.transform;
+                Transform primary = Socket(t, WeaponModelRig.PrimarySightSocketName, new Vector3(0f, 0.075f, -0.06f), Quaternion.identity);
+                Socket(primary, AttachmentDataSO.MountName(AttachmentSlot.Optic), Vector3.zero, Quaternion.identity);
+                Socket(t, AttachmentDataSO.MountName(AttachmentSlot.Underbarrel), new Vector3(0f, -0.016f, 0.27f), Quaternion.identity);
+                Socket(t, AttachmentDataSO.MountName(AttachmentSlot.Laser), new Vector3(0.0334f, 0.006f, 0.255f), Quaternion.identity);
+                Socket(t, AttachmentDataSO.MountName(AttachmentSlot.Light), new Vector3(-0.0334f, 0.006f, 0.255f), Quaternion.identity);
+                Socket(t, WeaponModelRig.MuzzleSocketName, new Vector3(0f, 0f, 0.456f), Quaternion.identity);
+                Socket(t, WeaponModelRig.StockPivotSocketName, new Vector3(0f, -0.03f, -0.42f), Quaternion.identity);
+                Socket(t, WeaponModelRig.ChamberEjectionSocketName, new Vector3(0.026f, 0.012f, 0f), Quaternion.Euler(0f, 90f, 0f));
+                Transform magazineSocket = Socket(t, WeaponModelRig.MagazineSocketName, new Vector3(0f, -0.11f, 0.077f), Quaternion.identity);
+                Socket(t, WeaponModelRig.ChargingHandleSocketName, new Vector3(-0.034f, 0.018f, 0.06f), Quaternion.identity);
+                Socket(t, WeaponModelRig.LeftHandIKGripName, new Vector3(0f, -0.03f, 0.25f), Quaternion.identity);
+                Socket(t, WeaponModelRig.RightHandIKGripName, new Vector3(0f, -0.078f, -0.08f), Quaternion.Euler(15f, 0f, 0f));
+
+                WeaponVisual visual = ProceduralWeapons.BattleRifle(t, magazineSocket);
+                var rig = root.AddComponent<WeaponModelRig>();
+                rig.EnsureSockets();
+                SetMagazineRenderers(rig, visual);
+                AddMechanism(root, visual, new Vector3(0f, 0f, -0.03f), new Vector3(0f, 0f, -0.1f), true);
+                SetLayerRecursively(t, GameLayers.FirstPersonViewmodel);
+                PrefabUtility.SaveAsPrefabAsset(root, PrefabPath(BattleRifleName));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+
+            Rigidbody magazine = DroppedMagazine(BattleRifleName, new Vector3(0.028f, 0.13f, 0.072f), 0.55f);
+            RecoilProfileSO recoil = LoadOrCreate<RecoilProfileSO>($"{DataFolder}/{BattleRifleName}_Recoil.asset");
+            Configure(recoil, so =>
+            {
+                Set(so, "referenceMassKg", 4.1f);
+                Set(so, "verticalKick", 230f);
+                Set(so, "verticalSpread", 0.18f);
+                Set(so, "horizontalBias", 18f);
+                Set(so, "horizontalSpread", 60f);
+                Set(so, "rollKick", 30f);
+                Set(so, "backKick", 1.35f);
+                Set(so, "upKick", 0.16f);
+                Set(so, "boltCarrierImpulse", 0.35f);
+                Set(so, "boltCarrierPitch", 24f);
+                Set(so, "viewClimb", 0.6f);
+                Set(so, "cameraKick", 42f);
+                Set(so, "cameraPush", 0.07f);
+                Set(so, "kickRampPerShot", 0.07f);
+                Set(so, "maxKickRamp", 1.5f);
+            });
+
+            AttachmentDataSO[] build =
+            {
+                AssetDatabase.LoadAssetAtPath<AttachmentDataSO>(AttachmentContentBuilder.DataPath("Optic_RedDot")),
+                AssetDatabase.LoadAssetAtPath<AttachmentDataSO>(AttachmentContentBuilder.DataPath("Grip_Vertical")),
+                AssetDatabase.LoadAssetAtPath<AttachmentDataSO>(AttachmentContentBuilder.DataPath("Rail_Light")),
+            };
+            Configure(LoadOrCreate<WeaponDataSO>(DataPath(BattleRifleName)), so =>
+            {
+                Set(so, "displayName", "Battle Rifle 7.62");
+                Set(so, "massKg", 3.45f); // receiver, barrel and stock; optic, grip and light add the rest
+                Set(so, "centerOfMass", new Vector3(0f, -0.01f, 0.02f));
+                SerializedProperty defaults = Property(so, "defaultAttachments");
+                defaults.arraySize = build.Length;
+                for (int i = 0; i < build.Length; i++) defaults.GetArrayElementAtIndex(i).objectReferenceValue = build[i];
+                Set(so, "ergonomics", 42f);
+                Set(so, "barrelLengthInches", 16f);
+                Set(so, "caliber", caliber);
+                SetEnum(so, "boltType", (int)BoltType.ClosedBolt);
+                SetFireModes(so, FireMode.Semi, FireMode.Auto);
+                Set(so, "roundsPerMinute", 600f);
+                Set(so, "moaAccuracy", 1.5f);
+                Set(so, "magazineCapacity", 20);
+                Set(so, "boltHoldOpen", true);
+                Set(so, "spareMagazines", 4);
+                Set(so, "aimDownSightsTime", 0.36f);
+                Set(so, "magazineInsertTime", 1.0f);
+                Set(so, "droppedMagazinePrefab", magazine);
+                Set(so, "hipStockOffset", new Vector3(0.14f, -0.2f, -0.17f));
+                Set(so, WeaponDataSO.RecoilFieldName, recoil);
+                Set(so, "audioProfile", EffectsContentBuilder.WeaponAudio(BattleRifleName));
+            });
+        }
+
+        // ---- Sidearm ----
+
+        private static void CreateSidearm(CaliberDataSO caliber)
+        {
+            var root = new GameObject(SidearmName);
+            try
+            {
+                Transform t = root.transform;
+                Transform primary = Socket(t, WeaponModelRig.PrimarySightSocketName, new Vector3(0f, 0.0235f, -0.078f), Quaternion.identity);
+                Socket(t, WeaponModelRig.MuzzleSocketName, new Vector3(0f, 0f, 0.1f), Quaternion.identity);
+                Socket(t, WeaponModelRig.StockPivotSocketName, new Vector3(0f, -0.05f, -0.085f), Quaternion.identity);
+                Socket(t, WeaponModelRig.ChamberEjectionSocketName, new Vector3(0.014f, 0.01f, 0f), Quaternion.Euler(-20f, 90f, 0f));
+                Transform magazineSocket = Socket(t, WeaponModelRig.MagazineSocketName, new Vector3(0f, -0.072f, -0.056f), Quaternion.Euler(8f, 0f, 0f));
+                Socket(t, WeaponModelRig.ChargingHandleSocketName, new Vector3(0f, 0.006f, -0.075f), Quaternion.identity);
+                Socket(t, WeaponModelRig.LeftHandIKGripName, new Vector3(-0.016f, -0.064f, -0.05f), Quaternion.Euler(8f, 20f, -30f));
+                Socket(t, WeaponModelRig.RightHandIKGripName, new Vector3(0f, -0.056f, -0.058f), Quaternion.Euler(8f, 0f, 0f));
+
+                WeaponVisual visual = ProceduralWeapons.Sidearm(t, magazineSocket);
+                primary.gameObject.AddComponent<WeaponSight>().Configure(1f, 0.36f, 1.05f, null);
+                var rig = root.AddComponent<WeaponModelRig>();
+                rig.EnsureSockets();
+                SetMagazineRenderers(rig, visual);
+                // The slide is the reciprocating part; a charge racks it through the carrier travel.
+                AddMechanism(root, visual, new Vector3(0f, 0f, -0.032f), Vector3.zero, false);
+                SetLayerRecursively(t, GameLayers.FirstPersonViewmodel);
+                PrefabUtility.SaveAsPrefabAsset(root, PrefabPath(SidearmName));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+
+            Rigidbody magazine = DroppedMagazine(SidearmName, new Vector3(0.022f, 0.1f, 0.03f), 0.2f);
+            RecoilProfileSO recoil = LoadOrCreate<RecoilProfileSO>($"{DataFolder}/{SidearmName}_Recoil.asset");
+            Configure(recoil, so =>
+            {
+                Set(so, "referenceMassKg", 0.85f);
+                Set(so, "verticalKick", 120f);
+                Set(so, "verticalSpread", 0.2f);
+                Set(so, "horizontalBias", 4f);
+                Set(so, "horizontalSpread", 40f);
+                Set(so, "rollKick", 18f);
+                Set(so, "backKick", 0.35f);
+                Set(so, "upKick", 0.25f);
+                Set(so, "boltCarrierImpulse", 0.1f);
+                Set(so, "boltCarrierPitch", 10f);
+                Set(so, "viewClimb", 0.5f);
+                Set(so, "cameraKick", 14f);
+                Set(so, "cameraPush", 0.02f);
+                Set(so, "kickRampPerShot", 0.03f);
+                Set(so, "maxKickRamp", 1.2f);
+            });
+
+            Configure(LoadOrCreate<WeaponDataSO>(DataPath(SidearmName)), so =>
+            {
+                Set(so, "displayName", "Sidearm 9mm");
+                Set(so, "massKg", 0.85f);
+                Set(so, "centerOfMass", new Vector3(0f, -0.03f, -0.01f));
+                Set(so, "ergonomics", 80f);
+                Set(so, "barrelLengthInches", 4.02f);
+                Set(so, "caliber", caliber);
+                SetEnum(so, "boltType", (int)BoltType.ClosedBolt);
+                SetFireModes(so, FireMode.Semi);
+                Set(so, "roundsPerMinute", 900f);
+                Set(so, "moaAccuracy", 4.5f);
+                Set(so, "magazineCapacity", 15);
+                Set(so, "boltHoldOpen", true);
+                Set(so, "spareMagazines", 3);
+                Set(so, "aimDownSightsTime", 0.18f);
+                Set(so, "sprintToFireTime", 0.1f);
+                Set(so, "holsterTime", 0.3f);
+                Set(so, "drawTime", 0.35f);
+                Set(so, "magazineRemoveTime", 0.45f);
+                Set(so, "speedMagazineRemoveTime", 0.18f);
+                Set(so, "magazineInsertTime", 0.6f);
+                Set(so, "boltCycleTime", 0.4f);
+                Set(so, "droppedMagazinePrefab", magazine);
+                Set(so, "hipStockOffset", new Vector3(0.12f, -0.17f, 0.24f));
+                Set(so, "hipEuler", new Vector3(2f, -4f, -2f));
+                Set(so, WeaponDataSO.RecoilFieldName, recoil);
+                Set(so, "audioProfile", EffectsContentBuilder.WeaponAudio(SidearmName));
+            });
+        }
+
+        /// <summary>Pooled physical magazine: the weapon's magazine model with a box collider, on the Debris layer.</summary>
+        private static Rigidbody DroppedMagazine(string weaponName, Vector3 size, float massKg)
+        {
+            var magazine = new GameObject($"{weaponName}_DroppedMagazine");
+            try
+            {
+                ProceduralWeapons.MagazineModel(weaponName, magazine.transform, GameLayers.Debris);
                 magazine.layer = GameLayers.Debris;
+                magazine.AddComponent<BoxCollider>().size = size;
                 var body = magazine.AddComponent<Rigidbody>();
                 body.mass = massKg;
                 body.interpolation = RigidbodyInterpolation.Interpolate;
                 body.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
-                return PrefabUtility.SaveAsPrefabAsset(magazine, $"{PrefabFolder}/{prefabName}.prefab").GetComponent<Rigidbody>();
+                return PrefabUtility.SaveAsPrefabAsset(magazine, $"{PrefabFolder}/{magazine.name}.prefab").GetComponent<Rigidbody>();
             }
             finally
             {

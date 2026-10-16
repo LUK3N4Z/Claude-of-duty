@@ -92,6 +92,8 @@ namespace FPS.Weapons
         private bool triggerHeld, semiPending, dryFiredThisPull, checkHeld, estimateShown;
         private int burstRemaining;
         private float nextShotTime, fireBlockedUntil;
+        private WeaponMechanism mechanism;
+        private float lastShotTime = float.NegativeInfinity;
 
         public WeaponState ActiveState => activeSlot >= 0 ? states[activeSlot] : null;
         public int ActiveSlot => activeSlot;
@@ -217,7 +219,7 @@ namespace FPS.Weapons
             if (slot == activeSlot)
             {
                 InterruptReload();
-                viewmodel.Equip(loadout[slot].model, states[slot].Data, build).SetMagazineVisible(states[slot].HasMagazine);
+                Equipped(viewmodel.Equip(loadout[slot].model, states[slot].Data, build)).SetMagazineVisible(states[slot].HasMagazine);
             }
 
             Destroy(previous);
@@ -244,7 +246,7 @@ namespace FPS.Weapons
             if (slot == activeSlot)
             {
                 InterruptReload();
-                viewmodel.Equip(loadout[slot].model, states[slot].Data, build).SetMagazineVisible(states[slot].HasMagazine);
+                Equipped(viewmodel.Equip(loadout[slot].model, states[slot].Data, build)).SetMagazineVisible(states[slot].HasMagazine);
             }
 
             Destroy(previous);
@@ -476,6 +478,33 @@ namespace FPS.Weapons
             Quaternion rotation = Quaternion.Euler(pose.Rotation);
             Vector3 stock = weapon.StockPivotSocket != null ? pivot.InverseTransformPoint(weapon.StockPivotSocket.position) : Vector3.zero;
             pivot.SetLocalPositionAndRotation(stock - rotation * stock + pose.Position, rotation);
+            DriveMechanism(dt);
+        }
+
+        private void DriveMechanism(float dt)
+        {
+            WeaponState state = ActiveState;
+            if (mechanism == null || state == null) return;
+
+            float progress = actionDuration > 0f ? Mathf.Clamp01(actionTime / actionDuration) : 0f;
+            bool boltAction = state.Data.BoltType == BoltType.ManualBoltAction;
+            bool cycling = CurrentAction == WeaponAction.Reload && reloadTarget == ReloadStage.BoltCycled;
+            mechanism.Drive(new MechanismState
+            {
+                TriggerPressed = triggerHeld && CurrentAction == WeaponAction.None,
+                FireMode = state.FireModeIndex,
+                SinceShot = Time.time - lastShotTime,
+                CycleTime = state.Data.CycleTime,
+                LockedBack = state.BoltLockedBack,
+                Charge = cycling && !boltAction ? progress : 0f,
+                BoltWork = CurrentAction == WeaponAction.BoltCycle || (cycling && boltAction) ? progress : 0f,
+            }, dt);
+        }
+
+        private WeaponModelRig Equipped(WeaponModelRig weapon)
+        {
+            mechanism = weapon != null ? weapon.GetComponent<WeaponMechanism>() : null;
+            return weapon;
         }
 
         private void UpdateTrigger(WeaponState state, float now)
@@ -581,6 +610,7 @@ namespace FPS.Weapons
             }
 
             EmitShot(state);
+            lastShotTime = Time.time;
             if (state.Data.BoltType != BoltType.ManualBoltAction) EjectCasing(state);
             recoil.Kick(); // after the shot: the bullet has left before the muzzle rises
         }
@@ -760,8 +790,9 @@ namespace FPS.Weapons
         {
             activeSlot = slot;
             WeaponState state = states[slot];
-            WeaponModelRig weapon = viewmodel.Equip(loadout[slot].model, state.Data, builds[slot]);
+            WeaponModelRig weapon = Equipped(viewmodel.Equip(loadout[slot].model, state.Data, builds[slot]));
             weapon.SetMagazineVisible(state.HasMagazine);
+            lastShotTime = float.NegativeInfinity;
             if (state.Data.Caliber != null && state.Data.Caliber.CasingPrefab != null)
                 ObjectPoolManager.Instance.Prewarm(state.Data.Caliber.CasingPrefab, 24, 96);
             CancelTriggerIntent();

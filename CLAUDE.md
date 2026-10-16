@@ -12,9 +12,11 @@ ballistics, Picture-in-Picture optics, procedural inertia, photoreal HDRP.
    (`Settings/Rendering/HDRenderPipelineAsset.asset`), layers, collision matrix.
 3. `Tools/FPS Builder/2. Create Core Assets` (creates `Data/Core/InputReader.asset` wired to the input actions).
 4. `Tools/FPS Builder/3. Create Test Weapons` → calibers in `Data/Ballistics` (5.56, 7.62, 9x19, .300 WM),
-   `Prefabs/Weapons/TestRifle` (modular 5.56 closed-bolt receiver with attachment mounts and 45° canted irons) and
-   `TestMarksman` (.300 WM bolt action, fixed 8x scope), their data, recoil profiles and droppable magazines, the
-   gunsmith parts in `Prefabs/Weapons/Attachments` + `Data/Weapons/Attachments`; re-builds the player prefab.
+   `Prefabs/Weapons/TestRifle` (modular 5.56 closed-bolt receiver with attachment mounts and 45° canted irons),
+   `TestMarksman` (.300 WM bolt action, fixed 8x scope), `BattleRifle` (7.62, optic/grip/rail mounts) and `Sidearm`
+   (9 mm, reciprocating slide), their data, recoil profiles and droppable magazines, the gunsmith parts in
+   `Prefabs/Weapons/Attachments` + `Data/Weapons/Attachments`; re-builds the player prefab. Models come from
+   `Art/Models` (Meshy imports) or the procedural fallback (see Asset pipeline).
 5. `Tools/FPS Builder/4. Create Player Prefab` → `Prefabs/Player/Player.prefab`: rig, viewmodel, IK arms, loadout
    (carbine primary, marksman secondary). Completes an existing prefab in place.
 6. `Tools/FPS Builder/5. Build Test Range` → `Scenes/LocomotionTestRange.unity` (ramps, ice, ledges, corner, crouch and
@@ -380,6 +382,34 @@ Contracts for later milestones:
 - UI for match HUD, menu and workbench is built in code through `UIFactory` (uGUI, legacy font, Input System UI module
   created on demand).
 
+## Asset pipeline (M11)
+
+- **Sources:** every model has a Meshy spec in `MeshyAssetManifest` (id, category, prompt, texture prompt, fit). A model
+  dropped into `Art/Models/<Category>/<Id>/` (FBX/OBJ + PBR textures) wins; otherwise the builders use high-detail
+  procedural geometry. The user generates on meshy.ai with their subscription (prompts: `Art/Models/MeshyPrompts.md`,
+  `Tools/FPS Builder/Meshy/Asset Queue`); `MeshyApiClient`/`MeshyAssetGenerator` call the REST API only when
+  `MESHY_API_KEY` (or the EditorPrefs key) is set — API calls bill separate Meshy API credits.
+- **Import:** `ImportedModelPostprocessor` sets model/texture import settings under `Art/Models`; `ImportedModels`
+  builds `<Id>_HDRP.mat` (HDRP/Lit) and packs metallic/roughness/occlusion (or ORM) into `<Id>_MaskMap.png`
+  (`MaskMapPacker`: R metallic, G AO, B detail mask, A 1 - roughness). Builder 6 uses the same packing for any model
+  folder. `ModelFitting` poses a model in its part frame (long axis → +Z, slim or bulky end forward, mass up, uniform
+  scale, bounds or end-slice anchor); `fit.json` (`{"euler": {...}}`) overrides the orientation. Sockets on imported
+  attachments come from measured end slices (`PartShape`).
+- **Procedural:** `MeshKit` (chamfered boxes, lathes, prisms, side-profile extrusions, rails, tori, ellipsoids; faces
+  wound from their intended normal), `SurfaceFinishes` (generated 256² base/normal/mask PNGs per finish under
+  `Art/Models/Materials`; delete to regenerate), `ModelAssembly` (static geometry merged per finish, moving parts
+  separate), `MeshStore` (one mesh asset per piece under `Art/Models/Procedural/<Model>/`, overwritten in place so
+  references survive rebuilds). Models: `ProceduralWeapons`, `ProceduralAttachments`, `ProceduralProps` (equipment,
+  props as prefabs in `Prefabs/Props`, `Dress` swaps a placeholder block's cube for a prop), `ProceduralOperators`
+  (soldier gear and the player's sleeves/gloves).
+- **Mechanism:** `WeaponMechanism` (FPS.Weapons, on the weapon root) animates trigger, selector, bolt carrier/slide
+  (cycles per shot, held back when locked open), charging handle (charge stage, or rides the carrier) and bolt
+  handle (bolt action); `RealisticWeaponController` and `AIWeaponHandler` drive it each LateUpdate.
+- **Soldiers:** hitboxes are invisible primitive colliders (Hitbox layer); operator visuals are separate, collider-free
+  children of the same bones. Friendly: coyote/tan, hostile: ranger green/olive.
+- **Weapon racks:** `WeaponRack` (FPS.Gameplay, IInteractable) swaps a loadout slot to the next rack weapon and
+  saves the loadout; Armory west wall and the test range carry a primary and a secondary rack.
+
 ## Milestones
 
 - [x] **M1** Project init, `CLAUDE.md`, assemblies, `InputReader`, `EventBus`, `ObjectPoolManager`, `ProjectSetupWizard`
@@ -392,3 +422,9 @@ Contracts for later milestones:
 - [x] **M8** Tactical AI & squad CQB
 - [x] **M9** Game modes, match director, tactical equipment
 - [x] **M10** 3D gunsmith workbench, loadout persistence, HDRP settings menu
+- [x] **M11** Meshy asset pipeline, high-detail procedural models, weapon mechanisms, battle rifle and sidearm
+- [ ] **M12** Photoreal HDRP overhaul (SSGI/SSR, contact shadows, physical sky, weathered materials, combat VFX, NVG)
+- [ ] **M13** Physical gunshot synthesis, environment tails, Doppler cracks, gear foley
+- [ ] **M14** Mantling and vaulting, slide cancel, compressed ready, physical doors, inspect, camera kick
+- [ ] **M15** Deployment station, scene flow, loading screen, complete settings and key rebinding
+- [ ] **M16** Hit confirmation and diegetic combat polish

@@ -48,16 +48,10 @@ namespace FPS.EditorTools
             });
 
             PhysicsMaterial bounce = LoadOrCreatePhysicsMaterial();
-            Material olive = LitMaterial("GrenadeOlive", new Color(0.2f, 0.24f, 0.15f), 0.2f, 0.35f);
-            Material black = LitMaterial("GrenadeBlack", new Color(0.04f, 0.04f, 0.04f), 0.3f, 0.4f);
-            Material steel = LitMaterial("GrenadeSpoon", new Color(0.5f, 0.5f, 0.48f), 0.9f, 0.5f);
-
-            ThrownGrenade fragBody = Body("Grenade_M67", PrimitiveType.Sphere, new Vector3(0.064f, 0.064f, 0.064f), olive, steel, bounce);
-            ThrownGrenade flashBody = Body("Grenade_M84", PrimitiveType.Cylinder, new Vector3(0.045f, 0.065f, 0.045f), black, steel, bounce);
-            Material smokeGreen = LitMaterial("GrenadeSmoke", new Color(0.25f, 0.3f, 0.22f), 0.1f, 0.3f);
-            ThrownGrenade smokeBody = Body("Grenade_M18", PrimitiveType.Cylinder, new Vector3(0.062f, 0.075f, 0.062f), smokeGreen, steel, bounce);
-            Material charge = LitMaterial("ChargeBlock", new Color(0.6f, 0.58f, 0.5f), 0f, 0.4f);
-            ThrownGrenade chargeBody = Body("Charge_C4", PrimitiveType.Cube, new Vector3(0.28f, 0.08f, 0.18f), charge, black, bounce);
+            ThrownGrenade fragBody = Body("Grenade_M67", PrimitiveType.Sphere, new Vector3(0.064f, 0.064f, 0.064f), bounce);
+            ThrownGrenade flashBody = Body("Grenade_M84", PrimitiveType.Cylinder, new Vector3(0.045f, 0.065f, 0.045f), bounce);
+            ThrownGrenade smokeBody = Body("Grenade_M18", PrimitiveType.Cylinder, new Vector3(0.062f, 0.075f, 0.062f), bounce);
+            ThrownGrenade chargeBody = Body("Charge_C4", PrimitiveType.Cube, new Vector3(0.28f, 0.08f, 0.18f), bounce);
 
             Configure(LoadOrCreate<GrenadeDataSO>($"{DataFolder}/{FragName}.asset"), so =>
             {
@@ -137,19 +131,21 @@ namespace FPS.EditorTools
                 Set(so, "smokeMaterial", EffectsContentBuilder.SmokeMaterial());
                 Set(so, "smokeColor", new Color(0.35f, 0.33f, 0.3f, 0.85f));
             });
-            PlantedChargePrefab(c4, charge, black);
+            PlantedChargePrefab(c4);
 
             AssetDatabase.SaveAssets();
         }
 
-        /// <summary>The armed charge left at a site: model, Interactable defuse collider, beep and countdown.</summary>
-        private static void PlantedChargePrefab(GrenadeDataSO c4, Material block, Material wiring)
+        /// <summary>The armed charge left at a site: charge and clacker models, Interactable defuse collider, beep and countdown.</summary>
+        private static void PlantedChargePrefab(GrenadeDataSO c4)
         {
             var root = new GameObject("PlantedCharge") { layer = GameLayers.Interactable };
             try
             {
-                Part(root.transform, "Charge", PrimitiveType.Cube, new Vector3(0f, 0.05f, 0f), new Vector3(0.28f, 0.1f, 0.18f), Quaternion.identity, block);
-                Part(root.transform, "Detonator", PrimitiveType.Cube, new Vector3(0.06f, 0.12f, 0f), new Vector3(0.1f, 0.04f, 0.06f), Quaternion.identity, wiring);
+                Transform charge = Socket(root.transform, "Charge", new Vector3(0f, 0.04f, 0f), Quaternion.identity);
+                ProceduralProps.Equipment("Charge_C4", charge, 0);
+                Transform clacker = Socket(root.transform, "Clacker", new Vector3(0.24f, 0.0225f, 0.06f), Quaternion.Euler(0f, -30f, 0f));
+                ProceduralProps.Equipment("Clacker_M57", clacker, 0);
                 SetLayerRecursively(root.transform, 0);
                 root.layer = GameLayers.Interactable;
                 var trigger = root.AddComponent<BoxCollider>();
@@ -168,25 +164,29 @@ namespace FPS.EditorTools
             }
         }
 
-        private static ThrownGrenade Body(string prefabName, PrimitiveType shape, Vector3 size, Material bodyMaterial, Material spoonMaterial,
-            PhysicsMaterial bounce)
+        /// <summary>
+        /// A throwable: the model (<paramref name="prefabName"/> doubles as its Meshy asset id), a collider of the given
+        /// primitive <paramref name="shape"/> and <paramref name="size"/> (unit-primitive scale), a kinematic body until thrown.
+        /// </summary>
+        private static ThrownGrenade Body(string prefabName, PrimitiveType shape, Vector3 size, PhysicsMaterial bounce)
         {
             var root = new GameObject(prefabName) { layer = GameLayers.Debris };
             try
             {
-                Transform model = Part(root.transform, "Body", shape, Vector3.zero, size, Quaternion.identity, bodyMaterial);
-                Part(root.transform, "Spoon", PrimitiveType.Cube, new Vector3(size.x * 0.55f, size.y * 0.25f, 0f), new Vector3(0.006f, size.y * 1.1f, 0.012f),
-                    Quaternion.identity, spoonMaterial);
-                Part(root.transform, "Fuse", PrimitiveType.Cylinder, new Vector3(0f, size.y * (shape == PrimitiveType.Sphere ? 0.5f : 1f), 0f),
-                    new Vector3(0.018f, 0.012f, 0.018f), Quaternion.identity, spoonMaterial);
+                ProceduralProps.Equipment(prefabName, root.transform, GameLayers.Debris);
                 SetLayerRecursively(root.transform, GameLayers.Debris);
-                model.gameObject.layer = GameLayers.Debris;
 
                 if (shape == PrimitiveType.Sphere)
                 {
                     var sphere = root.AddComponent<SphereCollider>();
                     sphere.radius = size.x * 0.5f;
                     sphere.sharedMaterial = bounce;
+                }
+                else if (shape == PrimitiveType.Cube)
+                {
+                    var box = root.AddComponent<BoxCollider>();
+                    box.size = size;
+                    box.sharedMaterial = bounce;
                 }
                 else
                 {

@@ -58,6 +58,8 @@ namespace FPS.EditorTools
 
             WeaponReport(TestWeaponBuilder.CarbineName, 1f, 1f, false);
             WeaponReport(TestWeaponBuilder.MarksmanName, 1.35f, 0.8f, true);
+            WeaponReport(TestWeaponBuilder.BattleRifleName, 1.2f, 0.88f, false);
+            WeaponReport(TestWeaponBuilder.SidearmName, 0.62f, 1.35f, false);
 
             AudioSynth.LoadOrCreate(Clip("Foley", "DryFire"), () => new AudioSynth(0.08f, 11).Partials(new[] { 3200f, 5600f }, 0.7f, 0f, 0.01f).Noise(0.2f, 0f, 0.0003f, 0.004f));
             AudioSynth.LoadOrCreate(Clip("Foley", "MagazineOut"), () => new AudioSynth(0.25f, 12).Noise(0.25f, 0f, 0.02f, 0.08f).HighPass(1500f).Partials(new[] { 1800f, 3400f }, 0.5f, 0.09f, 0.02f));
