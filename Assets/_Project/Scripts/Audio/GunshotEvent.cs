@@ -10,5 +10,7 @@ namespace FPS.Audio
         /// <summary>Root of whoever fired.</summary>
         public Transform Shooter;
         public WeaponAudioProfileSO Profile;
+        /// <summary>Visible muzzle flash: 0 suppressed (or none), 1 bare muzzle. AI sees flashes inside its view.</summary>
+        public float MuzzleFlash;
     }
 }

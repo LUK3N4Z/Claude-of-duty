@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 564d00a348e522d4da3a3a5c07971218, type: 3}
+  m_Name: Voice_Alpha
+  m_EditorClassIdentifier: FPS.AI::FPS.AI.AIVoiceProfileSO
+  lines:
+  - callout: 0
+    clips:
+    - {fileID: 8300000, guid: 0848abe5bf0654e4183918ff45b4c155, type: 3}
+  - callout: 1
+    clips:
+    - {fileID: 8300000, guid: 9d7e6ccedd8546a43a7567a74911ade3, type: 3}
+  - callout: 2
+    clips:
+    - {fileID: 8300000, guid: fabf20ce8ccd99b47a6049fe5063d093, type: 3}
+  - callout: 3
+    clips:
+    - {fileID: 8300000, guid: ca9d43c78289ca54db55f71c96d5ff0d, type: 3}
+  - callout: 4
+    clips:
+    - {fileID: 8300000, guid: 465091e1cb4e2dd4bb9b6084332bf8ab, type: 3}
+  - callout: 5
+    clips:
+    - {fileID: 8300000, guid: 1ceb457c1a734b14f8977b82f4cfcad6, type: 3}
+  - callout: 6
+    clips:
+    - {fileID: 8300000, guid: 2e34a472c7e46cd45a12ccee7ef3b681, type: 3}
+  - callout: 7
+    clips:
+    - {fileID: 8300000, guid: 795a32053dba592408ccabc842b1b0f9, type: 3}
+  - callout: 8
+    clips:
+    - {fileID: 8300000, guid: 480a663c5c389d04a931a1dd6dc42d3d, type: 3}
+  - callout: 9
+    clips:
+    - {fileID: 8300000, guid: 00c8bd99b85da0d4fab1685c146ccce2, type: 3}
+  - callout: 10
+    clips:
+    - {fileID: 8300000, guid: 9e1b301bc64c52841998595df0649ed0, type: 3}
+  - callout: 11
+    clips:
+    - {fileID: 8300000, guid: fc00554d0b4472c4b9a3388373fb0cf3, type: 3}
+  - callout: 12
+    clips:
+    - {fileID: 8300000, guid: 5d4699a06518c2a4186427849971ed87, type: 3}
+  audibleDistance: 45

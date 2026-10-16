@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using FPS.Core;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -35,13 +36,20 @@ namespace FPS.Weapons
         [SerializeField] private float beamWidth = 0.0015f;
         [SerializeField] private float dotSize = 0.012f;
 
+        private static readonly List<TacticalDevice> litFlashlights = new List<TacticalDevice>(16);
+
         private Light flashlight;
         private LineRenderer beam;
         private Transform dot;
 
+        /// <summary>Flashlights currently on (AI illumination and target conspicuity read these).</summary>
+        public static IReadOnlyList<TacticalDevice> LitFlashlights => litFlashlights;
+
         public TacticalDeviceType Type => type;
         public bool IsOn { get; private set; }
         public Light Flashlight => flashlight;
+        /// <summary>Peak beam intensity of the flashlight (cd).</summary>
+        public float BeamCandela => candela;
         /// <summary>Where the laser currently lands (beam end).</summary>
         public Vector3 LaserEnd => beam != null ? beam.GetPosition(1) : Vector3.zero;
 
@@ -57,6 +65,7 @@ namespace FPS.Weapons
         public void SetOn(bool on)
         {
             IsOn = on;
+            UpdateRegistration();
             if (dot != null) dot.gameObject.layer = 0; // the dot lands in the world: visible to the scope camera too
             if (flashlight != null) flashlight.enabled = on;
             if (beam != null) beam.enabled = on;
@@ -70,6 +79,21 @@ namespace FPS.Weapons
             else BuildLaser();
             SetOn(false);
         }
+
+        private void OnEnable() => UpdateRegistration();
+
+        private void OnDisable() => litFlashlights.Remove(this);
+
+        private void UpdateRegistration()
+        {
+            bool lit = IsOn && flashlight != null && isActiveAndEnabled;
+            bool listed = litFlashlights.Contains(this);
+            if (lit && !listed) litFlashlights.Add(this);
+            else if (!lit && listed) litFlashlights.Remove(this);
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetRegistry() => litFlashlights.Clear();
 
         private void LateUpdate()
         {

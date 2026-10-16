@@ -78,12 +78,33 @@ namespace FPS.Locomotion
             if (!root.TryGetComponent(out RealisticLocomotionController _)) root.AddComponent<RealisticLocomotionController>();
             if (!root.TryGetComponent(out HeadbobAndBreathingSystem _)) root.AddComponent<HeadbobAndBreathingSystem>();
             if (!root.TryGetComponent(out SuppressionFeedback _)) root.AddComponent<SuppressionFeedback>();
+            if (!root.TryGetComponent(out FlashbangFeedback _)) root.AddComponent<FlashbangFeedback>();
             if (!root.TryGetComponent(out Interactor _)) root.AddComponent<Interactor>();
             if (!root.TryGetComponent(out AcousticPropagationSystem _)) root.AddComponent<AcousticPropagationSystem>();
             if (!root.TryGetComponent(out ImpactEffectsController _)) root.AddComponent<ImpactEffectsController>();
 
+            // Body zones for incoming fire: torso and arms lean with LeanPivot, legs follow the stance/prone pivot.
+            EnsureHitbox(rig.headPivot, "Hitbox Head", HitZone.Head, new Vector3(0f, 0.04f, -0.02f), new Vector3(0.2f, 0.24f, 0.22f));
+            EnsureHitbox(rig.leanPivot, "Hitbox Thorax", HitZone.Thorax, new Vector3(0f, 0.36f, 0f), new Vector3(0.38f, 0.3f, 0.24f));
+            EnsureHitbox(rig.leanPivot, "Hitbox Stomach", HitZone.Stomach, new Vector3(0f, 0.1f, 0f), new Vector3(0.34f, 0.22f, 0.22f));
+            EnsureHitbox(rig.leanPivot, "Hitbox Left Arm", HitZone.LeftArm, new Vector3(-0.25f, 0.3f, 0.05f), new Vector3(0.1f, 0.4f, 0.12f));
+            EnsureHitbox(rig.leanPivot, "Hitbox Right Arm", HitZone.RightArm, new Vector3(0.25f, 0.3f, 0.05f), new Vector3(0.1f, 0.4f, 0.12f));
+            EnsureHitbox(rig.bodyPivot, "Hitbox Left Leg", HitZone.LeftLeg, new Vector3(-0.1f, -0.5f, 0f), new Vector3(0.15f, 0.95f, 0.17f));
+            EnsureHitbox(rig.bodyPivot, "Hitbox Right Leg", HitZone.RightLeg, new Vector3(0.1f, -0.5f, 0f), new Vector3(0.15f, 0.95f, 0.17f));
+
             root.SetActive(wasActive);
             return rig;
+        }
+
+        private static void EnsureHitbox(Transform parent, string hitboxName, HitZone zone, Vector3 center, Vector3 size)
+        {
+            Transform hitboxTransform = EnsureChild(parent, hitboxName);
+            hitboxTransform.gameObject.layer = GameLayers.Hitbox;
+            hitboxTransform.localPosition = center;
+            if (!hitboxTransform.TryGetComponent(out BoxCollider box)) box = hitboxTransform.gameObject.AddComponent<BoxCollider>();
+            box.size = size;
+            if (!hitboxTransform.TryGetComponent(out Hitbox hitbox)) hitbox = hitboxTransform.gameObject.AddComponent<Hitbox>();
+            hitbox.Configure(zone, null);
         }
 
         /// <summary>Finds a direct child by name or creates it at identity; the child inherits the parent's layer.</summary>

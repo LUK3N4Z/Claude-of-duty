@@ -454,6 +454,7 @@ namespace FPS.EditorTools
         internal static void Set(SerializedObject so, string field, string value) => Property(so, field).stringValue = value;
         internal static void Set(SerializedObject so, string field, Object value) => Property(so, field).objectReferenceValue = value;
         internal static void Set(SerializedObject so, string field, Vector3 value) => Property(so, field).vector3Value = value;
+        internal static void Set(SerializedObject so, string field, Color value) => Property(so, field).colorValue = value;
         internal static void SetEnum(SerializedObject so, string field, int index) => Property(so, field).enumValueIndex = index;
 
         private static void SetFireModes(SerializedObject so, params FireMode[] modes)

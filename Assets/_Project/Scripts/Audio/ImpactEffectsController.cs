@@ -79,6 +79,8 @@ namespace FPS.Audio
         {
             SurfaceMaterialSO surface = impact.Surface;
             if (surface == null) return;
+            // Rounds striking this body: the hit is felt, not seen from inside (no puffs or decals in the camera).
+            if (impact.Collider != null && impact.Collider.transform.IsChildOf(transform)) return;
 
             ObjectPoolManager pool = ObjectPoolManager.Instance;
             float calibre = impact.Caliber != null ? impact.Caliber.BulletDiameterMeters / ReferenceDiameter : 1f;

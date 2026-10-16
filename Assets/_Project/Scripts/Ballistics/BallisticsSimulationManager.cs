@@ -92,6 +92,9 @@ namespace FPS.Ballistics
             return instance;
         }
 
+        /// <summary>Drops every round in flight (round resets, test teardown).</summary>
+        public void Clear() => count = 0;
+
         /// <summary>Adds a round to the simulation (normally via <see cref="ShotFiredEvent"/>).</summary>
         public void Launch(in ShotFiredEvent shot)
         {

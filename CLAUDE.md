@@ -18,7 +18,10 @@ ballistics, Picture-in-Picture optics, procedural inertia, photoreal HDRP.
 5. `Tools/FPS Builder/4. Create Player Prefab` → `Prefabs/Player/Player.prefab`: rig, viewmodel, IK arms, loadout
    (carbine primary, marksman secondary). Completes an existing prefab in place.
 6. `Tools/FPS Builder/5. Build Test Range` → `Scenes/LocomotionTestRange.unity` (ramps, ice, ledges, corner, crouch and
-   crawl tunnels, narrow corridor, targets at 25/50/100/200 m, dusty shoot house, canyon, thin volumetric fog).
+   crawl tunnels, narrow corridor, targets at 25/50/100/200 m, dusty shoot house, canyon, thin volumetric fog). It also
+   (re)creates the AI content — `Prefabs/AI/AI_Soldier`, grenades in `Prefabs/Equipment` + `Data/Equipment`, callout
+   voices in `Data/AI` (Windows speech synthesis; silent elsewhere until clips are assigned) — places the firefight
+   yard with Squad Alpha, makes the shoot house a `CQBRoom` and bakes `Scenes/LocomotionTestRange_NavMesh`.
 7. Optional: `Window > Rendering > HDRP Wizard` for any remaining platform checks.
 
 **Importing a weapon model:** select the FBX/GLTF → `Tools/FPS Builder/6. Build Weapon From Selected Model` (or
@@ -71,10 +74,10 @@ hip/ADS/canted/reload/impact/device/gunsmith-build PNGs of the test range and lo
 | `FPS.Audio`          | `FPS.Audio`      | Core, Ballistics, HDRP runtime               | World presentation: acoustics, weapon audio profiles, impact decals/dust/audio, particle factory |
 | `FPS.Player`         | `FPS.Locomotion` | Core, Audio, Ballistics, HDRP runtime        | Locomotion, stance/lean/mount, breathing, suppression feedback, player camera chain |
 | `FPS.Weapons`        | `FPS.Weapons`    | Core, Audio, Ballistics, Player, HDRP runtime | Weapon data, model rig/sockets, viewmodel (inertia, ADS/PiP optics, recoil), controller, attachments |
-| `FPS.AI`             | `FPS.AI`         | Core, Audio, Ballistics, Player, Weapons     | Perception, tactical brain, squad coordination |
+| `FPS.AI`             | `FPS.AI`         | Core, Audio, Ballistics, Player, Weapons, HDRP runtime | Perception, soldier body/weapon, tactical brain, squad coordination, CQB rooms |
 | `FPS.UI`             | `FPS.UI`         | Core, Ballistics, Audio, Player, Weapons, UnityEngine.UI, HDRP | Diegetic HUD, menus |
 | `FPS.Gameplay` (M9)  | `FPS.Gameplay`   | all runtime                                  | Match director, modes, equipment, save profiles |
-| `FPS.Editor`         | `FPS.EditorTools`| all + Unity.InputSystem (Editor-only)        | Builders, wizards, validators |
+| `FPS.Editor`         | `FPS.EditorTools`| all + Unity.InputSystem, Unity.AI.Navigation (Editor-only) | Builders, wizards, validators |
 
 **Rule:** references only point down the table. Upward communication goes through `EventBus<T>` structs, interfaces
 declared in `FPS.Core`, or push-style setters (weapons call `RealisticLocomotionController.SetWeaponHandling`).
@@ -89,10 +92,10 @@ Names live in `FPS.Core.GameLayers`; always resolve indices through it, never ha
 | Layer                  | Preferred index | Purpose |
 |------------------------|-----------------|---------|
 | `Ignore Raycast`       | 2 (built-in)    | Unity built-in; never hit by queries |
-| `Player`               | 8               | Character capsules |
+| `Player`               | 8               | Character capsules (player and AI soldiers) |
 | `FirstPersonViewmodel` | 9               | First-person arms/weapon (rendered in-world by the main camera, culled by the PiP camera), collides with nothing; also hosts scope-only volumes |
 | `WorldGeometry`        | 10              | Static/dynamic level geometry; ballistics, barrel tuck and lean casts target it |
-| `Hitbox`               | 11              | Per-bone damage colliders (kinematic) |
+| `Hitbox`               | 11              | Per-bone damage colliders (kinematic): dummies, AI soldiers and the player (`PlayerRig.Build`) |
 | `Interactable`         | 12              | Ray-targeted interaction objects |
 | `Debris`               | 13              | Shell casings, dropped magazines: hit the world, never players, hitboxes or bullets |
 
@@ -151,6 +154,9 @@ Player            [CharacterController, PlayerRig, Locomotion (yaw), StanceAndLe
             └ Arms            FirstPersonArmsIK (two-bone IK to the weapon's grip sockets)
 ```
 
+Hitboxes: head under HeadPivot, thorax/stomach/arms under LeanPivot, legs under BodyPivot (they follow stance, lean
+and prone). `FlashbangFeedback` (whiteout through a Player-layer volume) sits on the root with `SuppressionFeedback`.
+
 Pivots compute their pose from points expressed in their own local space (stock socket, muzzle), so rotations act
 about the stock and the barrel probe uses the untucked pose; there is no feedback between layers.
 
@@ -203,6 +209,9 @@ Contracts for later milestones:
 - `GameLayers.EnvironmentMask` — Default + WorldGeometry; every environment query uses it.
 - `SuppressionEvent` (EventBus) — `Listener` (head/camera transform), `Intensity` 0–1, closest `Point`, `Direction`;
   consumers ignore events for other listeners.
+- `FlashbangEvent` (EventBus) — `Position`, `Intensity`; every eye/ear computes its own `FlashbangEvent.Exposure`
+  (distance, facing, occlusion → blindness; deafness passes walls at 60%).
+- `BallisticsSimulationManager.Clear()` drops all rounds in flight (round resets, test teardown).
 
 ## Ballistics & damage (M5)
 
@@ -239,6 +248,9 @@ Contracts for later milestones:
   surface's impact clip delayed by distance.
 - **Muzzle** (`MuzzleAndSmokeVFXController`, on the player): one-frame HDRP point-light flash (lumen units), gas burst
   per shot, barrel heat (0–1, exponential cooling) driving distortion heat haze and lingering breech smoke.
+  `GunshotEvent.MuzzleFlash` carries the build's flash multiplier (AI sees unsuppressed flashes).
+- Impacts on the listener's own body spawn no puffs or decals. Stun grenades deafen through the acoustic system's
+  low-pass plus a looping `tinnitus` clip.
 - **Particles:** HDRP/Unlit has no vertex colour, so `EffectParticles` systems fade via a 4×4 alpha flipbook texture
   (`Art/VFX/PuffFlipbook`); tint per instance with a `_UnlitColor` property block.
 - **HUD** (`DiegeticTacticalHUD`, uGUI built in code, legacy built-in font): compass tape + bearing, interaction
@@ -269,6 +281,40 @@ Contracts for later milestones:
 - **Test parts:** barrels 10.5/14.5/20", flash hider, compensator, suppressor (synthesized suppressed profile), 4x
   scope, red dot, vertical/angled grips, fixed/collapsed stocks, laser, light. Default carbine build ≈ 3.5 kg.
 
+## Tactical AI (M8)
+
+- **Soldier** (`Prefabs/AI/AI_Soldier`, layer Player): `NavMeshAgent` + `AIBody` (procedural: stance height, lean roll
+  about the pelvis, body yaw follows the aim, aim pivot at the shoulder with turn-rate limit and recoil, two-bone IK
+  arms, falling death that drops the rifle), `AIWeaponHandler` (same `WeaponDataSO` + gunsmith build as the player,
+  rounds from the `MuzzleSocket` along the bore, magazine/chamber counting, reloads with foley events, muzzle-flash
+  light), `AIPerceptionSensor`, `TacticalAIBrain`, `PerceivableTarget` (team 1), `TacticalHealthAndArmorSystem`.
+- **Targets:** `PerceivableTarget` on anything AI perceives (the player prefab gets team 0): head/chest/pelvis points,
+  conspicuity (stance + motion), footstep noise radius (speed × stance), lit flashlight (`TacticalDevice.LitFlashlights`).
+- **Perception** (10 Hz tick, staggered): awareness per target rises with visible fraction (3 line casts), light level
+  (`AIIllumination`: sun shadow ray + 5 sky rays + flashlight cones → dark corners shrink sight range to 12%),
+  conspicuity, focus vs. peripheral vision and distance; 1 = identified (`TargetIdentified`). Hearing: footsteps,
+  gunshots (`MaxAudibleDistance`, halved through walls; suppressed shots located with 30% error vs 8%), never
+  identifies. Unsuppressed muzzle flashes in view identify the shooter. Near misses/hits → `Suppression`;
+  `FlashbangEvent` → `Blindness` (stunned above 0.5) / `Deafness`. Identified targets are remembered 25 s.
+- **Brain states:** Idle/patrol → Suspicious look → Investigate (walk to the LKP pre-aiming past path corners: slicing
+  the pie) → Engage (find cover with `CoverFinder`: concealed crouched/standing, `PeekMode` StandUp / LeanLeft /
+  LeanRight; peek-and-fire cycles with reaction time, settling and suppression-scaled aim error) → Suppress (bursts
+  into the LKP area for 6 s after losing sight; may chew the target's cover, never its own) → Investigate. A target
+  hidden near one spot for 4 s gets a cooked frag (`GrenadeBallistics` arc solve + sweep). Squad orders: Flank,
+  Stack, Breach (pie arc → doorway → point of domination), Throw; a throw resumes the interrupted order.
+- **Squad** (`SquadCoordinator` on the parent of the soldiers): pools knowledge (one sighting engages everyone),
+  assigns a flanker after 2.5 s without eyes on the target or when squad fire suppresses it ("Target suppressed!"),
+  clears a `CQBRoom` holding the LKP: stack on the nearest entry, flashbang (stack looks away), then one man through
+  the door at a time to the domination points, "Clear!". Also grenade cooldown, cover claims, friendly-fire line
+  check, "Covering!" for reloads, "Man down!".
+- **Callouts:** `CalloutType` → `SquadCalloutEvent` + a clip from the soldier's `AIVoiceProfileSO` (shared callouts
+  deduplicated squad-wide). Replace the synthesized clips with recorded lines in the voice profiles.
+- **Grenades** (`GrenadeDataSO`, pooled `ThrownGrenade`, Debris layer): frag = 64 fragment projectiles through the
+  ballistics sim (`Caliber_Fragment`) + 4 m blast overpressure (`TacticalHealthAndArmorSystem.ApplyDamage`, blocked by
+  cover); stun = `FlashbangEvent`. Both flash, report via `GunshotEvent` (explosion profiles) and suppress listeners.
+- **Rooms:** `CQBRoom` (interior box, entries with +Z into the room, domination points); `CQBRoom.SliceArc` /
+  `SliceAim` give the pie-slicing approach.
+
 ## Milestones
 
 - [x] **M1** Project init, `CLAUDE.md`, assemblies, `InputReader`, `EventBus`, `ObjectPoolManager`, `ProjectSetupWizard`
@@ -278,6 +324,6 @@ Contracts for later milestones:
 - [x] **M5** Ballistics sim, penetration/ricochet, shell casings, health & armor
 - [x] **M6** Acoustic propagation, muzzle VFX, diegetic HUD
 - [x] **M7** Gunsmith & attachment physics
-- [ ] **M8** Tactical AI & squad CQB
+- [x] **M8** Tactical AI & squad CQB
 - [ ] **M9** Game modes, match director, tactical equipment
 - [ ] **M10** 3D gunsmith workbench, loadout persistence, HDRP settings menu

@@ -1,7 +1,7 @@
 {
     "name": "FPS.Tests",
     "rootNamespace": "FPS.Tests",
-    "references": ["FPS.Core", "FPS.Ballistics", "FPS.Audio", "FPS.Player", "FPS.Weapons", "FPS.UI", "UnityEngine.UI", "Unity.RenderPipelines.HighDefinition.Runtime", "Unity.RenderPipelines.Core.Runtime", "Unity.InputSystem", "Unity.InputSystem.TestFramework", "UnityEngine.TestRunner", "UnityEditor.TestRunner"],
+    "references": ["FPS.Core", "FPS.Ballistics", "FPS.Audio", "FPS.Player", "FPS.Weapons", "FPS.AI", "FPS.UI", "UnityEngine.UI", "Unity.RenderPipelines.HighDefinition.Runtime", "Unity.RenderPipelines.Core.Runtime", "Unity.AI.Navigation", "Unity.InputSystem", "Unity.InputSystem.TestFramework", "UnityEngine.TestRunner", "UnityEditor.TestRunner"],
     "overrideReferences": true,
     "precompiledReferences": ["nunit.framework.dll"],
     "autoReferenced": false,

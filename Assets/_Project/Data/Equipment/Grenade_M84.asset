@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 626bcab52c3c64148a65a0d97b1965d4, type: 3}
+  m_Name: Grenade_M84
+  m_EditorClassIdentifier: FPS.Weapons::FPS.Weapons.GrenadeDataSO
+  displayName: M84 Stun Grenade
+  type: 1
+  prefab: {fileID: 3375353610556390333, guid: 4a65a337607f09a4d8c46a85474b1e40, type: 3}
+  massKg: 0.24
+  fuseTime: 1.5
+  throwSpeed: 14
+  fragmentCaliber: {fileID: 0}
+  fragmentCount: 0
+  fragmentVelocity: 1300
+  blastRadius: 0
+  blastDamage: 0
+  flashIntensity: 1
+  detonationAudio: {fileID: 11400000, guid: c7d329bdd89479f44ab86dce3c89c91e, type: 2}
+  flashLumen: 6000000
+  suppressionRadius: 8
+  smokeMaterial: {fileID: 2100000, guid: 89fa62263459ec346a761145a286726b, type: 2}
+  smokeColor: {r: 0.75, g: 0.75, b: 0.75, a: 0.6}

@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 564d00a348e522d4da3a3a5c07971218, type: 3}
+  m_Name: Voice_Charlie
+  m_EditorClassIdentifier: FPS.AI::FPS.AI.AIVoiceProfileSO
+  lines:
+  - callout: 0
+    clips:
+    - {fileID: 8300000, guid: 94b2ee07541ddaf45a442750d51c7f15, type: 3}
+  - callout: 1
+    clips:
+    - {fileID: 8300000, guid: ae651d099c0f1f54c9c81bc06b5996d5, type: 3}
+  - callout: 2
+    clips:
+    - {fileID: 8300000, guid: 2f41b1758bd431f4db3d71891261ac3b, type: 3}
+  - callout: 3
+    clips:
+    - {fileID: 8300000, guid: d0ca0a6bf39875c43b5256bd354130b9, type: 3}
+  - callout: 4
+    clips:
+    - {fileID: 8300000, guid: 5e5e629286dfe9741b38710fc74b3c82, type: 3}
+  - callout: 5
+    clips:
+    - {fileID: 8300000, guid: 6b5b5ac7b076e174c81d8880b470b4e3, type: 3}
+  - callout: 6
+    clips:
+    - {fileID: 8300000, guid: a3cfe2f1d91b9914a929d3d923a8b05c, type: 3}
+  - callout: 7
+    clips:
+    - {fileID: 8300000, guid: 78bfc7f2d1ca9d5498a21e82cbdb6fdd, type: 3}
+  - callout: 8
+    clips:
+    - {fileID: 8300000, guid: e6bab58169536b54ab4ec29d096e3498, type: 3}
+  - callout: 9
+    clips:
+    - {fileID: 8300000, guid: 5e7346ab4ba93ca45a3eeb880f883a7c, type: 3}
+  - callout: 10
+    clips:
+    - {fileID: 8300000, guid: f08cb4fb4627882448579e9dfff844ec, type: 3}
+  - callout: 11
+    clips:
+    - {fileID: 8300000, guid: fa094229791bb174eb3828cca54eb020, type: 3}
+  - callout: 12
+    clips:
+    - {fileID: 8300000, guid: 14bad6366e6e67042bc61c34892a3d52, type: 3}
+  audibleDistance: 45

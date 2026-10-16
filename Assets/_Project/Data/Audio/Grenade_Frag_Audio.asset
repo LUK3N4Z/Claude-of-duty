@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53dfdec1530d6344bb2a986d02fb2693, type: 3}
+  m_Name: Grenade_Frag_Audio
+  m_EditorClassIdentifier: FPS.Audio::FPS.Audio.WeaponAudioProfileSO
+  pressureTransients:
+  - {fileID: 8300000, guid: 6d80cc2ff5a2bcb4bb068be688c9eaf7, type: 3}
+  - {fileID: 8300000, guid: adbf939dbc1f8e84aba0eceb9269a6c5, type: 3}
+  mechanicalCycles:
+  - {fileID: 8300000, guid: cf8bbb9e78bc00a44a0d541f68ae5f65, type: 3}
+  bodyResonances: []
+  distantReports:
+  - {fileID: 8300000, guid: 287ba1f8e2147a74993907a424c7b741, type: 3}
+  distantThreshold: 150
+  maxAudibleDistance: 2500
+  loudness: 1
+  indoorTail: {fileID: 8300000, guid: c410d68cde0ddd04d9dbe990486d1d53, type: 3}
+  urbanTail: {fileID: 8300000, guid: cacefca077685c94abbbf142caf60e8b, type: 3}
+  openTail: {fileID: 8300000, guid: 765b303944cd78d4fb199072778a3112, type: 3}

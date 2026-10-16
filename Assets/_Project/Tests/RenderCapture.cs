@@ -2,6 +2,8 @@
 using System;
 using System.Collections;
 using System.IO;
+using FPS.AI;
+using FPS.Ballistics;
 using FPS.Locomotion;
 using FPS.Weapons;
 using UnityEditor;
@@ -32,6 +34,11 @@ namespace FPS.Tests
 
             var rig = Object.FindAnyObjectByType<PlayerRig>();
             var cc = rig.GetComponent<CharacterController>();
+            SquadCoordinator[] squads = Object.FindObjectsByType<SquadCoordinator>();
+            foreach (SquadCoordinator squad in squads) squad.gameObject.SetActive(false); // the opposing force joins at the end
+            var playerHealth = rig.GetComponent<TacticalHealthAndArmorSystem>();
+            TestWeapons.SetField(playerHealth, "maxHealth", 100000f);
+            playerHealth.ResetState();
             cc.enabled = false;
             rig.transform.SetPositionAndRotation(new Vector3(20f, 0f, 2f), Quaternion.identity);
             cc.enabled = true;
@@ -119,6 +126,37 @@ namespace FPS.Tests
             weapons.ReleaseTrigger();
             yield return null;
             Save(rt, Path.Combine(dir, "comp_shot.png"));
+
+            // Opposing force: a shot from the yard's edge brings the squad round to fight.
+            Teleport(rig, cc, new Vector3(-12f, 0f, 12f));
+            foreach (SquadCoordinator squad in squads) squad.gameObject.SetActive(true);
+            yield return new WaitForSeconds(0.5f);
+            int roundsBefore = weapons.ActiveState.LoadedRounds;
+            for (int i = 0; i < 3; i++)
+            {
+                weapons.PullTrigger();
+                weapons.ReleaseTrigger();
+                yield return new WaitForSeconds(0.15f);
+            }
+
+            Debug.Log($"[Capture] opfor alert: rounds {roundsBefore} -> {weapons.ActiveState.LoadedRounds}, action={weapons.CurrentAction}");
+            foreach (SquadCoordinator squad in squads)
+            {
+                foreach (TacticalAIBrain brain in squad.Members)
+                    Debug.Log($"[Capture] {brain.name}: aware={brain.Perception.Awareness:F2} state={brain.State} agent={brain.Body.Agent.isOnNavMesh}");
+            }
+
+            yield return new WaitForSeconds(2.5f);
+            Save(rt, Path.Combine(dir, "ai_contact.png"));
+            yield return new WaitForSeconds(4f);
+            Save(rt, Path.Combine(dir, "ai_cover.png"));
+            foreach (SquadCoordinator squad in squads)
+            {
+                foreach (TacticalAIBrain brain in squad.Members)
+                    Debug.Log($"[Capture] {brain.name}: {brain.State} aware={brain.Perception.State} cover={brain.HasCover}/{brain.AtCover} peek={brain.IsPeeking} shots={brain.WeaponHandler.ShotsFired}");
+            }
+
+            Debug.Log($"[Capture] player health {playerHealth.Health}/{playerHealth.MaxHealth}");
             rig.PlayerCamera.targetTexture = null;
         }
 

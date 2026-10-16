@@ -87,6 +87,7 @@ namespace FPS.EditorTools
                 TestWeaponBuilder.Set(so, "fireModeSwitch", Load(Clip("Foley", "FireModeSwitch")));
                 TestWeaponBuilder.Set(so, "magazineCheck", Load(Clip("Foley", "MagazineCheck")));
                 SetClips(TestWeaponBuilder.Property(so, "supersonicCracks"), Load(Clip("Foley", "SupersonicCrack_0")), Load(Clip("Foley", "SupersonicCrack_1")));
+                TestWeaponBuilder.Set(so, "tinnitus", Tinnitus());
             });
             TestWeaponBuilder.Configure(player.GetComponent<ImpactEffectsController>(), so => TestWeaponBuilder.Set(so, "dustMaterial", Vfx("ImpactDust")));
             TestWeaponBuilder.Configure(player.GetComponent<MuzzleAndSmokeVFXController>(), so =>
@@ -141,6 +142,63 @@ namespace FPS.EditorTools
                 TestWeaponBuilder.Set(so, "loudness", Mathf.Min(1f, 0.8f * power));
             });
         }
+
+        /// <summary>Stun-grenade ringing: two high partials beating slowly, looped while hearing returns.</summary>
+        internal static AudioClip Tinnitus()
+        {
+            ProjectSetupWizard.EnsureFolder($"{AudioFolder}/Foley");
+            return AudioSynth.LoadOrCreate(Clip("Foley", "Tinnitus"), () => new AudioSynth(3f, 41)
+                .Tone(3900f, 3900f, 0.35f, 0f, 0.05f, 30f).Tone(3913f, 3913f, 0.3f, 0f, 0.05f, 30f).Tone(6100f, 6100f, 0.08f, 0f, 0.05f, 30f));
+        }
+
+        /// <summary>
+        /// A grenade report: <paramref name="power"/> scales the blast, <paramref name="crack"/> the sharp high-frequency
+        /// snap (a stun grenade is mostly crack, a frag mostly thump). Close report, distant boom and three tails.
+        /// </summary>
+        internal static WeaponAudioProfileSO ExplosionAudio(string name, float power, float crack)
+        {
+            ProjectSetupWizard.EnsureFolder($"{AudioFolder}/Explosives");
+            ProjectSetupWizard.EnsureFolder(AudioDataFolder);
+            string Path(string layer, int variant) => Clip("Explosives", $"{name}_{layer}_{variant}");
+            int seed = name.Length * 307;
+            var blasts = new AudioClip[2];
+            for (int i = 0; i < blasts.Length; i++)
+            {
+                int s = seed + i;
+                blasts[i] = AudioSynth.LoadOrCreate(Path("Blast", i), () => new AudioSynth(1.2f * power, s)
+                    .NWave(crack, 0f, 0.002f).Noise(1f, 0f, 0.001f, 0.12f * power).LowPass(6000f)
+                    .Tone(70f, 32f, 1f, 0f, 0.004f, 0.5f * power, 0.3f).Noise(0.35f, 0.02f, 0.02f, 0.5f * power).LowPass(2500f));
+            }
+
+            AudioClip debris = AudioSynth.LoadOrCreate(Path("Debris", 0), () => new AudioSynth(1f, seed + 10)
+                .Noise(0.25f, 0.15f, 0.05f, 0.4f).HighPass(1500f).Partials(new[] { 2400f, 4100f }, 0.15f, 0.3f, 0.05f));
+            AudioClip distant = AudioSynth.LoadOrCreate(Path("Distant", 0), () => new AudioSynth(2.5f * power, seed + 30)
+                .Noise(1f, 0f, 0.03f, 0.7f * power).LowPass(300f).LowPass(300f).Tone(45f, 28f, 0.8f, 0f, 0.05f, 1f * power, 0.6f).Echo(0.5f, 0.3f));
+            AudioClip indoor = AudioSynth.LoadOrCreate(Path("TailIndoor", 0), () => new AudioSynth(1.4f * power, seed + 40)
+                .Noise(0.8f, 0f, 0.005f, 0.4f * power).LowPass(3000f).Echo(0.017f, 0.6f).Echo(0.037f, 0.5f).Echo(0.061f, 0.4f));
+            AudioClip urban = AudioSynth.LoadOrCreate(Path("TailUrban", 0), () => new AudioSynth(3f * power, seed + 50)
+                .Noise(0.7f, 0f, 0.02f, 0.6f).LowPass(1500f).Echo(0.21f, 0.55f).Echo(0.43f, 0.4f).Echo(0.71f, 0.3f));
+            AudioClip open = AudioSynth.LoadOrCreate(Path("TailOpen", 0), () => new AudioSynth(4f * power, seed + 60)
+                .Noise(0.6f, 0f, 0.06f, 1.6f * power).LowPass(300f).LowPass(300f).Tone(38f, 30f, 0.4f, 0f, 0.1f, 2f * power, 1.5f));
+
+            WeaponAudioProfileSO profile = TestWeaponBuilder.LoadOrCreate<WeaponAudioProfileSO>($"{AudioDataFolder}/{name}_Audio.asset");
+            TestWeaponBuilder.Configure(profile, so =>
+            {
+                SetClips(TestWeaponBuilder.Property(so, "pressureTransients"), blasts);
+                SetClips(TestWeaponBuilder.Property(so, "mechanicalCycles"), debris);
+                SetClips(TestWeaponBuilder.Property(so, "bodyResonances"));
+                SetClips(TestWeaponBuilder.Property(so, "distantReports"), distant);
+                TestWeaponBuilder.Set(so, "distantThreshold", 150f);
+                TestWeaponBuilder.Set(so, "maxAudibleDistance", 2500f);
+                TestWeaponBuilder.Set(so, "indoorTail", indoor);
+                TestWeaponBuilder.Set(so, "urbanTail", urban);
+                TestWeaponBuilder.Set(so, "openTail", open);
+                TestWeaponBuilder.Set(so, "loudness", 1f);
+            });
+            return profile;
+        }
+
+        internal static Material SmokeMaterial() => Vfx("BreechSmoke");
 
         /// <summary>
         /// The weapon behind a suppressor: a short, dull "thup" with the bolt clearly audible, quieter tails and a

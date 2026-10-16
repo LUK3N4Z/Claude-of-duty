@@ -522,6 +522,7 @@ namespace FPS.Weapons
                 Direction = muzzle.forward,
                 Shooter = transform,
                 Profile = state.Data.AudioProfile,
+                MuzzleFlash = state.Data.MuzzleFlashMultiplier,
             });
         }
 

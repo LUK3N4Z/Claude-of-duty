@@ -106,6 +106,29 @@ namespace FPS.Ballistics
             return !penetrated;
         }
 
+        /// <summary>
+        /// Damage armor cannot stop (blast overpressure, falls): applied to <paramref name="zone"/> with its multiplier.
+        /// </summary>
+        public void ApplyDamage(HitZone zone, float damage, Vector3 point, Vector3 direction)
+        {
+            if (IsDead || damage <= 0f) return;
+
+            damage *= Multiplier(zone);
+            zoneDamage[(int)zone] += damage;
+            Health = Mathf.Max(0f, Health - damage);
+            EventBus<DamageEvent>.Raise(new DamageEvent
+            {
+                Target = this,
+                Zone = zone,
+                Damage = damage,
+                Point = point,
+                Direction = direction,
+                Fatal = IsDead,
+            });
+            Damaged?.Invoke(zone, damage);
+            if (IsDead) Died?.Invoke();
+        }
+
         /// <summary>Probability that a round with <paramref name="penetration"/> defeats <paramref name="protection"/>.</summary>
         public static float PenetrationChance(float penetration, float protection, float spread) =>
             1f / (1f + Mathf.Exp(-(penetration - protection) / spread));

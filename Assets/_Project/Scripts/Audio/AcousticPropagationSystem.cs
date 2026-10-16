@@ -49,9 +49,16 @@ namespace FPS.Audio
         [Tooltip("Health fraction below which damage starts muffling the world.")]
         [SerializeField, Range(0f, 1f)] private float lowHealthThreshold = 0.35f;
 
+        [Header("Stun Grenades")]
+        [Tooltip("Ringing played at full deafness, fading as hearing returns.")]
+        [SerializeField] private AudioClip tinnitus;
+        [Tooltip("Time for full deafness to wear off (s).")]
+        [SerializeField, Min(0.1f)] private float deafnessRecovery = 6f;
+
         private readonly AudioSource[] tails = new AudioSource[3];
         private Transform listener;
         private AudioSource firstPerson;
+        private AudioSource ringing;
         private AudioLowPassFilter lowPass;
         private TacticalHealthAndArmorSystem health;
         private AudioEmitter emitterTemplate;
@@ -62,6 +69,8 @@ namespace FPS.Audio
         /// <summary>Smoothed (indoor, urban, open) tail weights; they sum to 1.</summary>
         public Vector3 EnvironmentWeights => environment;
         public float MuffleAmount { get; private set; }
+        /// <summary>Stun-grenade deafness, 0-1.</summary>
+        public float Deafness { get; private set; }
         public float CutoffFrequency => lowPass != null ? lowPass.cutoffFrequency : openCutoff;
 
         /// <summary>Time for sound to cover <paramref name="distance"/> metres.</summary>
@@ -98,6 +107,8 @@ namespace FPS.Audio
             mix.SetParent(listener, false);
             firstPerson = CreateSource(mix, firstPersonSpatialBlend);
             for (int i = 0; i < tails.Length; i++) tails[i] = CreateSource(mix, 0f);
+            ringing = CreateSource(mix, 0f);
+            ringing.loop = true;
 
             var template = new GameObject("Audio Emitter Template");
             template.SetActive(false); // pooled clones wake when spawned
@@ -111,6 +122,7 @@ namespace FPS.Audio
             EventBus<GunshotEvent>.Subscribe(OnGunshot);
             EventBus<WeaponActionEvent>.Subscribe(OnWeaponAction);
             EventBus<SuppressionEvent>.Subscribe(OnSuppressed);
+            EventBus<FlashbangEvent>.Subscribe(OnFlashbang);
         }
 
         private void OnDisable()
@@ -118,6 +130,7 @@ namespace FPS.Audio
             EventBus<GunshotEvent>.Unsubscribe(OnGunshot);
             EventBus<WeaponActionEvent>.Unsubscribe(OnWeaponAction);
             EventBus<SuppressionEvent>.Unsubscribe(OnSuppressed);
+            EventBus<FlashbangEvent>.Unsubscribe(OnFlashbang);
         }
 
         private void Update()
@@ -135,7 +148,14 @@ namespace FPS.Audio
             float lowHealth = health != null && lowHealthThreshold > 0f
                 ? Mathf.Clamp01((lowHealthThreshold - health.Health / health.MaxHealth) / lowHealthThreshold)
                 : 0f;
-            MuffleAmount = Mathf.Max(suppression * suppressionMuffle, lowHealth);
+            if (Deafness > 0f)
+            {
+                Deafness = Mathf.Max(0f, Deafness - dt / deafnessRecovery);
+                ringing.volume = Deafness;
+                if (Deafness <= 0f) ringing.Stop();
+            }
+
+            MuffleAmount = Mathf.Max(Mathf.Max(suppression * suppressionMuffle, lowHealth), Deafness);
             lowPass.cutoffFrequency = openCutoff * Mathf.Pow(muffledCutoff / openCutoff, MuffleAmount); // perceptually even sweep
         }
 
@@ -187,6 +207,18 @@ namespace FPS.Audio
             if (supersonicCracks.Length > 0)
                 Emit(supersonicCracks[Random.Range(0, supersonicCracks.Length)], evt.Point, Mathf.Lerp(0.5f, 1f, evt.Intensity),
                     Random.Range(0.95f, 1.05f), 0f, 1f, 30f);
+        }
+
+        private void OnFlashbang(in FlashbangEvent bang)
+        {
+            FlashbangEvent.Exposure(bang.Position, bang.Intensity, listener.position, listener.forward, out float deafness);
+            if (deafness <= Deafness) return;
+
+            Deafness = deafness;
+            if (tinnitus == null) return;
+            ringing.clip = tinnitus;
+            ringing.volume = Deafness;
+            if (!ringing.isPlaying) ringing.Play();
         }
 
         private void PlayFirstPerson(AudioClip clip, float volume)

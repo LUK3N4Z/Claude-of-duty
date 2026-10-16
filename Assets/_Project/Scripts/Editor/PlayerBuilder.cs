@@ -72,6 +72,7 @@ namespace FPS.EditorTools
         {
             GameObject playerPrefab = CreateOrUpdatePlayerPrefab();
             if (playerPrefab == null) return;
+            AIContentBuilder.CreateContent();
             if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
 
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
@@ -138,6 +139,8 @@ namespace FPS.EditorTools
             resupply.AddComponent<BoxCollider>().size = new Vector3(1.1f, 1.2f, 1.2f);
             resupply.AddComponent<AmmoCrate>();
 
+            AIContentBuilder.BuildEncounters(level); // last: bakes the NavMesh over all of the level
+
             var player = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab, scene);
             player.transform.SetPositionAndRotation(new Vector3(0f, 0f, -4f), Quaternion.identity);
 
@@ -185,6 +188,7 @@ namespace FPS.EditorTools
             ViewmodelRig viewmodel = ViewmodelRig.Build(rig);
             BuildArms(viewmodel);
             if (!root.TryGetComponent(out FPS.UI.DiegeticTacticalHUD _)) root.AddComponent<FPS.UI.DiegeticTacticalHUD>();
+            if (!root.TryGetComponent(out FPS.AI.PerceivableTarget _)) root.AddComponent<FPS.AI.PerceivableTarget>(); // team 0: AI sees and hears the player
             EffectsContentBuilder.ConfigurePlayer(root);
 
             var controller = root.GetComponent<RealisticWeaponController>();
