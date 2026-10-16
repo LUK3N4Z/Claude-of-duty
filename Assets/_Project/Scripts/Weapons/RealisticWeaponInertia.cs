@@ -6,9 +6,9 @@ namespace FPS.Weapons
 {
     /// <summary>
     /// The weapon's physical connection to the body: mass/ergonomics-driven spring handling, free-aim lead inside an
-    /// elastic deadzone, movement trail and sprint postures, breathing sway, and barrel collision that compresses the
-    /// weapon back and tilts it to a high or low ready near walls. Rotates about the stock contact point. Owns
-    /// InertiaPivot.
+    /// elastic deadzone, movement trail and sprint/slide postures, breathing sway, and barrel collision that blends from
+    /// the shouldered weapon through a compressed ready (pulled back, stock under the armpit: still fires, no sights) to
+    /// a high or low ready full tuck near walls. Rotates about the stock contact point. Owns InertiaPivot.
     /// </summary>
     [DefaultExecutionOrder(-10)]
     [DisallowMultipleComponent]
@@ -56,7 +56,13 @@ namespace FPS.Weapons
         [SerializeField] private Vector3 lowReadyEuler = new Vector3(45f, -20f, -10f);
         [SerializeField] private float tuckInSpeed = 2.5f;
         [SerializeField] private float tuckOutSpeed = 0.8f;
-        [SerializeField, Range(0f, 1f)] private float tuckedThreshold = 0.35f;
+        [Tooltip("Tilt (0-1) beyond which the muzzle is off target: firing and aiming are blocked.")]
+        [SerializeField, Range(0f, 1f)] private float tuckedTilt = 0.25f;
+
+        [Header("Compressed Ready")]
+        [Tooltip("Pose added at full compression: stock off the shoulder, tucked under the armpit (m).")]
+        [SerializeField] private Vector3 compressedPosition = new Vector3(0.02f, -0.06f, -0.04f);
+        [SerializeField] private Vector3 compressedEuler = new Vector3(-4f, 8f, 14f);
 
         private readonly ProceduralSpringSolver spring = new ProceduralSpringSolver();
         private ViewmodelRig viewmodel;
@@ -69,8 +75,14 @@ namespace FPS.Weapons
 
         /// <summary>0 = free, 1 = fully tucked against geometry.</summary>
         public float TuckAmount { get; private set; }
+        /// <summary>Compressed ready, 0 (shouldered) to 1 (pulled back, stock under the arm).</summary>
+        public float CompressedReady01 { get; private set; }
+        /// <summary>High/low ready tilt, 0-1 (1 = full tuck).</summary>
+        public float Tilt01 { get; private set; }
+        /// <summary>In a compressed ready: hip fire only, the sights are off the eye.</summary>
+        public bool IsCompressed => CompressedReady01 > 0.5f && !IsTucked;
         /// <summary>Tucked far enough that aiming and firing are blocked.</summary>
-        public bool IsTucked => TuckAmount >= tuckedThreshold;
+        public bool IsTucked => Tilt01 >= tuckedTilt;
 
         /// <summary>Clamps <paramref name="value"/> into the ellipse with half-extents <paramref name="radius"/>.</summary>
         public static Vector2 ClampToEllipse(Vector2 value, Vector2 radius)
@@ -105,7 +117,7 @@ namespace FPS.Weapons
         {
             spring.Reset();
             tuckDepth = 0f;
-            TuckAmount = 0f;
+            TuckAmount = CompressedReady01 = Tilt01 = 0f;
         }
 
         private void LateUpdate()
@@ -142,7 +154,8 @@ namespace FPS.Weapons
                 new Vector3(-localVelocity.x, -localVelocity.y * 0.5f, -localVelocity.z) * movementTrail, maxTrail);
 
             bool aiming = locomotion.IsAiming || ads.AdsBlend > 0.01f;
-            sprintBlend = Mathf.MoveTowards(sprintBlend, !aiming && locomotion.Pace == LocomotionPace.Sprint ? 1f : 0f, postureBlendSpeed * dt);
+            bool lowCarry = locomotion.Pace == LocomotionPace.Sprint || locomotion.IsSliding; // slides carry it like a sprint
+            sprintBlend = Mathf.MoveTowards(sprintBlend, !aiming && lowCarry ? 1f : 0f, postureBlendSpeed * dt);
             tacticalBlend = Mathf.MoveTowards(tacticalBlend, !aiming && locomotion.Pace == LocomotionPace.TacticalSprint ? 1f : 0f, postureBlendSpeed * dt);
 
             spring.PositionTarget = trail + sprintPosition * sprintBlend + tacticalSprintPosition * tacticalBlend;
@@ -154,8 +167,8 @@ namespace FPS.Weapons
 
             Vector2 sway = breathing.WeaponSwayEuler;
             Vector3 tuckEuler = (data.BarrelLengthInches >= lowReadyBarrelInches ? lowReadyEuler : highReadyEuler) * tilt;
-            Quaternion rotation = Quaternion.Euler(spring.Rotation + new Vector3(sway.x, sway.y, 0f) + tuckEuler);
-            Vector3 translation = spring.Position - barrelDirection * compression;
+            Quaternion rotation = Quaternion.Euler(spring.Rotation + new Vector3(sway.x, sway.y, 0f) + tuckEuler + compressedEuler * CompressedReady01);
+            Vector3 translation = spring.Position - barrelDirection * compression + compressedPosition * CompressedReady01;
 
             Vector3 stock = weapon.StockPivotSocket != null ? pivot.InverseTransformPoint(weapon.StockPivotSocket.position) : Vector3.zero;
             pivot.SetLocalPositionAndRotation(stock - rotation * stock + translation, rotation);
@@ -190,6 +203,8 @@ namespace FPS.Weapons
             compression = Mathf.Min(tuckDepth, maxCompression);
             tilt = Mathf.Clamp01((tuckDepth - maxCompression) / tiltRange);
             TuckAmount = Mathf.Clamp01(tuckDepth / (maxCompression + tiltRange));
+            CompressedReady01 = Mathf.SmoothStep(0f, 1f, compression / maxCompression);
+            Tilt01 = tilt;
         }
     }
 }

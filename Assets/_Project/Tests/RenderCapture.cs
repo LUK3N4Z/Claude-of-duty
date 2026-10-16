@@ -114,6 +114,49 @@ namespace FPS.Tests
             goggles.SetOn(false);
             yield return new WaitForSeconds(0.6f);
 
+            // Inspection, a vault and a mantle on the traversal course, and the shoot house door.
+            var locomotion = rig.GetComponent<RealisticLocomotionController>();
+            Teleport(rig, cc, new Vector3(0f, 0f, -4f));
+            locomotion.SetLook(0f, 0f);
+            yield return new WaitForSeconds(0.4f);
+            PressAndRelease(keyboard.iKey);
+            yield return new WaitForSeconds(1f);
+            Save(rt, Path.Combine(dir, "inspect_markings.png"));
+            yield return new WaitForSeconds(1.4f);
+            Save(rt, Path.Combine(dir, "inspect_port.png"));
+            yield return new WaitForSeconds(1.3f);
+
+            Teleport(rig, cc, new Vector3(-8f, 0f, -2.6f));
+            locomotion.SetLook(0f, 10f);
+            yield return new WaitForSeconds(0.3f);
+            Press(keyboard.wKey);
+            yield return null;
+            PressAndRelease(keyboard.spaceKey);
+            yield return new WaitForSeconds(0.22f);
+            Save(rt, Path.Combine(dir, "vault.png"));
+            yield return new WaitForSeconds(0.8f);
+            Release(keyboard.wKey);
+
+            Teleport(rig, cc, new Vector3(-16f, 0f, -2.8f));
+            locomotion.SetLook(0f, 15f);
+            yield return new WaitForSeconds(0.3f);
+            Press(keyboard.wKey);
+            yield return null;
+            PressAndRelease(keyboard.spaceKey);
+            yield return new WaitForSeconds(0.3f);
+            Save(rt, Path.Combine(dir, "mantle.png"));
+            yield return new WaitForSeconds(1f);
+            Release(keyboard.wKey);
+            Debug.Log($"[Capture] traversal: on the platform at y={rig.transform.position.y:F2}");
+
+            Teleport(rig, cc, new Vector3(-26f, 0f, 1.6f));
+            locomotion.SetLook(0f, 0f);
+            yield return new WaitForSeconds(0.4f);
+            PressAndRelease(keyboard.fKey);
+            yield return new WaitForSeconds(1.2f);
+            Save(rt, Path.Combine(dir, "door_open.png"));
+            locomotion.SetLook(0f, 0f);
+
             // Live gunsmith swaps: a short suppressed CQB build, then a long compensated one.
             Teleport(rig, cc, new Vector3(20f, 0f, 2f));
             weapons.SetAttachment(0, AttachmentSlot.Barrel, Part("Barrel_10in"));

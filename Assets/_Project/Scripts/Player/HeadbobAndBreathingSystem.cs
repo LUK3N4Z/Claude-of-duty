@@ -109,6 +109,12 @@ namespace FPS.Locomotion
         [SerializeField] private float maxFlinch = 2.5f;
         [SerializeField] private float flinchSpringFrequency = 14f;
 
+        [Header("Hand Tremor")]
+        [Tooltip("Physiological tremor of the hands holding the weapon at rest (deg); grows with heart rate and arm injury.")]
+        [SerializeField] private float tremorAmplitude = 0.035f;
+        [Tooltip("Centre of the tremor band (Hz): 8-12 Hz for a held rifle.")]
+        [SerializeField] private float tremorFrequency = 9f;
+
         [Header("Slide & Dive")]
         [SerializeField] private float slideLowering = 0.12f;
         [SerializeField] private float slideRoll = 5f;
@@ -117,6 +123,7 @@ namespace FPS.Locomotion
 
         private RealisticLocomotionController locomotion;
         private StanceAndLeanController stance;
+        private MantleAndVaultController traversal;
         private PlayerRig rig;
         private InputReader input;
         private TacticalHealthAndArmorSystem health;
@@ -151,6 +158,7 @@ namespace FPS.Locomotion
             rig = GetComponent<PlayerRig>();
             input = rig.Input;
             TryGetComponent(out health);
+            TryGetComponent(out traversal);
             heartRate = restingHeartRate;
         }
 
@@ -245,7 +253,29 @@ namespace FPS.Locomotion
             pitchSway += wander * (Mathf.PerlinNoise(0.53f, t) * 2f - 1f);
 
             pitchSway -= heartbeatSway * (0.5f + HeartRate01) * stance.SwayMultiplier * Mathf.Exp(-heartbeatPhase * 12f);
-            WeaponSwayEuler = new Vector2(pitchSway, yawSway);
+
+            float tremor = tremorAmplitude * (1f + 1.5f * HeartRate01) * stance.SwayMultiplier *
+                           (health != null ? 1f + 2f * health.ArmInjury01 : 1f);
+            WeaponSwayEuler = new Vector2(pitchSway, yawSway) + HandTremor(Time.time, tremor, tremorFrequency);
+        }
+
+        /// <summary>
+        /// Physiological hand tremor (deg, x = pitch, y = yaw): three octaves of Perlin noise from
+        /// <paramref name="frequency"/> Hz up, independent per axis, peaking near <paramref name="amplitude"/>.
+        /// </summary>
+        public static Vector2 HandTremor(float time, float amplitude, float frequency)
+        {
+            float pitch = 0f, yaw = 0f, weight = 0.5f, total = 0f, f = frequency;
+            for (int octave = 0; octave < 3; octave++)
+            {
+                pitch += weight * (Mathf.PerlinNoise(time * f, 11.3f + octave * 7.1f) * 2f - 1f);
+                yaw += weight * (Mathf.PerlinNoise(31.7f + octave * 5.3f, time * f) * 2f - 1f);
+                total += weight;
+                weight *= 0.5f;
+                f *= 1.9f;
+            }
+
+            return new Vector2(pitch, yaw) * (amplitude / total);
         }
 
         private void ApplyHeadMotion(float dt)
@@ -267,11 +297,13 @@ namespace FPS.Locomotion
             diveBlend = Mathf.MoveTowards(diveBlend, locomotion.IsDiving ? 1f : 0f, dt / postureBlendTime);
 
             Vector2 sway = WeaponSwayEuler * cameraSwayFraction;
+            float traversalPitch = traversal != null ? traversal.CameraPitch : 0f; // the dip of a pull-up, the lean of a vault
+            float traversalRoll = traversal != null ? traversal.CameraRoll : 0f;
             rig.HeadMotion.localPosition = new Vector3(lateral, vertical + landingOffset - slideLowering * slideBlend, 0f);
             rig.HeadMotion.localRotation = Quaternion.Euler(
-                nod + sway.x + divePitch * diveBlend + flinchAngles.x,
+                nod + sway.x + divePitch * diveBlend + flinchAngles.x + traversalPitch,
                 sway.y + flinchAngles.y,
-                roll + slideRoll * slideBlend);
+                roll + slideRoll * slideBlend + traversalRoll);
         }
 
         /// <summary>

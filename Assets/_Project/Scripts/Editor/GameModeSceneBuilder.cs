@@ -169,6 +169,16 @@ namespace FPS.EditorTools
             Room(warehouse, "West Room", -4f, Quaternion.Euler(0f, -90f, 0f));
             Room(warehouse, "East Room", 4f, Quaternion.Euler(0f, 90f, 0f));
 
+            // CQB doors in every warehouse doorway (1.6 m openings narrowed to a frame).
+            foreach (float x in new[] { -4f, 4f })
+            {
+                string side = x < 0f ? "West" : "East";
+                DoorBuilder.Doorway(warehouse, $"Door {side} S", new Vector3(x, 0f, -5f), Quaternion.identity, 1.6f, WallHeight, 0.3f, "Brick");
+                DoorBuilder.Doorway(warehouse, $"Door {side} N", new Vector3(x, 0f, 5f), Quaternion.Euler(0f, 180f, 0f), 1.6f, WallHeight, 0.3f, "Brick");
+            }
+
+            DoorBuilder.Doorway(warehouse, "Door Connecting", Vector3.zero, Quaternion.Euler(0f, 90f, 0f), 1.6f, WallHeight, 0.3f, "Drywall");
+
             // West compound.
             Transform compound = Group(level, "West Compound");
             Block(compound, "Low Wall 1", new Vector3(-22f, 0.625f, -4f), new Vector3(3f, 1.25f, 0.3f));

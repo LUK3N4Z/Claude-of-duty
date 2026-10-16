@@ -75,6 +75,7 @@ namespace FPS.Locomotion
 
             if (!root.TryGetComponent(out TacticalHealthAndArmorSystem _)) root.AddComponent<TacticalHealthAndArmorSystem>();
             if (!root.TryGetComponent(out StanceAndLeanController _)) root.AddComponent<StanceAndLeanController>();
+            if (!root.TryGetComponent(out MantleAndVaultController _)) root.AddComponent<MantleAndVaultController>();
             if (!root.TryGetComponent(out RealisticLocomotionController _)) root.AddComponent<RealisticLocomotionController>();
             if (!root.TryGetComponent(out HeadbobAndBreathingSystem _)) root.AddComponent<HeadbobAndBreathingSystem>();
             if (!root.TryGetComponent(out SuppressionFeedback _)) root.AddComponent<SuppressionFeedback>();

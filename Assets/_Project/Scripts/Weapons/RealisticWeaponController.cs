@@ -20,13 +20,16 @@ namespace FPS.Weapons
         Draw,
         /// <summary>Weapon lowered while the off hand works a throwable.</summary>
         Equipment,
+        /// <summary>Procedural inspection: receiver markings, then the ejection port.</summary>
+        Inspect,
     }
 
     /// <summary>
     /// Weapon mechanics for the carried loadout: true chamber tracking (+1, bolt hold-open, open bolt, manual bolt),
     /// fire modes at the cyclic rate, bore-axis shots with mechanical dispersion, staged and interruptible reloads
     /// (tactical keeps the magazine, speed drops a physical one), magazine checks, fire-mode switching and weapon
-    /// swaps. Drives procedural manipulation poses on ActionPivot and the support-hand IK target.
+    /// swaps, weapon inspection, the one-handed carry over vaults and mantles, and the ready after slides (a cancelled
+    /// slide comes up fast). Drives procedural manipulation poses on ActionPivot and the support-hand IK target.
     /// </summary>
     [DefaultExecutionOrder(-30)]
     [DisallowMultipleComponent]
@@ -61,6 +64,16 @@ namespace FPS.Weapons
         [SerializeField] private Vector3 manualCycleEuler = new Vector3(-6f, 4f, 18f);
         [SerializeField] private Vector3 loweredPosition = new Vector3(0f, -0.25f, -0.1f);
         [SerializeField] private Vector3 loweredEuler = new Vector3(60f, -15f, 10f);
+        [Tooltip("One-handed side carry over a vault or mantle: the support hand is on the obstacle.")]
+        [SerializeField] private Vector3 carryPosition = new Vector3(0.1f, -0.16f, -0.12f);
+        [SerializeField] private Vector3 carryEuler = new Vector3(30f, -30f, 65f);
+
+        [Header("Inspection")]
+        [SerializeField, Min(0.5f)] private float inspectDuration = 3.5f;
+
+        [Header("Readiness")]
+        [Tooltip("Time to bring the weapon up after cancelling a slide into a crouch (s).")]
+        [SerializeField, Min(0f)] private float slideCancelReadyTime = 0.15f;
 
         [Header("Ejected Cases")]
         [Tooltip("Ejection speed range out of the port (m/s).")]
@@ -81,7 +94,9 @@ namespace FPS.Weapons
         private StanceAndLeanController stance;
         private RealisticWeaponInertia inertia;
         private PhysicalRecoilEngine recoil;
+        private MantleAndVaultController traversal;
         private InputReader input;
+        private float seenSlideCancel = float.NegativeInfinity;
 
         private WeaponState[] states;
         private List<AttachmentDataSO>[] builds;
@@ -108,6 +123,39 @@ namespace FPS.Weapons
         public MagazineEstimate LastEstimate { get; private set; }
 
         public WeaponState GetState(int slot) => slot >= 0 && slot < states.Length ? states[slot] : null;
+
+        /// <summary>The inspection pose at <paramref name="time"/> s into a <paramref name="duration"/> s inspection: tilt to show
+        /// the left side and its markings, hold, roll over to the ejection port, hold, back to the ready.</summary>
+        public static void InspectPose(float time, float duration, out Vector3 position, out Vector3 euler)
+        {
+            float t = Mathf.Clamp(time / Mathf.Max(0.01f, duration), 0f, 1f) * InspectKeyTimes[InspectKeyTimes.Length - 1];
+            int k = 1;
+            while (k < InspectKeyTimes.Length - 1 && t > InspectKeyTimes[k]) k++;
+            float s = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(InspectKeyTimes[k - 1], InspectKeyTimes[k], t));
+            position = Vector3.Lerp(InspectKeyPositions[k - 1], InspectKeyPositions[k], s);
+            euler = Vector3.Lerp(InspectKeyEulers[k - 1], InspectKeyEulers[k], s);
+        }
+
+        private static readonly float[] InspectKeyTimes = { 0f, 0.5f, 1.5f, 2.1f, 2.9f, 3.5f };
+        private static readonly Vector3[] InspectKeyPositions =
+        {
+            Vector3.zero, new Vector3(-0.03f, 0.03f, 0.03f), new Vector3(-0.03f, 0.035f, 0.03f),
+            new Vector3(0.02f, 0.05f, 0.01f), new Vector3(0.02f, 0.05f, 0.01f), Vector3.zero,
+        };
+        private static readonly Vector3[] InspectKeyEulers =
+        {
+            Vector3.zero, new Vector3(-8f, 28f, -35f), new Vector3(-10f, 30f, -38f),
+            new Vector3(-15f, -25f, 65f), new Vector3(-18f, -27f, 68f), Vector3.zero,
+        };
+
+        /// <summary>Starts the inspection (I) when the weapon is idle and neither aimed, sprinted with nor climbing.</summary>
+        public void Inspect()
+        {
+            if (ActiveState == null || CurrentAction != WeaponAction.None || locomotion.IsAiming || locomotion.IsSprinting || locomotion.IsTraversing)
+                return;
+            CancelTriggerIntent();
+            StartAction(WeaponAction.Inspect, inspectDuration);
+        }
 
         /// <summary>
         /// Lowers the weapon so the off hand can work a throwable; a reload or magazine check is interrupted (completed
@@ -303,6 +351,7 @@ namespace FPS.Weapons
             WeaponState state = ActiveState;
             if (state == null) return;
 
+            if (CurrentAction == WeaponAction.Inspect) CurrentAction = WeaponAction.None;
             if (CurrentAction == WeaponAction.Reload)
             {
                 if (speed && reloadTarget == ReloadStage.MagazineRemoved && !state.SpeedReload)
@@ -340,6 +389,7 @@ namespace FPS.Weapons
         public void SetMagazineCheck(bool held)
         {
             checkHeld = held;
+            if (held && CurrentAction == WeaponAction.Inspect) CurrentAction = WeaponAction.None;
             WeaponState state = ActiveState;
             if (!held || state == null || !state.HasMagazine || CurrentAction != WeaponAction.None) return;
 
@@ -375,6 +425,7 @@ namespace FPS.Weapons
             stance = GetComponent<StanceAndLeanController>();
             inertia = GetComponent<RealisticWeaponInertia>();
             recoil = GetComponent<PhysicalRecoilEngine>();
+            TryGetComponent(out traversal);
             input = GetComponent<PlayerRig>().Input;
             pose.PositionTuning = poseSpring;
             pose.RotationTuning = poseSpring;
@@ -401,6 +452,7 @@ namespace FPS.Weapons
             input.ChangeFireModePressed += CycleFireMode;
             input.WeaponSlotRequested += SelectSlot;
             input.ToggleDevicePressed += ToggleDevices;
+            input.InspectPressed += Inspect;
         }
 
         private void OnDisable()
@@ -414,6 +466,7 @@ namespace FPS.Weapons
             input.ChangeFireModePressed -= CycleFireMode;
             input.WeaponSlotRequested -= SelectSlot;
             input.ToggleDevicePressed -= ToggleDevices;
+            input.InspectPressed -= Inspect;
         }
 
         private void OnDestroy()
@@ -440,7 +493,17 @@ namespace FPS.Weapons
             if (state == null || viewmodel.Weapon == null) return;
 
             float now = Time.time;
-            if (CurrentAction == WeaponAction.Reload && (locomotion.IsSprinting || locomotion.IsDiving)) InterruptReload();
+            if (CurrentAction == WeaponAction.Reload && (locomotion.IsSprinting || locomotion.IsDiving || locomotion.IsTraversing)) InterruptReload();
+            if (CurrentAction == WeaponAction.Inspect && (locomotion.IsAiming || locomotion.IsSprinting || locomotion.IsTraversing))
+                CurrentAction = WeaponAction.None;
+
+            // A slide carries the weapon low like a sprint; cancelling it comes up into a crouched ready far sooner.
+            if (locomotion.IsSliding) fireBlockedUntil = Mathf.Max(fireBlockedUntil, now + state.Data.SprintToFireTime);
+            if (locomotion.LastSlideCancelTime > seenSlideCancel)
+            {
+                seenSlideCancel = locomotion.LastSlideCancelTime;
+                fireBlockedUntil = seenSlideCancel + slideCancelReadyTime;
+            }
             if (CurrentAction == WeaponAction.MagazineCheck && (!checkHeld || locomotion.IsSprinting)) CurrentAction = WeaponAction.None;
 
             if (CurrentAction != WeaponAction.None)
@@ -470,8 +533,9 @@ namespace FPS.Weapons
             if (dt <= 0f || weapon == null) return;
 
             PoseTarget(out Vector3 position, out Vector3 euler);
-            pose.PositionTarget = position;
-            pose.RotationTarget = euler;
+            float carry = traversal != null ? traversal.CarryBlend : 0f; // over a vault or mantle the support hand is busy
+            pose.PositionTarget = position + carryPosition * carry;
+            pose.RotationTarget = euler + carryEuler * carry;
             pose.Step(dt);
 
             Transform pivot = viewmodel.ActionPivot;
@@ -520,7 +584,7 @@ namespace FPS.Weapons
             }
 
             if (now < fireBlockedUntil) return;
-            if (inertia.IsTucked || locomotion.IsDiving || stance.IsProneTransition)
+            if (inertia.IsTucked || locomotion.IsDiving || locomotion.IsTraversing || stance.IsProneTransition)
             {
                 CancelTriggerIntent();
                 return;
@@ -537,6 +601,7 @@ namespace FPS.Weapons
                 case WeaponAction.BoltCycle:
                     return; // the shot goes off once the weapon is ready
                 case WeaponAction.MagazineCheck:
+                case WeaponAction.Inspect:
                     CurrentAction = WeaponAction.None;
                     break;
                 case WeaponAction.Reload:
@@ -891,6 +956,9 @@ namespace FPS.Weapons
                     float lowered = Mathf.Clamp01(actionTime / 0.2f);
                     position = loweredPosition * lowered;
                     euler = loweredEuler * lowered;
+                    break;
+                case WeaponAction.Inspect:
+                    InspectPose(actionTime, actionDuration, out position, out euler);
                     break;
             }
         }

@@ -3,12 +3,18 @@ using UnityEngine;
 
 namespace FPS.Locomotion
 {
-    /// <summary>Finds the <see cref="IInteractable"/> the player is looking at and uses it on Interact.</summary>
+    /// <summary>
+    /// Finds the <see cref="IInteractable"/> the player is looking at and uses it on Interact; while Interact is held on
+    /// an <see cref="IScrollAdjustable"/> the scroll wheel goes to it, and the context melee bashes an
+    /// <see cref="IBashable"/> in reach.
+    /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(PlayerRig))]
     public sealed class Interactor : MonoBehaviour
     {
         [SerializeField] private float reach = 2.2f;
+        [Tooltip("Reach of the context melee (m).")]
+        [SerializeField] private float bashReach = 1.4f;
 
         private InputReader input;
         private Transform eye;
@@ -48,6 +54,25 @@ namespace FPS.Locomotion
                 Focused = interactable;
                 focusedComponent = interactable as Component;
             }
+        }
+
+        /// <summary>Sends a scroll step to the focused interactable while Interact is held on it; false if nothing takes it.</summary>
+        public bool TryScroll(int direction)
+        {
+            if (input == null || !input.InteractHeld || focusedComponent == null || !(Focused is IScrollAdjustable adjustable)) return false;
+            adjustable.Scroll(gameObject, direction);
+            return true;
+        }
+
+        /// <summary>Bashes the <see cref="IBashable"/> straight ahead within reach (0-1 <paramref name="strength"/>); false if none.</summary>
+        public bool TryBash(float strength)
+        {
+            int mask = GameLayers.EnvironmentMask | (1 << GameLayers.Interactable);
+            if (!Physics.Raycast(eye.position, eye.forward, out RaycastHit hit, bashReach, mask, QueryTriggerInteraction.Collide)) return false;
+            IBashable bashable = hit.collider.GetComponentInParent<IBashable>();
+            if (bashable == null) return false;
+            Vector3 direction = Vector3.ProjectOnPlane(eye.forward, Vector3.up);
+            return bashable.Bash(gameObject, direction.sqrMagnitude > 1e-6f ? direction.normalized : transform.forward, strength);
         }
 
         /// <summary>Uses the focused interactable, if any.</summary>

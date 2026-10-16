@@ -98,6 +98,11 @@ namespace FPS.EditorTools
             Block(level, "Ledge 0.75m (crouched mount)", new Vector3(4f, 0.375f, 4f), new Vector3(3f, 0.75f, 0.3f), Quaternion.identity);
             Block(level, "Corner Wall (corner mount)", new Vector3(-4.5f, 1.5f, 4f), new Vector3(3f, 3f, 0.3f), Quaternion.identity);
 
+            // Traversal (Jump/Climb): vault the low wall, mantle onto the box (too deep to vault) and the tall platform.
+            Block(level, "Vault Wall 0.9m", new Vector3(-8f, 0.45f, -1.5f), new Vector3(2.5f, 0.9f, 0.35f), Quaternion.identity);
+            Block(level, "Climb Box 1.0m", new Vector3(-12f, 0.5f, -1f), new Vector3(2f, 1f, 2.4f), Quaternion.identity);
+            Block(level, "Mantle Platform 1.8m", new Vector3(-16f, 0.9f, -0.5f), new Vector3(3f, 1.8f, 3f), Quaternion.identity);
+
             // Stance clearance: cannot stand up inside, cannot crouch into the crawl tunnel.
             Tunnel(level, "Crouch Tunnel 1.3m", new Vector3(10f, 0f, -8f), 1.3f);
             Tunnel(level, "Crawl Tunnel 0.6m", new Vector3(15f, 0f, -8f), 0.6f);
@@ -122,6 +127,7 @@ namespace FPS.EditorTools
             Block(room, "Wall E", new Vector3(3f, 1.5f, 0f), new Vector3(0.3f, 3f, 6f), Quaternion.identity);
             Block(room, "Wall W", new Vector3(-3f, 1.5f, 0f), new Vector3(0.3f, 3f, 6f), Quaternion.identity);
             Block(room, "Roof", new Vector3(0f, 3.15f, 0f), new Vector3(6.3f, 0.3f, 6.3f), Quaternion.identity);
+            DoorBuilder.Doorway(room, "Shoot House Door", room.TransformPoint(new Vector3(0f, 0f, -3f)), Quaternion.identity, 1.7f, 3f, 0.3f, "Concrete");
             var dustObject = new GameObject("Dust (local volumetric fog)");
             dustObject.transform.SetParent(room, false);
             dustObject.transform.localPosition = new Vector3(0f, 1.5f, 0f);

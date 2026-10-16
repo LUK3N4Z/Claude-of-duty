@@ -126,16 +126,18 @@ Bullets use `GameLayers.BallisticMask` (Default + WorldGeometry + Hitbox). No cu
 | TacticalSprint | LShift ×2 | L3 ×2 | `TacticalSprintPressed` |
 | HoldBreath | LShift | L3 | `HoldBreathHeld` |
 | WalkSlow | LAlt | — | `WalkSlowHeld` |
-| WalkSpeedAdjust | Scroll wheel | — | `WalkSpeedStepped(±1)` |
-| Crouch | C (tap) | B (tap) | `CrouchPressed` (slide when sprinting) |
+| WalkSpeedAdjust | Scroll wheel | — | `WalkSpeedStepped(±1)`; while Interact is held on a door it cracks the door instead |
+| Jump / Climb | Space | A (tap) | `JumpPressed`, `JumpHeld`: vault/mantle what is ahead, else jump; cancels a slide |
+| Crouch | C (tap) | B (tap) | `CrouchPressed` (slide when sprinting; cancels a slide) |
 | Prone | C (hold), LCtrl | B (hold) | `PronePressed` (dive when sprinting) |
 | LeanLeft / LeanRight | Q / E | D-pad ← / → | `LeanLeftHeld`, `LeanRightHeld` |
 | Reload | R (tap) | X (tap) | `ReloadPressed`; 2nd tap in window → `FastReloadPressed` |
 | CheckMagazine | R (hold) | X (hold) | `CheckMagazineChanged(bool)` |
-| ChangeFireMode | B | D-pad ↓ | `ChangeFireModePressed` |
+| ChangeFireMode | B | D-pad ↓ (tap) | `ChangeFireModePressed` |
 | SwitchSight | X | D-pad ↑ | `SwitchSightPressed` |
-| MountWeapon | V | R3 | `MountWeaponPressed` |
-| Interact | F | A | `InteractPressed` (`Interactor` → focused `IInteractable`); `InteractHeld` for hold-to-use objectives |
+| MountWeapon | V | R3 | `MountWeaponPressed`; facing a door it bashes instead (context melee) |
+| Interact | F | A (hold) | `InteractPressed` (`Interactor` → focused `IInteractable`); `InteractHeld` for hold-to-use objectives and door cracking |
+| Inspect | I | D-pad ↓ (hold) | `InspectPressed` |
 | ToggleDevice | T | View (tap) | `ToggleDevicePressed` (all lights/lasers on the held weapon) |
 | ToggleNightVision | N | View (hold 0.4 s) | `ToggleNightVisionPressed` (`NightVisionGoggles`) |
 | ThrowLethal | G, mouse forward | RB | `LethalPressed` (pin, cook) / `LethalReleased` (throw) |
@@ -471,6 +473,37 @@ Contracts for later milestones:
   acceleration, view/weapon turn rate (inertia pivot) and speed; sling swivel clinks on weapon-swing jolts and hard
   landings.
 
+## Movement & handling (M14)
+
+- **Traversal** (`MantleAndVaultController`, FPS.Player, added by `PlayerRig.Build`): on Jump/Climb while moving into
+  an obstacle (or holding Jump in the air) it probes the face (rays 0.35–2.05 m), the top (`TopAt` sphere-cast; roofed or
+  taller than 2.1 m = nothing), the depth and the ground behind, and capsule clearance; `Classify`: 0.5–1.1 m, ≤ 1 m
+  deep with ground behind = **vault**, otherwise up to 2.1 m with something to stand on = **mantle** (crouch at the end
+  if standing does not fit). The path rises before it advances. It moves nothing: `RealisticLocomotionController`
+  (the root's only writer) places the capsule from `Step(dt)` each frame (`IsTraversing`); `HeadbobAndBreathingSystem`
+  adds `CameraPitch`/`CameraRoll`, `RealisticWeaponController` the one-handed side carry (`CarryBlend`, fire blocked),
+  `FirstPersonArmsIK` plants the support hand on `HandPoint`.
+- **Jump:** 3 m/s take-off when nothing is climbable (stands up first from a crouch). **Slide cancel:** crouch or
+  jump mid-slide ends it in a crouch (`LastSlideCancelTime`); the weapon is ready 0.15 s later
+  (`slideCancelReadyTime`) instead of after `SprintToFireTime` (slides carry it low like a sprint).
+- **Compressed ready** (`RealisticWeaponInertia`): barrel penetration first slides the weapon back into a compressed
+  ready (`CompressedReady01`, stock under the arm: still fires, ADS blocked) up to `maxCompression`, then tilts to the
+  high/low ready; `IsTucked` (tilt ≥ `tuckedTilt` 0.25) blocks firing and aiming.
+- **Inspect** (I): `WeaponAction.Inspect`, 3.5 s keyframed pose on ActionPivot (`InspectPose`: left side and
+  markings, then the ejection port); aiming, sprinting, climbing, reloading, a magazine check or firing cancel it.
+- **Camera kick** (`ProceduralADSAndOpticsController`, the FOV writer): an own unsuppressed shot (`MuzzleFlash` > 0.05)
+  adds `ShotKickDegrees` = 1.5° × `ShotKickScale` (√(muzzle energy / 1700 J), 0.4–1.8) over 40 ms
+  (`ShotKickEnvelope`) and pulses a main-camera "Shot Impulse" chromatic aberration volume.
+- **Hand tremor:** `HeadbobAndBreathingSystem.HandTremor` (3 Perlin octaves from 9 Hz, 0.035° scaled by heart rate,
+  mounting and arm injury) is part of `WeaponSwayEuler`. First-person sleeves/gloves use the woven cloth and pored
+  leather finishes (normal-mapped).
+- **Doors** (`TacticalDoor`, FPS.AI, on the hinge; `DoorBuilder.Doorway` in the shoot house and the warehouse): swings
+  both ways, away from the user. Tap Interact toggles; hold Interact + scroll cracks it 6° a step up to 35°
+  (`IScrollAdjustable`, `Interactor.TryScroll`); V facing it (`Interactor.TryBash`) or sprinting into it
+  (`IBashable`) slams it open and stuns soldiers in its sweep (`AIPerceptionSensor.Stun`). Soldiers walking up to a
+  closed door push it open. The leaf is Wood world geometry on a kinematic hinge, a gentle swing stops against bodies,
+  and the hinge is excluded from NavMesh bakes (`NavMeshModifier`).
+
 ## Milestones
 
 - [x] **M1** Project init, `CLAUDE.md`, assemblies, `InputReader`, `EventBus`, `ObjectPoolManager`, `ProjectSetupWizard`
@@ -486,6 +519,6 @@ Contracts for later milestones:
 - [x] **M11** Meshy asset pipeline, high-detail procedural models, weapon mechanisms, battle rifle and sidearm
 - [x] **M12** Photoreal HDRP overhaul (SSGI/SSR, contact shadows, physical sky, weathered materials, combat VFX, NVG)
 - [x] **M13** Physical gunshot synthesis, environment tails, Doppler cracks, gear foley
-- [ ] **M14** Mantling and vaulting, slide cancel, compressed ready, physical doors, inspect, camera kick
+- [x] **M14** Mantling and vaulting, slide cancel, compressed ready, physical doors, inspect, camera kick
 - [ ] **M15** Deployment station, scene flow, loading screen, complete settings and key rebinding
 - [ ] **M16** Hit confirmation and diegetic combat polish

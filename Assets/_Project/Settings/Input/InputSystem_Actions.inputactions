@@ -239,6 +239,24 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "Jump",
+                    "type": "Button",
+                    "id": "3ba98679-89b9-57e8-aaa1-8f25771156d8",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Inspect",
+                    "type": "Button",
+                    "id": "67d04615-33fe-5d9f-9348-584132d24b9d",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -620,7 +638,7 @@
                     "name": "",
                     "id": "7776d783-61e0-54ec-97a6-a88aadc9f693",
                     "path": "<Gamepad>/dpad/down",
-                    "interactions": "",
+                    "interactions": "Tap",
                     "processors": "",
                     "groups": "Gamepad",
                     "action": "ChangeFireMode",
@@ -719,7 +737,7 @@
                     "name": "",
                     "id": "d8db26d0-c70b-5746-b866-0f6d10b04ba4",
                     "path": "<Gamepad>/buttonSouth",
-                    "interactions": "",
+                    "interactions": "Hold(duration=0.3)",
                     "processors": "",
                     "groups": "Gamepad",
                     "action": "Interact",
@@ -833,6 +851,50 @@
                     "processors": "",
                     "groups": "Gamepad",
                     "action": "ToggleNightVision",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "c92af96e-dec1-510f-8744-7a29c8f0f955",
+                    "path": "<Keyboard>/space",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "Jump",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "d51b3209-08a1-53b3-ab0e-e74590bbcb59",
+                    "path": "<Gamepad>/buttonSouth",
+                    "interactions": "Tap",
+                    "processors": "",
+                    "groups": "Gamepad",
+                    "action": "Jump",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "6577a25a-d07b-598c-829c-39a2a6485d68",
+                    "path": "<Keyboard>/i",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "Inspect",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "c6aced69-d0ce-5117-9df0-54606b118d65",
+                    "path": "<Gamepad>/dpad/down",
+                    "interactions": "Hold(duration=0.4)",
+                    "processors": "",
+                    "groups": "Gamepad",
+                    "action": "Inspect",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

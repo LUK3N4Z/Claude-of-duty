@@ -402,6 +402,16 @@ namespace FPS.AI
             blindHoldLeft = blind * blindHold;
         }
 
+        /// <summary>
+        /// Knocked senseless for about <paramref name="seconds"/> (a bashed door slammed into him): fully blinded and stunned,
+        /// then recovering like after a flashbang.
+        /// </summary>
+        public void Stun(float seconds)
+        {
+            Blindness = 1f;
+            blindHoldLeft = Mathf.Max(blindHoldLeft, seconds);
+        }
+
         /// <summary>Something came in along <paramref name="direction"/>: alert toward the enemy behind that line.</summary>
         private void InferShooter(Vector3 point, Vector3 direction, float awareness)
         {

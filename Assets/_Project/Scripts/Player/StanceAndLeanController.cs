@@ -151,6 +151,22 @@ namespace FPS.Locomotion
             return true;
         }
 
+        /// <summary>Capsule height of <paramref name="stance"/> (m).</summary>
+        public float HeightOf(Stance stance) => Shape(stance).height;
+
+        /// <summary>
+        /// True if the standing or crouched capsule fits with its feet at <paramref name="feet"/> (traversal landing
+        /// checks); prone checks the stretched-out body facing the current yaw.
+        /// </summary>
+        public bool FitsAt(Stance target, Vector3 feet)
+        {
+            if (target == Stance.Prone) return IsProneBodyClear(feet, transform.eulerAngles.y);
+            StanceShape shape = Shape(target);
+            float radius = shape.radius - 0.02f;
+            return !Physics.CheckCapsule(feet + Vector3.up * (radius + GroundSkin), feet + Vector3.up * (shape.height - radius), radius,
+                GameLayers.EnvironmentMask, QueryTriggerInteraction.Ignore);
+        }
+
         /// <summary>True if the stretched-out prone body fits at <paramref name="position"/> facing <paramref name="yaw"/>.</summary>
         public bool IsProneBodyClear(Vector3 position, float yaw)
         {

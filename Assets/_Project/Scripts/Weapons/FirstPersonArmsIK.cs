@@ -1,13 +1,15 @@
 using System;
 using FPS.Core;
+using FPS.Locomotion;
 using UnityEngine;
 
 namespace FPS.Weapons
 {
     /// <summary>
     /// Two-bone IK for first-person arms: the firing hand holds the weapon's RightHandIKGrip, the support hand follows
-    /// the controller's target (handguard grip, magazine during reloads and checks, charging handle when cycling).
-    /// Runs after every viewmodel pivot so the hands land on the final weapon pose.
+    /// the controller's target (handguard grip, magazine during reloads and checks, charging handle when cycling) and
+    /// plants on the obstacle during a vault or mantle. Runs after every viewmodel pivot so the hands land on the final
+    /// weapon pose.
     /// </summary>
     [DefaultExecutionOrder(50)]
     [DisallowMultipleComponent]
@@ -34,6 +36,7 @@ namespace FPS.Weapons
 
         private ViewmodelRig viewmodel;
         private RealisticWeaponController controller;
+        private MantleAndVaultController traversal;
         private Vector3 supportPosition;
         private Quaternion supportRotation = Quaternion.identity;
         private bool supportPlaced;
@@ -42,6 +45,7 @@ namespace FPS.Weapons
         {
             viewmodel = GetComponent<ViewmodelRig>();
             controller = GetComponent<RealisticWeaponController>();
+            TryGetComponent(out traversal);
         }
 
         private void OnEnable() => viewmodel.WeaponChanged += OnWeaponChanged;
@@ -66,7 +70,9 @@ namespace FPS.Weapons
                 supportPosition = Vector3.Lerp(supportPosition, position, k);
                 supportRotation = Quaternion.Slerp(supportRotation, rotation, k);
                 supportPlaced = true;
-                Solve(leftArm, space.TransformPoint(supportPosition), space.rotation * supportRotation, space);
+                Vector3 hand = space.TransformPoint(supportPosition);
+                if (traversal != null && traversal.HandBlend > 0f) hand = Vector3.Lerp(hand, traversal.HandPoint, traversal.HandBlend);
+                Solve(leftArm, hand, space.rotation * supportRotation, space);
             }
 
             if (weapon.RightHandIKGrip != null)

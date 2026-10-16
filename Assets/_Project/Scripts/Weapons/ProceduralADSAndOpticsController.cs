@@ -1,3 +1,5 @@
+using FPS.Audio;
+using FPS.Ballistics;
 using FPS.Core;
 using FPS.Locomotion;
 using UnityEngine;
@@ -67,6 +69,16 @@ namespace FPS.Weapons
         [Tooltip("Weapon cant while active aiming (deg about the bore): the laser comes up under the goggles.")]
         [SerializeField] private float activeAimCant = -45f;
 
+        [Header("Shot Impulse")]
+        [Tooltip("FOV kick of an unsuppressed shot at the reference muzzle energy (deg).")]
+        [SerializeField] private float shotFovKick = 1.5f;
+        [Tooltip("Length of the kick (s).")]
+        [SerializeField, Min(0.01f)] private float shotKickDuration = 0.04f;
+        [Tooltip("Edge chromatic aberration at the peak of the kick.")]
+        [SerializeField, Range(0f, 1f)] private float shotAberration = 0.5f;
+        [Tooltip("Muzzle energy that kicks at the nominal amount (J): 5.56 from a 14.5 in barrel.")]
+        [SerializeField, Min(1f)] private float referenceMuzzleEnergy = 1700f;
+
         [Header("Peripheral Blur")]
         [SerializeField] private float blurFarStart = 0.6f;
         [SerializeField] private float blurFarEnd = 4f;
@@ -94,8 +106,9 @@ namespace FPS.Weapons
         private bool laserForced;
         private MaterialPropertyBlock lensBlock;
         private Renderer litLens;
-        private Volume blurVolume;
-        private VolumeProfile scopeProfile, blurProfile;
+        private Volume blurVolume, impulseVolume;
+        private VolumeProfile scopeProfile, blurProfile, impulseProfile;
+        private float shotKickStrength, shotKickTime = float.PositiveInfinity;
         private Vignette scopeShadow;
 
         /// <summary>Eased hip (0) to fully aimed (1) blend.</summary>
@@ -113,6 +126,8 @@ namespace FPS.Weapons
         public Material LensMaterial => lensMaterial;
         /// <summary>Aiming by laser with night vision down (weapon canted, no optic).</summary>
         public bool IsActiveAiming { get; private set; }
+        /// <summary>Current FOV kick from an unsuppressed shot (deg), on top of the zoomed field of view.</summary>
+        public float ShotKickDegrees { get; private set; }
 
         /// <summary>Vertical field of view at the hip (deg); aiming zooms relative to it.</summary>
         public float BaseFieldOfView
@@ -177,6 +192,7 @@ namespace FPS.Weapons
             viewmodel.WeaponChanged += OnWeaponChanged;
             if (input != null) input.SwitchSightPressed += OnSwitchSight;
             RenderPipelineManager.endCameraRendering += OnEndCameraRendering;
+            EventBus<GunshotEvent>.Subscribe(OnGunshot);
             OnWeaponChanged();
         }
 
@@ -185,6 +201,10 @@ namespace FPS.Weapons
             viewmodel.WeaponChanged -= OnWeaponChanged;
             if (input != null) input.SwitchSightPressed -= OnSwitchSight;
             RenderPipelineManager.endCameraRendering -= OnEndCameraRendering;
+            EventBus<GunshotEvent>.Unsubscribe(OnGunshot);
+            shotKickTime = float.PositiveInfinity;
+            ShotKickDegrees = 0f;
+            impulseVolume.weight = 0f;
             ReleaseForcedLaser();
             IsActiveAiming = false;
             DeactivateScope();
@@ -208,12 +228,14 @@ namespace FPS.Weapons
             if (lensMaterial != null) Destroy(lensMaterial);
             Destroy(scopeProfile);
             Destroy(blurProfile);
+            Destroy(impulseProfile);
         }
 
         private void LateUpdate()
         {
             float dt = Time.deltaTime;
             if (dt <= 0f) return;
+            UpdateShotKick(dt);
 
             Transform aligner = aligners[activeSlot];
             WeaponDataSO data = viewmodel.Data;
@@ -226,7 +248,8 @@ namespace FPS.Weapons
                 return;
             }
 
-            bool wantsAds = locomotion.IsAiming && !inertia.IsTucked && (weaponController == null || !weaponController.BlocksAiming);
+            bool wantsAds = locomotion.IsAiming && !inertia.IsTucked && !inertia.IsCompressed &&
+                            (weaponController == null || !weaponController.BlocksAiming);
             adsProgress = Mathf.MoveTowards(adsProgress, wantsAds ? 1f : 0f, dt / data.AdsTime);
             float blend = AdsBlend = Mathf.SmoothStep(0f, 1f, adsProgress);
 
@@ -323,10 +346,44 @@ namespace FPS.Weapons
             if (aligners[other] != null) activeSlot = other;
         }
 
+        /// <summary>FOV kick for a shot of <paramref name="energy"/> J relative to <paramref name="reference"/> J (scales with momentum, ~sqrt E).</summary>
+        public static float ShotKickScale(float energy, float reference) => Mathf.Clamp(Mathf.Sqrt(Mathf.Max(0f, energy) / Mathf.Max(1f, reference)), 0.4f, 1.8f);
+
+        /// <summary>Kick envelope at <paramref name="t"/> s after the shot: up in the first eighth, linear back to 0 by <paramref name="duration"/>.</summary>
+        public static float ShotKickEnvelope(float t, float duration)
+        {
+            if (t < 0f || t >= duration) return 0f;
+            float attack = duration * 0.125f;
+            return t < attack ? t / attack : 1f - (t - attack) / (duration - attack);
+        }
+
+        private void OnGunshot(in GunshotEvent shot)
+        {
+            if (shot.Shooter != transform || shot.MuzzleFlash <= 0.05f) return; // a suppressor keeps the blast in the can
+            WeaponDataSO data = viewmodel.Data;
+            CaliberDataSO caliber = data != null ? data.Caliber : null;
+            float energy = caliber != null
+                ? caliber.KineticEnergy(caliber.MuzzleVelocity(data.BarrelLengthInches) * data.MuzzleVelocityMultiplier)
+                : referenceMuzzleEnergy;
+            shotKickStrength = ShotKickScale(energy, referenceMuzzleEnergy) * Mathf.Min(1f, shot.MuzzleFlash);
+            shotKickTime = 0f;
+        }
+
+        private void UpdateShotKick(float dt)
+        {
+            bool fresh = shotKickTime == 0f;
+            if (shotKickTime < shotKickDuration) shotKickTime += dt;
+            // The shot's own frame shows the kick, at its peak at most: a long frame must not skip a 40 ms impulse.
+            float sample = fresh ? Mathf.Min(shotKickTime, shotKickDuration * 0.125f) : shotKickTime;
+            float envelope = ShotKickEnvelope(sample, shotKickDuration) * shotKickStrength;
+            ShotKickDegrees = shotFovKick * envelope;
+            impulseVolume.weight = Mathf.Clamp01(envelope);
+        }
+
         private void ApplyView(float zoom, float opticMagnification, float blurWeight)
         {
             float fieldOfView = baseFieldOfView / zoom;
-            mainCamera.fieldOfView = fieldOfView;
+            mainCamera.fieldOfView = fieldOfView + ShotKickDegrees;
             float zoomSensitivity = Mathf.Tan(fieldOfView * 0.5f * Mathf.Deg2Rad) / Mathf.Tan(baseFieldOfView * 0.5f * Mathf.Deg2Rad);
             locomotion.LookSensitivityMultiplier = zoomSensitivity / opticMagnification;
             blurVolume.weight = blurWeight;
@@ -477,6 +534,11 @@ namespace FPS.Weapons
             scopeShadow.center.Override(new Vector2(0.5f, 0.5f));
             scopeProfile.Add<Tonemapping>().mode.Override(TonemappingMode.None); // the main camera tonemaps the lens once
             scopeProfile.Add<MotionBlur>().intensity.Override(0f);
+
+            impulseVolume = CreateGlobalVolume("Shot Impulse", GameLayers.Player, out impulseProfile); // main camera only
+            ChromaticAberration pulse = impulseProfile.Add<ChromaticAberration>();
+            pulse.intensity.Override(shotAberration);
+            impulseVolume.weight = 0f;
 
             blurVolume = CreateGlobalVolume("ADS Peripheral Blur", GameLayers.Player, out blurProfile);
             DepthOfField depthOfField = blurProfile.Add<DepthOfField>();

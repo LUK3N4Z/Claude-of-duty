@@ -16,8 +16,10 @@ namespace FPS.Locomotion
 
     /// <summary>
     /// Grounded first-person movement: momentum limited by surface traction and carried weapon load, gait paces with
-    /// stamina, velocity-driven slide and dive-to-prone with slope friction physics, look, and the aim/sprint
-    /// arbitration every other player system reads. Owns the root yaw and PitchPivot.
+    /// stamina, velocity-driven slide (cancelled by crouch or jump into a crouched ready) and dive-to-prone with slope
+    /// friction physics, jumping, vaulting and mantling (Jump/Climb arbitrates: traverse what is ahead, else jump),
+    /// door bashes (V facing a door, or sprinting into one), look, and the aim/sprint arbitration every other player
+    /// system reads. Owns the root position and yaw and PitchPivot.
     /// </summary>
     [DefaultExecutionOrder(-50)]
     [DisallowMultipleComponent]
@@ -108,6 +110,21 @@ namespace FPS.Locomotion
         [SerializeField] private float slideSteerRate = 30f;
         [SerializeField] private float slideMaxDuration = 2.5f;
 
+        [Header("Jump")]
+        [Tooltip("Take-off speed (m/s): about 0.45 m of lift with a carried loadout.")]
+        [SerializeField] private float jumpSpeed = 3f;
+        [SerializeField, Range(0f, 1f)] private float jumpStaminaCost = 0.05f;
+
+        [Header("Slide Cancel")]
+        [Tooltip("Speed kept when a slide is cancelled into a crouch.")]
+        [SerializeField, Range(0f, 1f)] private float slideCancelSpeedRetention = 0.6f;
+
+        [Header("Door Bash")]
+        [Tooltip("Sprint speed needed to bash a door open by running into it (m/s).")]
+        [SerializeField] private float sprintBashSpeed = 3.5f;
+        [Tooltip("Speed kept after a bash.")]
+        [SerializeField, Range(0f, 1f)] private float bashSpeedRetention = 0.55f;
+
         [Header("Dive To Prone")]
         [SerializeField] private float diveDuration = 0.55f;
         [SerializeField] private float diveFriction = 0.85f;
@@ -119,6 +136,8 @@ namespace FPS.Locomotion
 
         private CharacterController controller;
         private StanceAndLeanController stance;
+        private MantleAndVaultController traversal;
+        private Interactor interactor;
         private PlayerRig rig;
         private InputReader input;
         private TacticalHealthAndArmorSystem health;
@@ -149,6 +168,10 @@ namespace FPS.Locomotion
         public bool IsTacticalSprinting => sprinting && tacticalRequested;
         public bool IsSliding => sliding;
         public bool IsDiving => diving;
+        /// <summary>Vaulting or mantling: the body follows the traversal path.</summary>
+        public bool IsTraversing => traversal != null && traversal.IsActive;
+        /// <summary>When the last slide was cancelled into a crouch (Time.time), for the quick ready.</summary>
+        public float LastSlideCancelTime { get; private set; } = float.NegativeInfinity;
         /// <summary>Aim intent after arbitration (blocked by sprint, dive and prone transitions). ADS reads this.</summary>
         public bool IsAiming { get; private set; }
         public float Stamina01 => stamina;
@@ -245,6 +268,8 @@ namespace FPS.Locomotion
             rig = GetComponent<PlayerRig>();
             input = rig.Input;
             TryGetComponent(out health);
+            TryGetComponent(out traversal);
+            TryGetComponent(out interactor);
             yaw = transform.eulerAngles.y;
         }
 
@@ -265,6 +290,7 @@ namespace FPS.Locomotion
             input.PronePressed += OnPronePressed;
             input.MountWeaponPressed += OnMountPressed;
             input.WalkSpeedStepped += OnWalkSpeedStepped;
+            input.JumpPressed += OnJumpPressed;
             input.EnablePlayerInput();
 
             Cursor.lockState = CursorLockMode.Locked;
@@ -283,6 +309,7 @@ namespace FPS.Locomotion
             input.PronePressed -= OnPronePressed;
             input.MountWeaponPressed -= OnMountPressed;
             input.WalkSpeedStepped -= OnWalkSpeedStepped;
+            input.JumpPressed -= OnJumpPressed;
             input.DisablePlayerInput();
 
             Cursor.lockState = CursorLockMode.None;
@@ -295,7 +322,18 @@ namespace FPS.Locomotion
             if (dt <= 0f) return;
 
             UpdateLook(dt);
+            if (IsTraversing)
+            {
+                TraversalStep(dt);
+                return;
+            }
+
             ProbeGround(dt);
+            if (!grounded && input.JumpHeld && TryTraverse()) // reaching a ledge mid-jump
+            {
+                TraversalStep(dt);
+                return;
+            }
 
             Vector2 move = Vector2.ClampMagnitude(input.Move, 1f);
             UpdateSprintAndStamina(move, dt);
@@ -477,6 +515,7 @@ namespace FPS.Locomotion
             Vector3 before = transform.position;
             CollisionFlags flags = controller.Move(planarDelta + Vector3.up * (verticalSpeed * dt));
 
+            if ((flags & CollisionFlags.Sides) != 0 && sprinting && PlanarSpeed >= sprintBashSpeed) SprintBash();
             if ((flags & CollisionFlags.Sides) != 0)
             {
                 // Momentum into a wall is lost; keep only what actually moved (sliding along it).
@@ -499,6 +538,68 @@ namespace FPS.Locomotion
             if (!toggleAim) aimRequested = false;
         }
 
+        /// <summary>The body follows the traversal path; the capsule is placed, not swept (the solver checked clearance).</summary>
+        private void TraversalStep(float dt)
+        {
+            Vector3 position = traversal.Step(dt);
+            controller.enabled = false;
+            transform.position = position;
+            controller.enabled = true;
+            verticalSpeed = 0f;
+            planarVelocity = traversal.IsActive ? Vector3.zero : traversal.ExitVelocity;
+            sprinting = false;
+            IsAiming = false;
+            stance.SetLeanInput(0);
+        }
+
+        private bool TryTraverse()
+        {
+            if (traversal == null || sliding || diving || !traversal.TryBegin()) return false;
+            CancelSprint();
+            stance.Unmount();
+            return true;
+        }
+
+        private void OnJumpPressed()
+        {
+            if (sliding)
+            {
+                CancelSlide(); // tactical slide cancel
+                return;
+            }
+
+            if (diving || IsTraversing || TryTraverse()) return;
+            if (!grounded || stance.IsTransitioning || stance.Current == Stance.Prone) return;
+            if (stance.Current == Stance.Crouch)
+            {
+                stance.TrySetStance(Stance.Stand); // jump from a crouch stands up first
+                return;
+            }
+
+            stance.Unmount();
+            verticalSpeed = jumpSpeed;
+            grounded = false;
+            DrainStamina(jumpStaminaCost);
+        }
+
+        private void CancelSlide()
+        {
+            sliding = false; // the slide already lowered the body: it stays in a crouch
+            planarVelocity *= slideCancelSpeedRetention;
+            LastSlideCancelTime = Time.time;
+        }
+
+        /// <summary>Ran into something while sprinting: a door in the way bursts open.</summary>
+        private void SprintBash()
+        {
+            Vector3 direction = new Vector3(planarVelocity.x, 0f, planarVelocity.z).normalized;
+            Vector3 chest = transform.position + Vector3.up * (controller.height * 0.6f);
+            if (!Physics.Raycast(chest, direction, out RaycastHit hit, controller.radius + 0.35f, GameLayers.EnvironmentMask, QueryTriggerInteraction.Ignore))
+                return;
+            IBashable door = hit.collider.GetComponentInParent<IBashable>();
+            if (door != null && door.Bash(gameObject, direction, Mathf.Clamp01(PlanarSpeed / sprintSpeed))) planarVelocity *= bashSpeedRetention;
+        }
+
         private void OnSprintPressed()
         {
             if (aimRequested || diving) return; // Shift while aiming is hold-breath, handled by breathing
@@ -518,7 +619,7 @@ namespace FPS.Locomotion
             if (diving) return;
             if (sliding)
             {
-                sliding = false;
+                CancelSlide();
                 return;
             }
 
@@ -545,12 +646,20 @@ namespace FPS.Locomotion
 
         private void OnMountPressed()
         {
+            // Context melee: facing a door, V bashes it instead of mounting.
+            if (interactor != null && interactor.TryBash(Mathf.Max(0.6f, PlanarSpeed / sprintSpeed)))
+            {
+                planarVelocity *= bashSpeedRetention;
+                return;
+            }
+
             if (stance.IsMounted) stance.Unmount();
             else if (IsAiming && grounded && PlanarSpeed < 0.5f) stance.TryMount(yaw, pitch);
         }
 
         private void OnWalkSpeedStepped(int direction)
         {
+            if (interactor != null && interactor.TryScroll(direction)) return; // cracking a door, not changing pace
             float scaled = paceScale + direction * paceScaleStep;
             paceScale = Mathf.Clamp(Mathf.Round(scaled * 100f) / 100f, minPaceScale, 1f);
         }

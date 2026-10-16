@@ -57,6 +57,10 @@ namespace FPS.Core
         public event Action ToggleDevicePressed;
         /// <summary>Night vision goggles down / up (N, hold View).</summary>
         public event Action ToggleNightVisionPressed;
+        /// <summary>Space / tap A: jump, or vault and mantle when an obstacle is ahead (the consumer arbitrates).</summary>
+        public event Action JumpPressed;
+        /// <summary>I / hold D-pad down: procedural weapon inspection.</summary>
+        public event Action InspectPressed;
         /// <summary>Lethal throwable: press pulls the pin and cooks, release throws.</summary>
         public event Action LethalPressed;
         public event Action LethalReleased;
@@ -71,6 +75,7 @@ namespace FPS.Core
         private InputAction move, look, fire, aim, sprint, tacticalSprint, holdBreath, walkSlow, walkSpeedAdjust;
         private InputAction crouch, prone, leanLeft, leanRight, reload, checkMagazine, changeFireMode, switchSight, mountWeapon;
         private InputAction selectPrimary, selectSecondary, switchWeapon, interact, toggleDevice, throwLethal, throwTactical, toggleNightVision;
+        private InputAction jump, inspect;
         private double lastReloadTapTime = double.NegativeInfinity;
 
         public Vector2 Move => move.ReadValue<Vector2>();
@@ -91,6 +96,8 @@ namespace FPS.Core
         public bool LeanRightHeld => leanRight.IsPressed();
         /// <summary>Interact is held (hold-to-use objectives: plant, defuse, download).</summary>
         public bool InteractHeld => interact.IsPressed();
+        /// <summary>Jump is held: airborne players mantle a ledge they reach.</summary>
+        public bool JumpHeld => jump.IsPressed();
         public bool IsCheckingMagazine { get; private set; }
         public bool PlayerInputEnabled => playerMap != null && playerMap.enabled;
 
@@ -163,6 +170,8 @@ namespace FPS.Core
             interact = Find("Interact");
             toggleDevice = Find("ToggleDevice");
             toggleNightVision = Find("ToggleNightVision");
+            jump = Find("Jump");
+            inspect = Find("Inspect");
             throwLethal = Find("ThrowLethal");
             throwTactical = Find("ThrowTactical");
             playerMap.actionTriggered += OnActionTriggered;
@@ -225,6 +234,8 @@ namespace FPS.Core
                 else if (action == interact) InteractPressed?.Invoke();
                 else if (action == toggleDevice) ToggleDevicePressed?.Invoke();
                 else if (action == toggleNightVision) ToggleNightVisionPressed?.Invoke();
+                else if (action == jump) JumpPressed?.Invoke();
+                else if (action == inspect) InspectPressed?.Invoke();
                 else if (action == walkSpeedAdjust)
                 {
                     float scroll = context.ReadValue<float>();
